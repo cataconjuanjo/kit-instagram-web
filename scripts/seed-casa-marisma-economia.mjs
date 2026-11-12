@@ -173,25 +173,76 @@ function desglosarParametros(fila) {
     mantenimiento_datafono: datMan,
     resto_comisiones: resCom,
     canales_negocio,
-    beneficio_objetivo: 0,  // lo rellena el Bloque 3 (Motor de Precios)
-    ventas_previstas: 0,    // lo rellena el Bloque 3
+    // beneficio_objetivo / ventas_previstas: los gestiona el Motor de Precios.
+    // Para no sobrescribir lo que ya hubiera (y evitar tener que relanzar el
+    // Bloque 3), el apply hace un merge parcial que preserva esas dos
+    // columnas cuando ya tienen valor > 0.
   }
 }
 
 const filasParametros = mesesDestino.map(desglosarParametros)
 
-// ── 3. Libro de compras: 6 meses, 4 proveedores ──────────────────────────────
-// Total mensual ≈ consumo_mp del mismo mes × 1,10, con ±10 % de variación
-// estable por periodo, repartido entre 4 proveedores con pesos 35/26/21/18 %
-// y 2–3 facturas por proveedor/mes. Para el mes en curso el consumo_mp del
-// histórico ya viene parcial (hasta ayer), por lo que las compras heredan
-// esa proporcionalidad; además limitamos las fechas de factura a <= ayer.
-const PROVEEDORES_DEMO = [
-  { nombre: 'Bodegas Mar Málaga', peso: 0.35 },
-  { nombre: 'Exclusivas Soto',    peso: 0.26 },
-  { nombre: 'Sommeliervinos',     peso: 0.21 },
-  { nombre: 'Vins Des Dieux',     peso: 0.18 },
-]
+// ── 2bis. Precarga de ventas_previstas / beneficio_objetivo ya guardados ────
+// Para merge parcial: no sobrescribimos si hoy tienen valor > 0.
+const { data: motorRows, error: errMotor } = await supa
+  .from('parametros_explotacion')
+  .select('periodo, ventas_previstas, beneficio_objetivo')
+  .eq('restaurante_id', TARGET_ID)
+if (errMotor) { console.error('ERROR leyendo parametros_explotacion (motor):', errMotor.message); process.exit(1) }
+const motorPorPeriodo = Object.fromEntries((motorRows || []).map(r => [r.periodo, r]))
+
+// ── 3. Libro de compras: 6 meses, proveedores derivados del inventario ──────
+// Total mensual ≈ consumo_mp × 1,10 (±10 % estable por periodo).
+// Los proveedores y pesos se calculan a partir del valor a coste del stock
+// de los vinos activos (sum(stock × coste_compra) agrupado por proveedor),
+// normalizados a 1. Proveedores con peso < 3 % se omiten y su masa se
+// redistribuye proporcionalmente entre el resto.
+const { data: vinosInv, error: errInv } = await supa
+  .from('vinos')
+  .select('proveedor, stock, coste_compra')
+  .eq('restaurante_id', TARGET_ID)
+  .eq('activo', true)
+if (errInv) { console.error('ERROR leyendo vinos para derivar proveedores:', errInv.message); process.exit(1) }
+
+const valorPorProveedor = new Map()
+for (const v of (vinosInv || [])) {
+  const nombre = String(v.proveedor || '').trim()
+  if (!nombre) continue
+  const valor = Math.max(0, Number(v.stock) || 0) * Math.max(0, Number(v.coste_compra) || 0)
+  if (valor <= 0) continue
+  valorPorProveedor.set(nombre, (valorPorProveedor.get(nombre) || 0) + valor)
+}
+const totalValor = [...valorPorProveedor.values()].reduce((s, x) => s + x, 0)
+
+let PROVEEDORES_DEMO = []
+if (totalValor > 0) {
+  const raw = [...valorPorProveedor.entries()]
+    .map(([nombre, valor]) => ({ nombre, peso: valor / totalValor }))
+    .sort((a, b) => b.peso - a.peso)
+  const UMBRAL = 0.03
+  const mantenidos = raw.filter(p => p.peso >= UMBRAL)
+  const descartados = raw.filter(p => p.peso < UMBRAL)
+  const suma = mantenidos.reduce((s, p) => s + p.peso, 0) || 1
+  PROVEEDORES_DEMO = mantenidos.map(p => ({ nombre: p.nombre, peso: p.peso / suma }))
+
+  // Visibilidad en el dry-run.
+  console.log('\nProveedores derivados del inventario (sum(stock × coste_compra)):')
+  for (const p of mantenidos) console.log(`  · ${p.nombre.padEnd(30)} ${(p.peso * 100).toFixed(1).padStart(5)} %`)
+  if (descartados.length) {
+    console.log(`  descartados por peso < ${(UMBRAL * 100).toFixed(0)} %:`)
+    for (const p of descartados) console.log(`    · ${p.nombre.padEnd(28)} ${(p.peso * 100).toFixed(1).padStart(5)} %`)
+  }
+  console.log(`  normalizados entre los ${mantenidos.length} mantenidos.`)
+} else {
+  // Fallback conservador si el inventario aún no tiene costes/stock cargados.
+  console.warn('\nAVISO: inventario sin stock×coste_compra > 0. Fallback a 4 proveedores canónicos iguales.')
+  PROVEEDORES_DEMO = [
+    { nombre: 'Bodegas Mar Málaga', peso: 0.25 },
+    { nombre: 'Exclusivas Soto',    peso: 0.25 },
+    { nombre: 'Sommeliervinos',     peso: 0.25 },
+    { nombre: 'Vins Des Dieux',     peso: 0.25 },
+  ]
+}
 
 const consumoPorPeriodo = Object.fromEntries(
   mesesHist.map(r => [periodoDe(r.anio, r.mes), r.consumo_mp])
@@ -294,7 +345,8 @@ console.log(`\n[seed Economía Casa Marisma] destino: ${rest.nombre} (${TARGET_I
 console.log(`Modo: ${APPLY ? 'APPLY (escribe)' : 'DRY-RUN (no escribe)'}`)
 console.log(`Hoy (Madrid): ${hoy}  |  Ayer: ${ayerMadrid()}`)
 console.log(`Meses histórico leídos: ${mesesHist.length}  |  Mes en curso tomado de historico_mensual (parcial)`)
-console.log(`parametros_explotacion: ${filasParametros.length} filas a upsert`)
+const preservados = Object.values(motorPorPeriodo).filter(r => Number(r.ventas_previstas) > 0 || Number(r.beneficio_objetivo) > 0).length
+console.log(`parametros_explotacion: ${filasParametros.length} filas a upsert (merge parcial, se preserva Motor: ${preservados} periodos ya tenían ventas_previstas/beneficio_objetivo > 0)`)
 console.log(`libro_compras:          ${filasCompras.length} filas a upsert (${PROVEEDORES_DEMO.length} proveedores × 6 meses)`)
 
 if (filasParametros.length > 0) {
