@@ -40,12 +40,18 @@ const anadirIva = (n, pct = 10) => n * (1 + pct / 100)
 // ── 1) Columnas presentes y conteos clave ──────────────────────────────────
 console.log(`\n[diag motor-precios] destino: ${rest.nombre} (${TARGET_ID})`)
 
-async function contar(q) { const { count } = await q.select('*', { count: 'exact', head: true }); return count || 0 }
+async function contarVinos(aplicar) {
+  // aplicar: fn que recibe el builder tras .select() y añade filtros.
+  const base = supa.from('vinos').select('*', { count: 'exact', head: true })
+  const { count, error } = await aplicar(base)
+  if (error) { console.warn('(aviso) contar:', error.message); return 0 }
+  return count || 0
+}
 
-const totalVinos = await contar(supa.from('vinos').eq('restaurante_id', TARGET_ID))
-const vinosActivosEstricto = await contar(supa.from('vinos').eq('restaurante_id', TARGET_ID).eq('activo', true))
-const vinosActivoFalse = await contar(supa.from('vinos').eq('restaurante_id', TARGET_ID).eq('activo', false))
-const vinosActivoNull = await contar(supa.from('vinos').eq('restaurante_id', TARGET_ID).is('activo', null))
+const totalVinos           = await contarVinos(q => q.eq('restaurante_id', TARGET_ID))
+const vinosActivosEstricto = await contarVinos(q => q.eq('restaurante_id', TARGET_ID).eq('activo', true))
+const vinosActivoFalse     = await contarVinos(q => q.eq('restaurante_id', TARGET_ID).eq('activo', false))
+const vinosActivoNull      = await contarVinos(q => q.eq('restaurante_id', TARGET_ID).is('activo', null))
 
 const { data: todosVinos } = await supa
   .from('vinos')
