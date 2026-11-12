@@ -1,19 +1,24 @@
 /**
  * Rellena detalle.formato_venta / detalle.cantidad / detalle.precio_unidad
  * en public.estadisticas (tipo='venta', resultado='vendida') de Casa
- * Marisma donde falte, SIN cambiar importe_vino_estimado, vino_id,
- * created_at ni el resto de claves. Fusiona el JSON existente.
+ * Marisma. Fusiona el JSON (no toca importe_vino_estimado, vino_id,
+ * created_at ni el resto de claves).
  *
- * Hipótesis reforzada por los datos: una fila agrega varias unidades del
- * mismo formato (copas o botellas). `importe_vino_estimado = m*precio_botella`
- * con m entero → botella; o `= k*precio_copa` con k entero → copa. Hay un
- * subset en copa con k en múltiplos de 0,5 (3,5 → 4; 6,5 → 7) que se
- * redondea al entero más cercano y se contabiliza.
+ * Regla v3 (por línea, en este orden de prioridad):
+ *   1) Vino SIN precio_copa (null o 0):
+ *        → botella, cantidad = max(1, detalle.cantidad actual),
+ *          precio_unidad = precio_botella.
+ *   2) Vino CON precio_copa: si (importe / cantidad_actual) está a ±15 %
+ *      de precio_botella:
+ *        → botella, cantidad = cantidad_actual, precio_unidad = precio_botella.
+ *        Prioridad sobre copa aunque también encaje como múltiplo de copa.
+ *   3) Si no: k = importe / precio_copa. Si k está a ±10 % de un entero o
+ *      medio-entero (≥1):
+ *        → copa, cantidad = round(k), precio_unidad = precio_copa.
+ *      Si no, no se toca y se cuenta con motivo.
  *
- * Preferencia ante ambigüedad (ambas encajan con enteros ≥1 distintos):
- * copa si k ≤ 12, botella en caso contrario.
- *
- * Idempotente, dry-run por defecto, blindado a UUID + nombre.
+ * Idempotente (salta si formato_venta ya es 'copa'|'botella').
+ * Dry-run por defecto; guard UUID + nombre; .select() tras apply.
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-casa-marisma-formato-ventas.mjs           # dry-run
@@ -46,9 +51,9 @@ if (!rest || String(rest.nombre || '').toLowerCase() !== TARGET_NAME_LC) {
   console.error(`ERROR: destino inválido (${rest?.nombre || 'no encontrado'})`); process.exit(1)
 }
 
-// ── Utilidades ──────────────────────────────────────────────────────────────
-const TOL_INT  = 0.03   // tolerancia relativa al entero más cercano
-const K_COPA_PREF = 12  // umbral para preferir copa en ambigüedad
+// ── Tolerancias ─────────────────────────────────────────────────────────────
+const TOL_BOTELLA_UNITARIO = 0.15   // ±15 % de precio_botella al precio por unidad
+const TOL_COPA_ENTERO      = 0.10   // ±10 % al entero o medio-entero más cercano
 
 const r2 = n => Math.round(Number(n) * 100) / 100
 function parseDet(raw) {
@@ -63,26 +68,11 @@ function hoyMadridIso(n = 0) {
   const d = Number(p.find(x=>x.type==='day').value)
   return new Date(Date.UTC(y, m - 1, d - n, 0)).toISOString()
 }
-function encajaEntero(n) {
-  if (!(n > 0)) return null
-  const e = Math.round(n)
-  if (e < 1) return null
-  const diff = Math.abs(n - e) / e
-  return diff <= TOL_INT ? e : null
-}
-function encajaMedioEntero(n) {
-  // Detecta valores como 3.5, 6.5, 8.5, ...
-  if (!(n > 0)) return null
-  const half = Math.round(n * 2) / 2
-  if (half < 1.5) return null
-  if (Math.abs(half - Math.round(half)) < 1e-9) return null  // es entero puro
-  return Math.abs(n - half) / half <= TOL_INT ? half : null
-}
 
-// ── 1) Muestra de la forma del detalle ──────────────────────────────────────
-console.log(`\n[seed formato-ventas Casa Marisma] destino: ${rest.nombre} (${TARGET_ID})`)
+console.log(`\n[seed formato-ventas Casa Marisma v3] destino: ${rest.nombre} (${TARGET_ID})`)
 console.log(`Modo: ${APPLY ? 'APPLY (escribe)' : 'DRY-RUN (no escribe)'}`)
 
+// ── 1) Muestra de la forma del detalle ──────────────────────────────────────
 const { data: muestra } = await supa
   .from('estadisticas')
   .select('id, created_at, detalle')
@@ -97,11 +87,12 @@ for (const row of (muestra || [])) {
     id: row.id, created_at: row.created_at,
     keys: Object.keys(det).sort(),
     tiene_formato_venta: det.formato_venta === 'copa' || det.formato_venta === 'botella',
+    tiene_cantidad: Number(det.cantidad) > 0,
     tiene_precio_unidad: Number(det.precio_unidad) > 0,
   }))
 }
 
-// ── 2) Vinos (id → precio_copa, precio_botella) ─────────────────────────────
+// ── 2) Vinos ────────────────────────────────────────────────────────────────
 const { data: vinos, error: errV } = await supa
   .from('vinos')
   .select('id, nombre, precio_copa, precio_botella')
@@ -110,14 +101,14 @@ if (errV) { console.error('ERROR leyendo vinos:', errV.message); process.exit(1)
 const vinoById = Object.fromEntries((vinos || []).map(v => [v.id, v]))
 const vinosConBot  = (vinos || []).filter(v => Number(v.precio_botella) > 0).length
 const vinosConCop  = (vinos || []).filter(v => Number(v.precio_copa) > 0).length
-const vinosConAmbos= (vinos || []).filter(v => Number(v.precio_botella) > 0 && Number(v.precio_copa) > 0).length
+const vinosSoloBot = (vinos || []).filter(v => Number(v.precio_botella) > 0 && !(Number(v.precio_copa) > 0)).length
 console.log(`\n── (2) Vinos Casa Marisma ───────────────────────────────────────`)
-console.log(`  total vinos:                  ${vinos?.length || 0}`)
-console.log(`  con precio_botella > 0:       ${vinosConBot}`)
-console.log(`  con precio_copa > 0:          ${vinosConCop}`)
-console.log(`  con ambos precios > 0:        ${vinosConAmbos}`)
+console.log(`  total vinos:                 ${vinos?.length || 0}`)
+console.log(`  con precio_botella > 0:      ${vinosConBot}`)
+console.log(`  con precio_copa > 0:         ${vinosConCop}`)
+console.log(`  solo botella (sin pc):       ${vinosSoloBot}`)
 
-// ── 3) Ventas 30d paginadas ─────────────────────────────────────────────────
+// ── 3) Ventas 30d paginadas ────────────────────────────────────────────────
 async function cargarVentas30d() {
   const desde = hoyMadridIso(30)
   const hasta = hoyMadridIso(0)
@@ -145,46 +136,65 @@ async function cargarVentas30d() {
 const filas = await cargarVentas30d()
 const hace7Iso = hoyMadridIso(7)
 
-// ── 4) Clasificación nueva (importe = m*precio_botella  o  k*precio_copa) ──
-function clasificar(importe, pBot, pCop) {
-  // Devuelve { formato, unidades, redondeado?: true } o null.
-  const mB = encajaEntero(importe / (pBot || Infinity))
-  const kC = encajaEntero(importe / (pCop || Infinity))
-  if (mB && kC) {
-    // Ambiguo con enteros ≥ 1. Preferimos copa si kC ≤ K_COPA_PREF.
-    return kC <= K_COPA_PREF
-      ? { formato: 'copa',    unidades: kC, ambiguo: true }
-      : { formato: 'botella', unidades: mB, ambiguo: true }
-  }
-  if (mB) return { formato: 'botella', unidades: mB }
-  if (kC) return { formato: 'copa',    unidades: kC }
-  // Último intento: copa en múltiplos de 0.5 → redondeo al entero más cercano.
-  const half = encajaMedioEntero(importe / (pCop || Infinity))
-  if (half) {
-    const redondeado = Math.round(half)
-    return { formato: 'copa', unidades: redondeado, redondeado: true, half_original: half }
+// ── 4) Reglas v3 ────────────────────────────────────────────────────────────
+function encajaEnteroOMedio(x) {
+  if (!(x > 0)) return null
+  const e = Math.round(x)
+  if (e >= 1 && Math.abs(x - e) / e <= TOL_COPA_ENTERO) return e
+  const half = Math.round(x * 2) / 2
+  const halfEntero = Math.round(half)
+  if (half >= 1 && Math.abs(half - halfEntero) > 1e-9) {
+    // es .5 estricto
+    if (Math.abs(x - half) / half <= TOL_COPA_ENTERO) {
+      // redondea al entero más cercano (ej. 3.5 → 4)
+      return Math.max(1, Math.round(half))
+    }
   }
   return null
 }
 
+function clasificar({ importe, cantidadDet, pB, pC }) {
+  // Rule 1: sin precio_copa → botella (cantidad del detalle, mín. 1)
+  if (!(pC > 0)) {
+    if (!(pB > 0)) return { tipo: null, motivo: 'vino sin precio_botella ni precio_copa' }
+    return { tipo: 'botella', cantidad: Math.max(1, Number(cantidadDet) || 1), precio_unidad: pB, bucket: 'sin_copa→botella' }
+  }
+  // Rule 2: precio por unidad ≈ precio_botella → botella con prioridad.
+  if (pB > 0) {
+    const cantUsada = Math.max(1, Number(cantidadDet) || 1)
+    const precioUnit = importe / cantUsada
+    if (precioUnit > 0 && Math.abs(precioUnit - pB) / pB <= TOL_BOTELLA_UNITARIO) {
+      return { tipo: 'botella', cantidad: cantUsada, precio_unidad: pB, bucket: 'botella_por_precio_unitario' }
+    }
+  }
+  // Rule 3: copa. k = importe / precio_copa; entero o medio-entero ±10 %.
+  const k = importe / pC
+  const kRed = encajaEnteroOMedio(k)
+  if (kRed) {
+    // Distinguimos si fue redondeo desde medio-entero.
+    const eExacto = Math.abs(k - Math.round(k)) / Math.max(1, Math.round(k))
+    const redondeadoDeMedio = !(eExacto <= TOL_COPA_ENTERO)
+    return {
+      tipo: 'copa',
+      cantidad: kRed,
+      precio_unidad: pC,
+      bucket: redondeadoDeMedio ? 'copa_redondeada' : 'copa_entera',
+    }
+  }
+  return { tipo: null, motivo: 'no encaja ni como botella (±15 % de pB) ni como copa (entero/medio ±10 %)' }
+}
+
+// ── 5) Pasada ───────────────────────────────────────────────────────────────
 const stats = {
   total: 0, vendidas: 0, yaConFormato: 0, actualizables: 0,
-  sinVinoId: 0, sinPrecios: 0, importeTotal30d: 0, importeTotal7d: 0,
-  redondeos: 0, ambiguos: 0,
-  bucket_botella_pura: 0, bucket_copa_pura: 0, bucket_copa_media: 0, bucket_no_encaja: 0,
+  importeTotal30d: 0, importeTotal7d: 0,
+  buckets: { 'sin_copa→botella': 0, 'botella_por_precio_unitario': 0, 'copa_entera': 0, 'copa_redondeada': 0, 'sin_clasificar': 0 },
 }
-const reparto = {
-  d7:  { copa: 0, botella: 0, otros: 0 },
-  d30: { copa: 0, botella: 0, otros: 0 },
-}
+const reparto  = { d7:  { copa: 0, botella: 0, otros: 0 }, d30: { copa: 0, botella: 0, otros: 0 } }
 const importes = { d7: { copa: 0, botella: 0 }, d30: { copa: 0, botella: 0 } }
+const sinClasificar = []
+const topMap = {} // vino_id → { nombre, uds, importe, tieneCopa, tieneBot }
 const updates = []
-const sinClasificarSamples = []
-const samplesSinCopaPrecio = [] // filas de vinos sin precio_copa (contexto)
-
-// Buffers para los volcados pedidos en el informe.
-const volcadoSinClasificar = []
-const volcadoBotellaDetectada = []
 
 for (const row of filas) {
   stats.total += 1
@@ -196,133 +206,131 @@ for (const row of filas) {
   stats.importeTotal30d += importe
   if (en7d) stats.importeTotal7d += importe
 
-  // Si ya trae formato válido, no tocar.
-  if (det.formato_venta === 'copa' || det.formato_venta === 'botella') {
+  // Idempotencia: si ya trae formato válido, lo contamos pero no lo tocamos.
+  const yaFormato = det.formato_venta === 'copa' || det.formato_venta === 'botella'
+  if (yaFormato) {
     stats.yaConFormato += 1
     const cant = Math.max(1, Number(det.cantidad) || 1)
     const key = det.formato_venta
     reparto.d30[key] += cant; importes.d30[key] += importe
     if (en7d) { reparto.d7[key] += cant; importes.d7[key] += importe }
-    continue
-  }
-
-  if (!det.vino_id) { stats.sinVinoId += 1; stats.bucket_no_encaja += 1; continue }
-  const v = vinoById[det.vino_id]
-  const pB = Number(v?.precio_botella) || 0
-  const pC = Number(v?.precio_copa) || 0
-  if (pB <= 0 && pC <= 0) {
-    stats.sinPrecios += 1; stats.bucket_no_encaja += 1
-    if (sinClasificarSamples.length < 15) {
-      sinClasificarSamples.push({ id: row.id, importe, cantidad_det: det.cantidad ?? null, pB, pC, motivo: 'vino sin precios' })
+    const nombre = det.vino || (vinoById[det.vino_id]?.nombre) || '—'
+    if (det.vino_id) {
+      topMap[det.vino_id] ||= { nombre, uds: 0, importe: 0, tieneCopa: false, tieneBot: false }
+      topMap[det.vino_id].uds += cant
+      topMap[det.vino_id].importe += importe
+      if (key === 'copa') topMap[det.vino_id].tieneCopa = true
+      if (key === 'botella') topMap[det.vino_id].tieneBot = true
     }
     continue
   }
-  if (pC <= 0 && samplesSinCopaPrecio.length < 5) {
-    samplesSinCopaPrecio.push({ vino_id: det.vino_id, nombre: v?.nombre, precio_botella: pB })
-  }
 
-  const res = clasificar(importe, pB, pC)
-
-  // Volcado de ejemplos para el informe (antes de decidir update).
-  if (!res && volcadoSinClasificar.length < 15) {
-    volcadoSinClasificar.push({
-      id: row.id,
-      cantidad_det: det.cantidad ?? null,
-      importe,
-      precio_copa: pC,
-      precio_botella: pB,
-      n_copa: pC > 0 ? r2(importe / pC) : null,
-      n_botella: pB > 0 ? r2(importe / pB) : null,
-    })
+  const v = vinoById[det.vino_id]
+  if (!det.vino_id || !v) {
+    stats.buckets.sin_clasificar += 1
+    reparto.d30.otros += 1; if (en7d) reparto.d7.otros += 1
+    if (sinClasificar.length < 10) sinClasificar.push({ id: row.id, motivo: det.vino_id ? 'vino no en catálogo' : 'detalle sin vino_id' })
+    continue
   }
-  if (res && res.formato === 'botella' && volcadoBotellaDetectada.length < 10) {
-    volcadoBotellaDetectada.push({
-      id: row.id,
-      cantidad_det: det.cantidad ?? null,
-      importe,
-      precio_botella: pB,
-      n_botella: r2(importe / pB),
-    })
-  }
+  const pB = Number(v.precio_botella) || 0
+  const pC = Number(v.precio_copa) || 0
+  const cantidadDet = Number(det.cantidad) || 0
+  const res = clasificar({ importe, cantidadDet, pB, pC })
 
-  if (!res) {
-    stats.bucket_no_encaja += 1
-    reparto.d30.otros += 1
-    if (en7d) reparto.d7.otros += 1
-    if (sinClasificarSamples.length < 15) {
-      sinClasificarSamples.push({
-        id: row.id, importe, cantidad_det: det.cantidad ?? null, pB, pC,
-        n_copa: pC > 0 ? r2(importe / pC) : null,
-        n_botella: pB > 0 ? r2(importe / pB) : null,
-        motivo: 'ni entero·botella ni entero·copa dentro de tolerancia',
+  if (!res.tipo) {
+    stats.buckets.sin_clasificar += 1
+    reparto.d30.otros += 1; if (en7d) reparto.d7.otros += 1
+    if (sinClasificar.length < 10) {
+      sinClasificar.push({
+        id: row.id, motivo: res.motivo,
+        importe, cantidad_det: det.cantidad ?? null,
+        precio_copa: pC, precio_botella: pB,
       })
     }
     continue
   }
 
-  // Clasificación OK. Actualizamos.
-  if (res.ambiguo)    stats.ambiguos += 1
-  if (res.redondeado) stats.redondeos += 1
-  const ref = res.formato === 'botella' ? pB : pC
-  reparto.d30[res.formato] += res.unidades; importes.d30[res.formato] += importe
-  if (en7d) { reparto.d7[res.formato] += res.unidades; importes.d7[res.formato] += importe }
-  if (res.formato === 'botella' && !res.ambiguo) stats.bucket_botella_pura += 1
-  if (res.formato === 'copa'    && !res.ambiguo && !res.redondeado) stats.bucket_copa_pura += 1
-  if (res.formato === 'copa'    && res.redondeado) stats.bucket_copa_media += 1
-
-  const newDetalle = { ...det, formato_venta: res.formato, cantidad: res.unidades, precio_unidad: r2(ref) }
-  updates.push({ id: row.id, newDetalle, formato: res.formato, unidades: res.unidades, en7d, redondeado: res.redondeado })
+  // Bucket count + reparto + top
+  stats.buckets[res.bucket] += 1
   stats.actualizables += 1
+  reparto.d30[res.tipo] += res.cantidad; importes.d30[res.tipo] += importe
+  if (en7d) { reparto.d7[res.tipo] += res.cantidad; importes.d7[res.tipo] += importe }
+  const nombre = det.vino || v.nombre || '—'
+  topMap[det.vino_id] ||= { nombre, uds: 0, importe: 0, tieneCopa: false, tieneBot: false }
+  topMap[det.vino_id].uds += res.cantidad
+  topMap[det.vino_id].importe += importe
+  if (res.tipo === 'copa')    topMap[det.vino_id].tieneCopa = true
+  if (res.tipo === 'botella') topMap[det.vino_id].tieneBot = true
+
+  const newDetalle = { ...det, formato_venta: res.tipo, cantidad: res.cantidad, precio_unidad: r2(res.precio_unidad) }
+  updates.push({ id: row.id, newDetalle })
 }
 
-// ── 5) Volcados pedidos ─────────────────────────────────────────────────────
-console.log(`\n── (3a) 15 filas SIN clasificar (muestra) ───────────────────────`)
-for (const s of volcadoSinClasificar) console.log('  ·', JSON.stringify(s))
-if (!volcadoSinClasificar.length) console.log('  (ninguna; todas clasificadas)')
+// ── 6) Buckets ─────────────────────────────────────────────────────────────
+console.log(`\n── (3) Buckets de clasificación (regla v3) ──────────────────────`)
+console.log(`  sin_copa → botella (regla 1):              ${stats.buckets['sin_copa→botella']}`)
+console.log(`  botella por precio unitario (regla 2):     ${stats.buckets['botella_por_precio_unitario']}`)
+console.log(`  copa entera (regla 3, k entero):           ${stats.buckets['copa_entera']}`)
+console.log(`  copa redondeada (regla 3, k medio-entero): ${stats.buckets['copa_redondeada']}`)
+console.log(`  sin clasificar:                            ${stats.buckets['sin_clasificar']}`)
+console.log(`  ya con formato (saltadas):                 ${stats.yaConFormato}`)
+console.log(`  ─ TOTAL vendidas:                          ${stats.vendidas}`)
 
-console.log(`\n── (3b) hasta 10 filas clasificadas como BOTELLA (muestra) ──────`)
-for (const s of volcadoBotellaDetectada) console.log('  ·', JSON.stringify(s))
-if (!volcadoBotellaDetectada.length) console.log('  (ninguna)')
-
-if (samplesSinCopaPrecio.length) {
-  console.log(`\n── (3c) vinos sin precio_copa (contexto, ${samplesSinCopaPrecio.length} ejemplos) ──`)
-  for (const s of samplesSinCopaPrecio) console.log('  ·', JSON.stringify(s))
+if (sinClasificar.length) {
+  console.log(`\n  Primeros ${sinClasificar.length} sin clasificar:`)
+  for (const s of sinClasificar) console.log('    ·', JSON.stringify(s))
 }
 
-console.log(`\n── (4) Tabla de hipótesis (regla nueva) ─────────────────────────`)
-console.log(`  botella (importe = m·precio_botella, m entero): ${stats.bucket_botella_pura}`)
-console.log(`  copa    (importe = k·precio_copa,    k entero): ${stats.bucket_copa_pura}`)
-console.log(`  copa    (k medio-entero → redondeado):          ${stats.bucket_copa_media}`)
-console.log(`  ambiguas (encajan en los dos, prefiere copa≤${K_COPA_PREF}): ${stats.ambiguos}`)
-console.log(`  no encaja (ni copa ni botella):                 ${stats.bucket_no_encaja}  (de ellas sin vino_id=${stats.sinVinoId}, sin precios=${stats.sinPrecios})`)
-
-// ── 6) Reparto final ───────────────────────────────────────────────────────
-console.log(`\n── (5) Reparto resultante ───────────────────────────────────────`)
+// ── 7) Reparto 7d y 30d ────────────────────────────────────────────────────
+console.log(`\n── (4) Reparto 7d / 30d ─────────────────────────────────────────`)
 console.log(`  unidades 7d:  ${reparto.d7.copa} copas · ${reparto.d7.botella} botellas · ${reparto.d7.otros} sin clasificar`)
 console.log(`  unidades 30d: ${reparto.d30.copa} copas · ${reparto.d30.botella} botellas · ${reparto.d30.otros} sin clasificar`)
 console.log(`  €        7d:  copa=${r2(importes.d7.copa)}  bot=${r2(importes.d7.botella)}  total=${r2(stats.importeTotal7d)}`)
 console.log(`  €        30d: copa=${r2(importes.d30.copa)}  bot=${r2(importes.d30.botella)}  total=${r2(stats.importeTotal30d)}`)
-console.log(`  invariante importe 30d (no cambia tras apply): ${r2(stats.importeTotal30d)} €`)
-console.log(`  redondeos (copa medio-entero → entero): ${stats.redondeos}`)
-console.log(`  ambigüedades resueltas con regla copa≤${K_COPA_PREF}: ${stats.ambiguos}`)
+const pctBot30 = stats.importeTotal30d > 0 ? (importes.d30.botella / stats.importeTotal30d) * 100 : 0
+console.log(`  % botella / total (30d, €):  ${pctBot30.toFixed(1)} %`)
 
-// Realismo: más copas que botellas en unidades.
-if (reparto.d30.copa > 0 && reparto.d30.botella > 0 && reparto.d30.copa <= reparto.d30.botella) {
-  console.log(`\n  ⚠ AVISO de realismo: no salen MÁS copas que botellas en 30d. No se fuerza.`)
-  console.log(`    Revisa precio_copa de los vinos (${vinosConCop}/${vinos?.length} lo tienen) y la hipótesis en el informe.`)
+// ── 8) Top 5 simulado ──────────────────────────────────────────────────────
+const topList = Object.values(topMap)
+const topByUds     = [...topList].sort((a, b) => b.uds - a.uds).slice(0, 5)
+const topByImporte = [...topList].sort((a, b) => b.importe - a.importe).slice(0, 5)
+function fmtLinea(x) {
+  const flags = [x.tieneCopa ? 'copa' : null, x.tieneBot ? 'bot' : null].filter(Boolean).join('/')
+  return `  ${String(x.nombre).slice(0, 48).padEnd(48)}  uds=${String(x.uds).padStart(4)}  €=${r2(x.importe).toString().padStart(8)}  (${flags})`
+}
+console.log(`\n── (5) Top 5 simulado por UNIDADES ──────────────────────────────`)
+for (const x of topByUds) console.log(fmtLinea(x))
+console.log(`\n── (6) Top 5 simulado por IMPORTE ───────────────────────────────`)
+for (const x of topByImporte) console.log(fmtLinea(x))
+// Concentración del Nº1 por uds.
+const dominance = topByUds[0] && reparto.d30.copa + reparto.d30.botella > 0
+  ? (topByUds[0].uds / (reparto.d30.copa + reparto.d30.botella)) * 100 : 0
+console.log(`\n  concentración del Nº1 por uds.: ${dominance.toFixed(1)} % del total clasificado.`)
+
+// ── 9) Realismo ────────────────────────────────────────────────────────────
+console.log(`\n── (7) Check de realismo ────────────────────────────────────────`)
+const realCopasMayoria = reparto.d30.copa > reparto.d30.botella
+const realBotellasRango = reparto.d30.botella >= 150 && reparto.d30.botella <= 250
+const realImporteRango  = pctBot30 >= 35 && pctBot30 <= 55
+console.log(`  más copas que botellas en uds. 30d?   ${realCopasMayoria ? 'sí ✓' : 'no ✗'}`)
+console.log(`  botellas en rango 150–250 uds. 30d?    ${realBotellasRango ? 'sí ✓' : 'no ✗ (' + reparto.d30.botella + ')'}`)
+console.log(`  botella 35–55 % del importe 30d?       ${realImporteRango ? 'sí ✓' : 'no ✗ (' + pctBot30.toFixed(1) + ' %)'}`)
+if (!(realCopasMayoria && realBotellasRango && realImporteRango)) {
+  console.log(`  ⚠ No se fuerza. Interpreta los números con la regla v3; si no te cuadran, revisa precio_copa/precio_botella o el seed original de ventas.`)
 }
 
-if (sinClasificarSamples.length) {
-  console.log(`\n  Primeros ${sinClasificarSamples.length} sin clasificar (motivo + ratios):`)
-  for (const s of sinClasificarSamples) console.log('    ·', JSON.stringify(s))
-}
+// ── 10) Invariante importe ─────────────────────────────────────────────────
+console.log(`\n── (8) Invariante del importe total ─────────────────────────────`)
+console.log(`  importe total 7d:  ${r2(stats.importeTotal7d)} €   (esperado ≈ 2.432,50)`)
+console.log(`  importe total 30d: ${r2(stats.importeTotal30d)} €   (esperado ≈ 10.215)`)
+console.log(`  tras apply, los importes de todas las filas quedan intactos.`)
 
 if (!APPLY) {
   console.log('\nDry-run: no se escribe nada. Añade --apply para ejecutar.')
   process.exit(0)
 }
 
-// ── 7) APPLY ───────────────────────────────────────────────────────────────
+// ── 11) APPLY ───────────────────────────────────────────────────────────────
 console.log(`\n── APPLY (actualizando ${updates.length} filas) ──────────────────`)
 let ok = 0, ko = 0
 for (const u of updates) {
@@ -336,7 +344,7 @@ for (const u of updates) {
 }
 console.log(`  ✓ actualizadas: ${ok}/${updates.length}${ko ? ` (${ko} con aviso)` : ''}`)
 
-// ── 8) Verificación ────────────────────────────────────────────────────────
+// ── 12) Verificación ───────────────────────────────────────────────────────
 console.log('\n── Verificación tras apply ──────────────────────────────────────')
 const idsSample = updates.slice(0, 3).map(u => u.id)
 if (idsSample.length) {
@@ -370,6 +378,6 @@ console.log(`  recuento 7d:  ${vcount.d7.copa} copas · ${vcount.d7.botella} bot
 console.log(`  recuento 30d: ${vcount.d30.copa} copas · ${vcount.d30.botella} botellas · ${vcount.d30.otros} sin clasificar`)
 console.log(`  importe 30d:  ${r2(importe30d)} €   (antes: ${r2(stats.importeTotal30d)} €)  diff=${r2(importe30d - stats.importeTotal30d)}`)
 if (r2(importe30d) !== r2(stats.importeTotal30d)) {
-  console.warn(`  ⚠ El importe total cambió. Revísalo: el apply solo debía tocar formato_venta, cantidad y precio_unidad.`)
+  console.warn(`  ⚠ El importe total cambió. Revísalo: el apply solo debía tocar formato_venta/cantidad/precio_unidad.`)
 }
-console.log('\n[seed formato-ventas Casa Marisma] completado.')
+console.log('\n[seed formato-ventas Casa Marisma v3] completado.')
