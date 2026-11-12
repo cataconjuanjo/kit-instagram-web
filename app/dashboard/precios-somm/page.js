@@ -502,7 +502,9 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
         ? Math.round(anadirIva(pvpNetoPropuesto, ivaVentaPct))
         : Math.round(pvpNetoPropuesto)
 
-      const copasEstandar = copasEstandarPorFormato(vino.ml, vino.tipo, vino.usa_coravin)
+      // vino.ml no existe en public.vinos; copasEstandarPorFormato asume
+      // 750 ml por defecto para botellas estándar (ver app/lib/sommPricing.js:133).
+      const copasEstandar = copasEstandarPorFormato(null, vino.tipo, vino.usa_coravin)
       const pvpCopasPropuesto = pvpBotellaPropuesto
         ? pvpCopaDesBotella(pvpBotellaPropuesto, copasEstandar)
         : 0
@@ -933,8 +935,25 @@ export default function PreciosSommPage() {
       if (!rest) return setLoading(false)
       setRestaurante(rest)
 
+      // Carga tolerante: pedimos usa_coravin (Somm) pero si la columna no
+      // existe en el entorno, reintentamos sin ella y seguimos con default
+      // false. "ml" nunca existió en la tabla; copasEstandarPorFormato
+      // usa 750 ml por defecto, así que no lo pedimos.
+      async function cargarVinosTolerante(rid) {
+        let res = await supabase.from('vinos')
+          .select(`${SELECT_CLIENT_VINO_DASHBOARD}, usa_coravin`)
+          .eq('restaurante_id', rid).eq('activo', true)
+        if (res.error?.code === '42703') {
+          console.warn('[precios-somm] vinos: falta una columna opcional (p.ej. usa_coravin). Reintentando sin ella.', res.error.message)
+          res = await supabase.from('vinos')
+            .select(SELECT_CLIENT_VINO_DASHBOARD)
+            .eq('restaurante_id', rid).eq('activo', true)
+        }
+        return res
+      }
+
       const [vinosRes, tramosRes, configRes] = await Promise.all([
-        supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', rest.id).eq('activo', true),
+        cargarVinosTolerante(rest.id),
         supabase.from('tramos_multiplicador').select('*').eq('restaurante_id', rest.id).order('orden'),
         supabase.from('configuracion_pricing').select('*').eq('restaurante_id', rest.id).maybeSingle(),
       ])
@@ -1021,11 +1040,19 @@ export default function PreciosSommPage() {
               ajustes={ajustes}
               restauranteId={restaurante?.id}
               onVinosActualizados={() => {
-                supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', restaurante.id).eq('activo', true)
-                  .then(({ data, error }) => {
-                    if (error) console.error('[precios-somm] recarga vinos:', error)
-                    setVinos(data || [])
-                  })
+                (async () => {
+                  let res = await supabase.from('vinos')
+                    .select(`${SELECT_CLIENT_VINO_DASHBOARD}, usa_coravin`)
+                    .eq('restaurante_id', restaurante.id).eq('activo', true)
+                  if (res.error?.code === '42703') {
+                    console.warn('[precios-somm] recarga vinos: columna opcional ausente, reintentando.', res.error.message)
+                    res = await supabase.from('vinos')
+                      .select(SELECT_CLIENT_VINO_DASHBOARD)
+                      .eq('restaurante_id', restaurante.id).eq('activo', true)
+                  }
+                  if (res.error) console.error('[precios-somm] recarga vinos:', res.error)
+                  setVinos(res.data || [])
+                })()
               }}
             />
           )}
