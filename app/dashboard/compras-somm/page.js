@@ -442,7 +442,7 @@ export default function ComprasSomm() {
     <FeatureGate restaurante={restaurante} feature="somm_libro_compras" title="Libro de Compras no incluido">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Carta Viva Somm"
+        eyebrow={esPerfilSomm(restaurante) ? 'Carta Viva Somm' : 'Economía'}
         title="Libro de Compras"
         subtitle="Registra facturas por proveedor, analiza la concentración de gasto y detecta dependencias."
         help={{

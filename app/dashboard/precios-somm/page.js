@@ -12,6 +12,7 @@ import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleCompo
 import styles from '../module.module.css'
 import { redondear, anadirIva } from '../../lib/wineEconomics'
 import { normalizarAjustesPrecios, calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { esPerfilSomm } from '../../lib/plans'
 import {
   PLANTILLAS_TRAMOS,
   calcularPvpConTramos,
@@ -932,15 +933,19 @@ export default function PreciosSommPage() {
       if (!rest) return setLoading(false)
       setRestaurante(rest)
 
-      const [{ data: vinosData }, { data: tramosData }, { data: configData }] = await Promise.all([
-        supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, tipo, usa_coravin`).eq('restaurante_id', rest.id).eq('activo', true),
+      const [vinosRes, tramosRes, configRes] = await Promise.all([
+        supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', rest.id).eq('activo', true),
         supabase.from('tramos_multiplicador').select('*').eq('restaurante_id', rest.id).order('orden'),
         supabase.from('configuracion_pricing').select('*').eq('restaurante_id', rest.id).maybeSingle(),
       ])
 
-      setVinos(vinosData || [])
-      setTramos(tramosData || [])
-      setConfigPricing(configData)
+      if (vinosRes.error)  console.error('[precios-somm] vinos:',                vinosRes.error)
+      if (tramosRes.error) console.error('[precios-somm] tramos_multiplicador:', tramosRes.error)
+      if (configRes.error) console.error('[precios-somm] configuracion_pricing:', configRes.error)
+
+      setVinos(vinosRes.data || [])
+      setTramos(tramosRes.data || [])
+      setConfigPricing(configRes.data)
 
       try {
         const ajustesGuardados = JSON.parse(localStorage.getItem(`economic_settings_${rest.id}`) || 'null')
@@ -960,7 +965,7 @@ export default function PreciosSommPage() {
     <FeatureGate restaurante={restaurante} feature="somm_simulador_mult" title="Motor de Precios Somm">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Carta Viva Somm"
+        eyebrow={esPerfilSomm(restaurante) ? 'Carta Viva Somm' : 'Economía'}
         title="Motor de Precios"
         subtitle="Simulador de multiplicador, tramos configurables, método de descorche y análisis de impacto."
         help={{
@@ -1016,8 +1021,11 @@ export default function PreciosSommPage() {
               ajustes={ajustes}
               restauranteId={restaurante?.id}
               onVinosActualizados={() => {
-                supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, tipo, usa_coravin`).eq('restaurante_id', restaurante.id).eq('activo', true)
-                  .then(({ data }) => setVinos(data || []))
+                supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', restaurante.id).eq('activo', true)
+                  .then(({ data, error }) => {
+                    if (error) console.error('[precios-somm] recarga vinos:', error)
+                    setVinos(data || [])
+                  })
               }}
             />
           )}

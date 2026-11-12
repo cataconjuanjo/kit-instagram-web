@@ -799,6 +799,8 @@ function DashboardHome() {
   const ventas7dRow  = ventas30Vendidas.filter(item => item.fecha >= hace7diasStr)
   const copas7d      = ventas7dRow.filter(v => v.formato_venta === 'copa').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
   const botellas7d   = ventas7dRow.filter(v => v.formato_venta === 'botella').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const copas30d     = ventas30Vendidas.filter(v => v.formato_venta === 'copa').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const botellas30d  = ventas30Vendidas.filter(v => v.formato_venta === 'botella').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
   const euros7d      = ventas7dRow.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
   const euros30d     = ventas30Vendidas.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
   const hayEuros7d   = euros7d > 0
@@ -881,17 +883,25 @@ function DashboardHome() {
                     </>
                   ) : (
                     <>
-                      <strong className={styles.heroKpi}>{ventasSemana}</strong>
-                      <span className={styles.heroKpiUnit}>copas y botellas</span>
+                      <strong className={styles.heroKpi}>{copas7d} <span className={styles.heroKpiUnitInline}>copas</span> · {botellas7d} <span className={styles.heroKpiUnitInline}>botellas</span></strong>
+                      <span className={styles.heroKpiUnit}>últimos 7 días</span>
                     </>
                   )}
                 </div>
                 {(hayEuros7d ? euros30d : totalVentas30) > 0 && (
                   <div className={styles.heroKpiSecGroup}>
-                    <strong className={styles.heroKpiSec}>
-                      {hayEuros7d ? eur(euros30d) : totalVentas30}
-                    </strong>
-                    <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                    {hayEuros7d ? (
+                      <>
+                        <strong className={styles.heroKpiSec}>{eur(euros30d)}</strong>
+                        <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                        {(copas30d + botellas30d) > 0 && <span className={styles.heroKpiSub}>{copas30d} copas · {botellas30d} botellas</span>}
+                      </>
+                    ) : (
+                      <>
+                        <strong className={styles.heroKpiSec}>{copas30d} <span className={styles.heroKpiUnitInline}>copas</span> · {botellas30d} <span className={styles.heroKpiUnitInline}>botellas</span></strong>
+                        <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

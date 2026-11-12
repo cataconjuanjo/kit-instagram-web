@@ -15,6 +15,7 @@ import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpe
 import { estadoCartaPublica } from '../../lib/publicRouteState'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
+import { esRestauranteDemo } from '../../lib/demoRestaurants'
 import { WINE_TYPE_COLORS, TIPOS_VINO, normalizarTipo as normTipo } from '../../lib/winePresentation'
 import RacimoIcon from '../../components/icons/RacimoIcon'
 import CopaIcon from '../../components/icons/CopaIcon'
@@ -1879,7 +1880,7 @@ export default function CartaPublica() {
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
-            <p className={styles.meta}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
+            <p className={styles.meta}>{vinos.length} {i.referencias}{!esRestauranteDemo(restaurante) && restaurante.ciudad ? ` · ${restaurante.ciudad}` : ''}</p>
             <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
           <button type="button" className={styles.langButton} aria-label="Cambiar idioma" onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
@@ -2004,12 +2005,12 @@ export default function CartaPublica() {
               type="button"
               className={`${styles.shortcut} ${soloLocal ? styles.shortcutActive : ''}`}
               aria-pressed={soloLocal}
-              aria-label="Vinos de Málaga"
-              title="Vinos de Málaga"
+              aria-label={esRestauranteDemo(restaurante) ? 'Vinos de la zona' : `Vinos de ${restaurante.ciudad || 'la zona'}`}
+              title={esRestauranteDemo(restaurante) ? 'Vinos de la zona' : `Vinos de ${restaurante.ciudad || 'la zona'}`}
               onClick={() => aplicarAtajo('local')} disabled={!vinosLocal}>
               <span>
-                <span className={styles.shortcutLabelFull}>Vinos de Málaga</span>
-                <span className={styles.shortcutLabelCompact} aria-hidden="true">Málaga</span>
+                <span className={styles.shortcutLabelFull}>{esRestauranteDemo(restaurante) ? 'Vinos de la zona' : `Vinos de ${restaurante.ciudad || 'la zona'}`}</span>
+                <span className={styles.shortcutLabelCompact} aria-hidden="true">{esRestauranteDemo(restaurante) ? 'Zona' : (restaurante.ciudad || 'Zona')}</span>
               </span>
               <small>{soloLocal ? 'Toca para quitar' : `${vinosLocal} vinos`}</small>
             </button>
@@ -2624,7 +2625,7 @@ export default function CartaPublica() {
               <img src={restaurante.logo_url} alt={restaurante.nombre} loading="lazy" style={{ height: 48, maxWidth: 160, objectFit: 'contain', marginBottom: 16, display: 'block' }} />
             )}
             <h1 style={{ fontSize: 30, fontWeight: 300, color: '#fff', margin: '0 0 6px', fontFamily: fontTitulo }}>{restaurante.nombre}</h1>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{vinos.length} {i.referencias}{!esRestauranteDemo(restaurante) && restaurante.ciudad ? ` · ${restaurante.ciudad}` : ''}</p>
             {restaurante.experiencia_publica && (
               <div style={{ marginTop: 14, borderLeft: '2px solid rgba(255,250,243,0.52)', paddingLeft: 12, maxWidth: 420 }}>
                 <p style={{ margin: '0 0 4px', color: 'rgba(255,250,243,0.64)', fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{restaurante.experiencia_publica.badge}</p>

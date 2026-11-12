@@ -8,6 +8,7 @@ import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail,
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { esPerfilBodega, esPerfilSomm, nombrePlan, puedeUsar } from '../lib/plans'
+import { esRestauranteDemo } from '../lib/demoRestaurants'
 import UsageTracker from './UsageTracker'
 import styles from './layout.module.css'
 import OpenCartaPruebaButton from './OpenCartaPruebaButton'
@@ -453,7 +454,10 @@ export default function DashboardLayout({ children }) {
   const turnoAbierto = Boolean(restaurante?.actividad_real_desde)
   const pinActivo = Boolean(restaurante?.camarero_pin_bloqueo_activo)
   const entidadNombre = restaurante?.nombre || (perfilBodega ? 'Bodega' : 'Restaurante')
-  const entidadUbicacion = [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || (perfilBodega ? 'Sin ubicacion de bodega' : 'Sin ubicacion')
+  const esDemo = esRestauranteDemo(restaurante)
+  const entidadUbicacion = esDemo
+    ? ''
+    : ([restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || (perfilBodega ? 'Sin ubicacion de bodega' : 'Sin ubicacion'))
   const estadoActividad = perfilBodega
     ? (turnoAbierto ? 'Bodega activa' : 'Sin actividad reciente')
     : (turnoAbierto ? 'Abierto' : 'Cerrado')
@@ -576,7 +580,7 @@ export default function DashboardLayout({ children }) {
               <div className={styles.brandText}>
                 <p className={styles.brandLabel}>{perfilBodega ? 'Panel bodega' : 'Panel restaurante'}</p>
                 <p className={styles.brandName}>{entidadNombre}</p>
-                {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
+                {!esDemo && restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
                 {!perfilBodega && <p className={styles.pinState}>{pinActivo ? 'PIN activo' : 'PIN inactivo'}</p>}
               </div>
             </div>
@@ -715,7 +719,7 @@ export default function DashboardLayout({ children }) {
           <div className={styles.restaurantTitle}>
             <strong>{entidadNombre}</strong>
             <span className={styles.restaurantMeta}>
-              {entidadUbicacion}
+              {entidadUbicacion && <>{entidadUbicacion}{' '}</>}
               <span className={`${styles.statusDot} ${turnoAbierto ? styles.statusDotOpen : styles.statusDotClosed}`} />
               {estadoActividad}
             </span>

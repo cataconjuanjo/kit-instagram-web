@@ -72,7 +72,7 @@ export const PLANES = {
     ],
   },
   premium: {
-    nombre: 'Acompanado',
+    nombre: 'Acompañado',
     precioOrientativo: 'Presupuesto personalizado',
     limiteVinos: 9999,
     // El plan Acompañado es la vista completa del dueño del restaurante:

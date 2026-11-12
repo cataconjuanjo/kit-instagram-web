@@ -248,7 +248,7 @@ function SeccionGastos({ partidas, onChange }) {
                 return (
                   <tr key={p.id} style={{ borderBottom: '1px solid #f5f2ec' }}>
                     <td style={{ padding: '4px 8px' }}>
-                      {p.id.startsWith('custom_') ? (
+                      {(p.id || '').startsWith('custom_') ? (
                         <input className={styles.input} value={p.categoria} onChange={e => actualizarPartida(p.id, 'categoria', e.target.value)} placeholder="Nombre gasto" style={{ width: '100%' }} />
                       ) : (
                         <span style={{ color: num(p.importe) > 0 ? '#2a2723' : '#bbb' }}>{p.categoria}</span>
@@ -264,7 +264,7 @@ function SeccionGastos({ partidas, onChange }) {
                       {num(p.importe) > 0 ? eur(mensual, 0) : '—'}
                     </td>
                     <td style={{ padding: '4px 8px' }}>
-                      {p.id.startsWith('custom_') && (
+                      {(p.id || '').startsWith('custom_') && (
                         <button type="button" className={styles.danger} onClick={() => eliminar(p.id)} style={{ fontSize: 11, padding: '3px 8px' }}>✕</button>
                       )}
                     </td>
@@ -724,7 +724,7 @@ function ExplotacionContent() {
     <FeatureGate restaurante={restaurante} feature="somm_explotacion" title="Cuenta de Explotación Somm">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Carta Viva Somm"
+        eyebrow={esSomm ? 'Carta Viva Somm' : 'Economía'}
         title={esSomm ? 'Explotación de bodega' : 'Cuenta de Explotación'}
         subtitle={esSomm
           ? 'Ventas de vino, consumo de materia prima, margen bruto y merma. Solo métricas de bodega.'
