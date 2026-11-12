@@ -780,7 +780,31 @@ function DashboardHome() {
   const accionesRadarFiltradas = accionesRadarAbiertas.filter(a => !kpiHrefs.includes(a.href))
 
   const hace7diasStr = haceDiasMadrid(7)
-  const ventas30Vendidas = (ventas30 || []).map(s => ({ ...leerDetalle(s.detalle), fecha: (s.created_at || '').slice(0, 10) })).filter(item => item.resultado === 'vendida')
+  // Fallback para deducir copa/botella cuando la venta no viene con
+  // formato_venta='copa'|'botella' (p. ej. imports TPV que marcan
+  // 'desconocido' o null). Usa precio_unidad vs precio_recomendado (botella)
+  // y precio_copa_recomendado (copa) incluidos en el detalle por el camarero
+  // y por los importadores. Si no son fiables, cae a los precios del propio
+  // vino cargado en el dashboard (map por id).
+  const vinoPorId = Object.fromEntries((vinos || []).map(w => [w.id, w]))
+  function inferirFormato(v) {
+    const raw = String(v.formato_venta || '').toLowerCase()
+    if (raw === 'copa' || raw === 'botella') return raw
+    const pU = Number(v.precio_unidad)
+    if (pU > 0) {
+      const pB = Number(v.precio_recomendado) || Number(vinoPorId[v.vino_id]?.precio_botella) || 0
+      const pC = Number(v.precio_copa_recomendado) || Number(vinoPorId[v.vino_id]?.precio_copa) || 0
+      const dB = pB > 0 ? Math.abs(pU - pB) / pB : Infinity
+      const dC = pC > 0 ? Math.abs(pU - pC) / pC : Infinity
+      if (dB <= 0.2 && dB <= dC) return 'botella'
+      if (dC <= 0.3 && dC <  dB) return 'copa'
+    }
+    return 'otros'
+  }
+  const ventas30Vendidas = (ventas30 || [])
+    .map(s => ({ ...leerDetalle(s.detalle), fecha: (s.created_at || '').slice(0, 10) }))
+    .filter(item => item.resultado === 'vendida')
+    .map(item => ({ ...item, formato_inferido: inferirFormato(item) }))
   const ventasSemana = ventas30 === null ? 0 : ventas30Vendidas.filter(item => item.fecha >= hace7diasStr).reduce((sum, item) => sum + (Number(item.cantidad) || 1), 0)
   const fechas30 = Array.from({ length: 30 }, (_, i) => haceDiasMadrid(30 - i))
   const ventasPorDia30 = fechas30.map(f => ({ fecha: f, total: ventas30Vendidas.filter(v => v.fecha === f).reduce((s, v) => s + (Number(v.cantidad) || 1), 0) }))
@@ -790,19 +814,24 @@ function DashboardHome() {
     const n = v.vino || '—'
     if (!vinoMap30[n]) vinoMap30[n] = { nombre: n, total: 0, tieneCopa: false, tieneBot: false }
     vinoMap30[n].total += (Number(v.cantidad) || 1)
-    if (v.formato_venta === 'copa') vinoMap30[n].tieneCopa = true
-    if (v.formato_venta === 'botella') vinoMap30[n].tieneBot = true
+    if (v.formato_inferido === 'copa') vinoMap30[n].tieneCopa = true
+    if (v.formato_inferido === 'botella') vinoMap30[n].tieneBot = true
   }
   const top5Vinos = Object.values(vinoMap30).sort((a, b) => b.total - a.total).slice(0, 5)
   const hayVentas30 = ventas30 !== null && ventas30Vendidas.length > 0
   const totalVentas30 = ventas30Vendidas.reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const sumaCant = (arr, pred) => arr.filter(pred).reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
   const ventas7dRow  = ventas30Vendidas.filter(item => item.fecha >= hace7diasStr)
-  const copas7d      = ventas7dRow.filter(v => v.formato_venta === 'copa').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
-  const botellas7d   = ventas7dRow.filter(v => v.formato_venta === 'botella').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
-  const copas30d     = ventas30Vendidas.filter(v => v.formato_venta === 'copa').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
-  const botellas30d  = ventas30Vendidas.filter(v => v.formato_venta === 'botella').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const copas7d      = sumaCant(ventas7dRow,       v => v.formato_inferido === 'copa')
+  const botellas7d   = sumaCant(ventas7dRow,       v => v.formato_inferido === 'botella')
+  const otros7d      = sumaCant(ventas7dRow,       v => v.formato_inferido === 'otros')
+  const copas30d     = sumaCant(ventas30Vendidas,  v => v.formato_inferido === 'copa')
+  const botellas30d  = sumaCant(ventas30Vendidas,  v => v.formato_inferido === 'botella')
+  const otros30d     = sumaCant(ventas30Vendidas,  v => v.formato_inferido === 'otros')
   const euros7d      = ventas7dRow.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
   const euros30d     = ventas30Vendidas.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
+  const hayDesglose7d  = (copas7d + botellas7d) > 0
+  const hayDesglose30d = (copas30d + botellas30d) > 0
   const hayEuros7d   = euros7d > 0
   const peakIdx = ventasPorDia30.reduce((best, d, i, arr) => d.total > arr[best].total ? i : best, 0)
   const peakDay = ventasPorDia30[peakIdx]
@@ -875,31 +904,42 @@ function DashboardHome() {
               <p className={styles.inicioCardLabel}>Ventas de los últimos 7 días</p>
               <div className={styles.heroTopRow}>
                 <div>
-                  {hayEuros7d ? (
-                    <>
-                      <strong className={styles.heroKpi}>{eur(euros7d)}</strong>
-                      <span className={styles.heroKpiUnit}>vendidos en vino · últimos 7 días</span>
-                      {(copas7d + botellas7d) > 0 && <span className={styles.heroKpiSub}>{copas7d} copas · {botellas7d} botellas</span>}
-                    </>
-                  ) : (
+                  {hayDesglose7d ? (
                     <>
                       <strong className={styles.heroKpi}>{copas7d} <span className={styles.heroKpiUnitInline}>copas</span> · {botellas7d} <span className={styles.heroKpiUnitInline}>botellas</span></strong>
                       <span className={styles.heroKpiUnit}>últimos 7 días</span>
+                      {hayEuros7d && <span className={styles.heroKpiSub}>{eur(euros7d)} vendidos en vino{otros7d > 0 ? ` · +${otros7d} sin clasificar` : ''}</span>}
+                    </>
+                  ) : hayEuros7d ? (
+                    <>
+                      <strong className={styles.heroKpi}>{eur(euros7d)}</strong>
+                      <span className={styles.heroKpiUnit}>vendidos en vino · últimos 7 días</span>
+                      {ventasSemana > 0 && <span className={styles.heroKpiSub}>{ventasSemana} uds. · formato sin registrar en TPV</span>}
+                    </>
+                  ) : (
+                    <>
+                      <strong className={styles.heroKpi}>{ventasSemana}</strong>
+                      <span className={styles.heroKpiUnit}>ventas · últimos 7 días</span>
                     </>
                   )}
                 </div>
-                {(hayEuros7d ? euros30d : totalVentas30) > 0 && (
+                {(hayDesglose30d || euros30d > 0 || totalVentas30 > 0) && (
                   <div className={styles.heroKpiSecGroup}>
-                    {hayEuros7d ? (
-                      <>
-                        <strong className={styles.heroKpiSec}>{eur(euros30d)}</strong>
-                        <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
-                        {(copas30d + botellas30d) > 0 && <span className={styles.heroKpiSub}>{copas30d} copas · {botellas30d} botellas</span>}
-                      </>
-                    ) : (
+                    {hayDesglose30d ? (
                       <>
                         <strong className={styles.heroKpiSec}>{copas30d} <span className={styles.heroKpiUnitInline}>copas</span> · {botellas30d} <span className={styles.heroKpiUnitInline}>botellas</span></strong>
                         <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                        {euros30d > 0 && <span className={styles.heroKpiSub}>{eur(euros30d)} vendidos en vino{otros30d > 0 ? ` · +${otros30d} sin clasificar` : ''}</span>}
+                      </>
+                    ) : euros30d > 0 ? (
+                      <>
+                        <strong className={styles.heroKpiSec}>{eur(euros30d)}</strong>
+                        <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong className={styles.heroKpiSec}>{totalVentas30}</strong>
+                        <span className={styles.heroKpiSecLabel}>ventas · últimos 30 días</span>
                       </>
                     )}
                   </div>
