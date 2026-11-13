@@ -515,6 +515,32 @@ function DashboardHome() {
         }
         const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
         setEtiquetaDia(ventanaDia.etiqueta)
+        // Lanzamos estas dos promesas en paralelo con el Promise.all de 4
+        // queries. Ambas llevan su propio try/catch interno para evitar
+        // rechazos sin manejar y mantener el comportamiento previo:
+        //   - cierreRemoto: devuelve { ok, data|error } para que el try/catch
+        //     del consumidor siga disparando setTurnoCerrado(false) en fallo.
+        //   - ventas30: mantiene el console.error('[Inicio] ventas 30d:', err)
+        //     y resuelve a null, idéntico a lo que hacía el try/catch previo.
+        const promCierre = (async () => {
+          try { return { ok: true, data: await cargarCierreRemoto(rest.id) } }
+          catch (err) { return { ok: false, error: err } }
+        })()
+        const promVentas30 = (async () => {
+          try {
+            return await fetchAllPages(() =>
+              supabase.from('estadisticas')
+                .select('detalle, created_at')
+                .eq('restaurante_id', rest.id)
+                .eq('tipo', 'venta')
+                .gte('created_at', haceDiasMadrid(30))
+                .lt('created_at', haceDiasMadrid(0))
+            )
+          } catch (err) {
+            console.error('[Inicio] ventas 30d:', err)
+            return null
+          }
+        })()
         const [
           { data: vinosData },
           { data: platosData },
@@ -534,7 +560,9 @@ function DashboardHome() {
         if (typeof window !== 'undefined') {
           try {
             const locales = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
-            const cierreRemoto = await cargarCierreRemoto(rest.id)
+            const cierreRes = await promCierre
+            if (!cierreRes.ok) throw cierreRes.error
+            const cierreRemoto = cierreRes.data
             const guardados = cierreRemoto?.eventos_revisados || locales
             setTurnoCerrado(Boolean(cierreRemoto?.cerrado) || (Array.isArray(guardados) && guardados.length >= eventosVentaHoy.length && eventosVentaHoy.length > 0))
           } catch {
@@ -551,19 +579,7 @@ function DashboardHome() {
           incidenciasSala: ventasHoy.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length,
           dudasSala: ventasHoy.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length,
         })
-        let v30 = null
-        try {
-          v30 = await fetchAllPages(() =>
-            supabase.from('estadisticas')
-              .select('detalle, created_at')
-              .eq('restaurante_id', rest.id)
-              .eq('tipo', 'venta')
-              .gte('created_at', haceDiasMadrid(30))
-              .lt('created_at', haceDiasMadrid(0))
-          )
-        } catch (err) {
-          console.error('[Inicio] ventas 30d:', err)
-        }
+        const v30 = await promVentas30
         setVentas30(v30)
         await Promise.all([
           cargarRadarDiario(rest.id),
