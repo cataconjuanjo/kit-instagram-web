@@ -346,7 +346,7 @@ function TabHistorico({ historico, esSomm = false }) {
               </thead>
               <tbody>
                 {anios.slice().reverse().map(anio => {
-                  const d = totalPorAnio[anio]
+                  const total = totalPorAnio[anio]
                   // YoY del año: delegado al helper puro (mesesComparables
                   // intersecta meses presentes en ambos años y excluye el
                   // mes en curso del año actual).
@@ -354,27 +354,41 @@ function TabHistorico({ historico, esSomm = false }) {
                   const comunes    = yoyAnio?.meses || []
                   const yoyRaw     = yoyAnio?.ytd?.ingresos?.deltaPct ?? null
                   const yoy        = yoyRaw != null ? redondear(yoyRaw, 1) : null
+                  const esAnioEnCurso = anio === anioActual && Boolean(mesAbierto)
                   const mesesLabel = comunes.length > 0 && comunes.length < 12
                     ? ` (${MESES_LABEL[comunes[0] - 1]}–${MESES_LABEL[comunes[comunes.length - 1] - 1]})`
                     : null
+                  // Coherencia: si el año tiene mes en curso, las cifras
+                  // deben ser YTD (los mismos meses que el YoY), no la suma
+                  // de todos los meses presentes (incluye el parcial).
+                  // Para años cerrados se mantiene la suma total.
+                  const ingresos = esAnioEnCurso
+                    ? (Number(yoyAnio?.ytd?.ingresos?.valor) || 0)
+                    : total.ingresos
+                  const consumo  = esAnioEnCurso
+                    ? (Number(yoyAnio?.ytd?.consumo_mp?.valor) || 0)
+                    : total.consumo
+                  const margen   = esAnioEnCurso
+                    ? (Number(yoyAnio?.ytd?.margen_explotacion?.valor) || 0)
+                    : total.margen
                   return (
                     <tr key={anio} style={{ borderBottom: '1px solid #f0ece4' }}>
                       <td style={{ padding: '7px 8px', fontWeight: 600 }}>
                         {anio}{mesesLabel && <span style={{ fontWeight: 400, fontSize: 11, color: '#888' }}>{mesesLabel}</span>}
                       </td>
-                      <td style={{ padding: '7px 8px', textAlign: 'right' }}>{eur(d.ingresos)}</td>
+                      <td style={{ padding: '7px 8px', textAlign: 'right' }}>{eur(ingresos)}</td>
                       <td style={{ padding: '7px 8px', textAlign: 'right', color: yoy == null ? '#888' : yoy >= 0 ? '#27ae60' : '#e74c3c', fontSize: 12 }}>
                         {yoy != null ? `${yoy >= 0 ? '+' : ''}${yoy}%` : '—'}
                       </td>
-                      <td style={{ padding: '7px 8px', textAlign: 'right' }}>{eur(d.consumo)}</td>
+                      <td style={{ padding: '7px 8px', textAlign: 'right' }}>{eur(consumo)}</td>
                       <td style={{ padding: '7px 8px', textAlign: 'right', color: '#666' }}>
-                        {d.ingresos ? redondear((d.consumo / d.ingresos) * 100, 1) + '%' : '—'}
+                        {ingresos ? redondear((consumo / ingresos) * 100, 1) + '%' : '—'}
                       </td>
-                      <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 600, color: d.margen >= 0 ? '#27ae60' : '#e74c3c' }}>
-                        {eur(d.margen)}
+                      <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 600, color: margen >= 0 ? '#27ae60' : '#e74c3c' }}>
+                        {eur(margen)}
                       </td>
                       <td style={{ padding: '7px 8px', textAlign: 'right', color: '#666' }}>
-                        {d.ingresos ? redondear((d.margen / d.ingresos) * 100, 1) + '%' : '—'}
+                        {ingresos ? redondear((margen / ingresos) * 100, 1) + '%' : '—'}
                       </td>
                     </tr>
                   )
