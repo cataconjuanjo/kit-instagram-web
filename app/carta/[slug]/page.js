@@ -2191,7 +2191,7 @@ export default function CartaPublica() {
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
-            <p className={styles.meta}>{restaurante.ciudad} · {platos.length} {platos.length === 1 ? 'plato disponible' : 'platos disponibles'}</p>
+            <p className={styles.meta}>{[restaurante.ciudad, `${platos.length} ${platos.length === 1 ? 'plato disponible' : 'platos disponibles'}`].filter(Boolean).join(' · ')}</p>
             <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
           <button className={styles.langButton} onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>

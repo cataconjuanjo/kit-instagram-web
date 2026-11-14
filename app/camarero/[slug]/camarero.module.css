@@ -1651,6 +1651,24 @@
   outline: none;
   margin-bottom: 16px;
 }
+.pinInput:focus-visible {
+  /* Focus ring ambar canonico del DESIGN.md (ver globals.css). El outline
+     sustituye al global para no romper la estetica de barra inferior. */
+  outline: 2px solid #F59E0B;
+  outline-offset: 4px;
+  border-bottom-color: #F59E0B;
+}
+
+/* ── Accesibilidad tactil movil (WCAG 2.5.5 Target Size, 44x44 minimo) ── */
+@media (max-width: 480px) {
+  .ghostButton,
+  .recommendModeTab,
+  .optionButton,
+  .soldButton,
+  .feedbackMenu summary {
+    min-height: 44px;
+  }
+}
 
 .pinError {
   font-size: 12px;

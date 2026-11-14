@@ -464,10 +464,10 @@ export default function FormularioCompra({ restauranteId, vinosActivos = [], onC
                       style={{ width: 60, textAlign: 'right', fontSize: 12, padding: '3px 4px' }}
                     />
                   </td>
-                  <td style={{ padding: '4px 6px', textAlign: 'right', color: Number(linea.precio_tarifa) > 0 ? '#fffaf3' : '#6b5f63', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', color: Number(linea.precio_tarifa) > 0 ? '#fffaf3' : '#6b5f63', fontVariantNumeric: 'lining-nums tabular-nums', fontSize: 12 }}>
                     {Number(linea.precio_tarifa) > 0 ? precio_neto_ud.toFixed(4) : '—'}
                   </td>
-                  <td style={{ padding: '4px 6px', textAlign: 'right', color: Number(linea.precio_tarifa) > 0 ? '#fffaf3' : '#6b5f63', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', color: Number(linea.precio_tarifa) > 0 ? '#fffaf3' : '#6b5f63', fontVariantNumeric: 'lining-nums tabular-nums', fontSize: 12 }}>
                     {Number(linea.precio_tarifa) > 0 ? importe_neto.toFixed(2) : '—'}
                   </td>
                   <td style={{ padding: '4px 4px' }}>

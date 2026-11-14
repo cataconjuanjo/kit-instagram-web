@@ -1770,7 +1770,7 @@ function ProveedoresPageContent() {
                                 </div>
                               </div>
                               {/* PVP destacado */}
-                              <div style={{ flexShrink: 0, fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--ink)', whiteSpace: 'nowrap' }}>
+                              <div style={{ flexShrink: 0, fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'lining-nums tabular-nums', color: 'var(--ink)', whiteSpace: 'nowrap' }}>
                                 {pvpStr}
                               </div>
                               {/* Favorito */}

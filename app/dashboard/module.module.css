@@ -1235,7 +1235,7 @@
   font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 26px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   line-height: 1;
   color: #171416;
   margin-bottom: 5px;
@@ -6819,7 +6819,7 @@ button.itemCard {
   font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 88px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   line-height: 1;
   color: #8a6a2f;
   margin-bottom: 12px;
@@ -6829,7 +6829,7 @@ button.itemCard {
   font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 28px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   line-height: 1.1;
   color: #4a3f36;
   margin-bottom: 4px;

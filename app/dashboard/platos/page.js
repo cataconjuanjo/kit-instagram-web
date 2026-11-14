@@ -749,7 +749,7 @@ export default function Platos() {
                     <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#111' }}>
                       {plato.nombre}
                       {plato.categoria && (
-                        <span style={{ fontWeight: 400, color: '#aaa', marginLeft: 8, fontSize: 12 }}>{plato.categoria}</span>
+                        <span style={{ fontWeight: 400, color: '#756d63', marginLeft: 8, fontSize: 12 }}>{plato.categoria}</span>
                       )}
                     </p>
                     {candidatos.length === 0 ? (
@@ -852,33 +852,33 @@ export default function Platos() {
         >
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px 28px', marginBottom: 16 }}>
               <div>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
+                <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
                 <input type="text" value={nuevoPlato.nombre} onChange={e => setNuevoPlato({ ...nuevoPlato, nombre: e.target.value })}
                   placeholder="Ej. Codillo al Pedro Ximénez"
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Categoría</label>
+                <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Categoría</label>
                 <select value={nuevoPlato.categoria} onChange={e => setNuevoPlato({ ...nuevoPlato, categoria: e.target.value })}
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111' }}>
                   {categorias.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Precio (€)</label>
+                <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Precio (€)</label>
                 <input type="number" value={nuevoPlato.precio} onChange={e => setNuevoPlato({ ...nuevoPlato, precio: e.target.value })}
                   placeholder="Ej. 12.50"
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
+                <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
                 <input type="text" value={nuevoPlato.descripcion} onChange={e => setNuevoPlato({ ...nuevoPlato, descripcion: e.target.value })}
                   placeholder="Ej. deshuesado, salsa de PX, meloso, umami"
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                 <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta pública.</p>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
+                <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
                 <input type="url" value={nuevoPlato.foto_url || ''} onChange={e => setNuevoPlato({ ...nuevoPlato, foto_url: e.target.value })}
                   placeholder="https://..."
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
@@ -948,12 +948,10 @@ export default function Platos() {
         )}
 
         <div className={styles.dataList}>
-          <div className={styles.dishListHeader}>
-            {['Plato', 'Categoría', 'Precio', 'Pistas de venta', ''].map(h => (
-              <p key={h} style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
-            ))}
-          </div>
-
+          {/* Cabeceras: solo los botones de ordenacion + inputs de filtro. La
+             fila .dishListHeader redundante se elimina porque repetia los
+             mismos titulos "Plato / Categoria / Precio / Pistas" que los
+             botones de .dishColumnFilters. */}
           <div className={`${styles.inlineColumnFilters} ${styles.dishColumnFilters}`}>
             <button type="button" onClick={() => ordenarPorPlato('nombre')}>Plato {ordenPlatos.key === 'nombre' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorPlato('categoria')}>Categoria {ordenPlatos.key === 'categoria' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
@@ -981,7 +979,7 @@ export default function Platos() {
                   <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
                   <p data-label="Categoria" style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
                   <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? formatoMoneda(p.precio, { decimales: 2, miles: 'always' }) : '—'}</p>
-                  <p data-label="Pistas" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
+                  <p data-label="Pistas" style={{ margin: 0, fontSize: 12, color: '#756d63' }}>{p.descripcion || '—'}</p>
                   <div
                     className={`${styles.rowMenu}${menuPlato === p.id ? ' ' + styles.rowMenuOpen : ''}`}
                     ref={menuPlato === p.id ? menuPlatoRef : null}
@@ -1018,30 +1016,30 @@ export default function Platos() {
                   >
                     <div className={styles.wineFormGrid}>
                       <div>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
+                        <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
                         <input type="text" value={editandoPlato.nombre} onChange={e => setEditandoPlato({ ...editandoPlato, nombre: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Categoría</label>
+                        <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Categoría</label>
                         <select value={editandoPlato.categoria} onChange={e => setEditandoPlato({ ...editandoPlato, categoria: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111' }}>
                           {categorias.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Precio (€)</label>
+                        <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Precio (€)</label>
                         <input type="number" value={editandoPlato.precio || ''} onChange={e => setEditandoPlato({ ...editandoPlato, precio: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
+                        <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
                         <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                         <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta pública.</p>
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
+                        <label style={{ fontSize: 11, color: '#756d63', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
                         <input type="url" value={editandoPlato.foto_url || ''} onChange={e => setEditandoPlato({ ...editandoPlato, foto_url: e.target.value })}
                           placeholder="https://..."
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
