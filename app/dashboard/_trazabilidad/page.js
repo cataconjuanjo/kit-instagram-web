@@ -422,7 +422,7 @@ export default function TrazabilidadEconomica() {
                   <input className={styles.input} value={inputNumber(ajustes?.margen_objetivo_copa_pct)} onChange={e => cambiarAjuste('margen_objetivo_copa_pct', e.target.value)} inputMode="decimal" />
                 </label>
                 <label>
-                  <span className={styles.label}>Precio minimo copa</span>
+                  <span className={styles.label}>Precio mínimo copa</span>
                   <input className={styles.input} value={inputNumber(ajustes?.precio_minimo_copa)} onChange={e => cambiarAjuste('precio_minimo_copa', e.target.value)} inputMode="decimal" />
                 </label>
               </div>

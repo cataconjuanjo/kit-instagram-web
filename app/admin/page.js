@@ -891,10 +891,10 @@ function AdminPageContent() {
             <option value="email">Ordenar: email</option>
             <option value="subscription_status">Ordenar: estado</option>
           </select>
-          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPagina(1) }} aria-label="Registros por pagina">
-            <option value={10}>10 por pagina</option>
-            <option value={25}>25 por pagina</option>
-            <option value={50}>50 por pagina</option>
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPagina(1) }} aria-label="Registros por página">
+            <option value={10}>10 por página</option>
+            <option value={25}>25 por página</option>
+            <option value={50}>50 por página</option>
           </select>
           <button type="button" className={rs.toolbarBtn} onClick={() => navigator.clipboard.writeText(restaurantesOrdenados.map(r => [r.nombre, r.email, r.ciudad, r.slug, r.subscription_status, estadoPublicacionAdmin(r).label].join(',')).join('\n'))}>Copiar CSV</button>
           <button type="button" className={rs.toolbarBtn} onClick={() => window.print()}>Imprimir / PDF</button>

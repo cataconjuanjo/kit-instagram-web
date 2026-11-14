@@ -9,6 +9,7 @@ import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSel
 import { puedeUsar } from '../../lib/plans'
 import { normWine } from '../../lib/textNormalize'
 import { margenCopaPct } from '../../lib/pricingUtils'
+import { margenBrutoPct } from '../../lib/wineEconomics'
 import {
   agruparOfertasCatalogo,
   costePorBotella,
@@ -35,10 +36,11 @@ function eur(valor) {
   return formatoMoneda(valor, { decimales: 2 })
 }
 
-function margenBotella(pvp, coste) {
+function margenBotella(pvp, coste, config) {
   const p = Number(pvp), c = Number(coste)
   if (!p || !c) return null
-  return Math.round(((p - c) / p) * 100)
+  // Canonico: margen sobre PVP SIN IVA (misma fuente que el KPI "Margen medio").
+  return Math.round(margenBrutoPct(p, c, config))
 }
 
 function textoPlatoMaridaje(p) {
@@ -296,10 +298,11 @@ export default function SimuladorCarta() {
   const resumen = useMemo(() => {
     const activas = lineas.filter(l => l.estado !== 'fuera')
     const conMargen = activas.filter(l => Number(l.coste_compra) > 0 && Number(l.precio_botella) > 0)
+    // Canonico: margen sobre PVP SIN IVA via wineEconomics.margenBrutoPct (10% IVA default)
     const margenMedio = conMargen.length
       ? Math.round(
           conMargen.reduce((sum, l) =>
-            sum + ((Number(l.precio_botella) - Number(l.coste_compra)) / Number(l.precio_botella)) * 100, 0
+            sum + margenBrutoPct(Number(l.precio_botella), Number(l.coste_compra), economicSettings), 0
           ) / conMargen.length
         )
       : null
@@ -320,9 +323,10 @@ export default function SimuladorCarta() {
     function margenMedioOf(lista) {
       const v = lista.filter(l => Number(l.precio_botella) > 0 && Number(l.coste_compra) > 0)
       if (!v.length) return null
+      // Canonico: margen sobre PVP SIN IVA
       return Math.round(
         v.reduce((sum, l) =>
-          sum + ((Number(l.precio_botella) - Number(l.coste_compra)) / Number(l.precio_botella)) * 100, 0
+          sum + margenBrutoPct(Number(l.precio_botella), Number(l.coste_compra), economicSettings), 0
         ) / v.length
       )
     }
@@ -403,8 +407,8 @@ export default function SimuladorCarta() {
         if (k === 'precio_botella' || k === 'precio_copa' || k === 'coste_compra' || k === 'margen' || k === 'margen_copa' || k === 'anada' || k === 'pvp_recomendado_catalogo' || k === 'pvp_copa_catalogo') {
           let va, vb
           if (k === 'margen') {
-            va = margenBotella(a.precio_botella, a.coste_compra) ?? -1
-            vb = margenBotella(b.precio_botella, b.coste_compra) ?? -1
+            va = margenBotella(a.precio_botella, a.coste_compra, economicSettings) ?? -1
+            vb = margenBotella(b.precio_botella, b.coste_compra, economicSettings) ?? -1
           } else if (k === 'margen_copa') {
             va = (a.ofrecido_por_copa === true && a.precio_copa && a.coste_compra) ? margenCopaPct(a.precio_copa, a.coste_compra, economicSettings) : -1
             vb = (b.ofrecido_por_copa === true && b.precio_copa && b.coste_compra) ? margenCopaPct(b.precio_copa, b.coste_compra, economicSettings) : -1
@@ -1150,7 +1154,7 @@ export default function SimuladorCarta() {
               }
             </span>
             <span className={simStyles.kpiHeroLabel}>Margen medio est.</span>
-            <span className={simStyles.kpiHeroHint}>{resumen.margenMedio !== null ? 'sobre PVP con IVA · solo activas con coste' : 'Registra el coste de tus vinos para ver el margen'}</span>
+            <span className={simStyles.kpiHeroHint}>{resumen.margenMedio !== null ? 'sobre PVP sin IVA · solo activas con coste' : 'Registra el coste de tus vinos para ver el margen'}</span>
           </div>
         </div>
 
@@ -1361,7 +1365,7 @@ export default function SimuladorCarta() {
               </thead>
               <tbody>
                 {lineasPagina.map(linea => {
-                  const mrg = margenBotella(linea.precio_botella, linea.coste_compra)
+                  const mrg = margenBotella(linea.precio_botella, linea.coste_compra, economicSettings)
                   const grupo = grupoDeLinea(linea)
                   const ofertaSeleccionada = ofertaGrupo(grupo, linea.catalogo_vino_id)
                   const ofertaBarata = ofertaMasBarata(grupo)

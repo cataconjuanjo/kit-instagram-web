@@ -438,7 +438,7 @@ export default function PlantillasPage() {
         </article>
         <article className={styles.stat}>
           <p className={styles.statValue}>{restaurante?.slug ? 'Listo' : 'Pendiente'}</p>
-          <p className={styles.statLabel}>Enlace publico</p>
+          <p className={styles.statLabel}>Enlace público</p>
           <p className={styles.statHint}>{restaurante?.slug ? 'Puede convertirse en QR.' : 'Revisa ajustes del restaurante.'}</p>
         </article>
       </section>

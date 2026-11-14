@@ -526,7 +526,7 @@ export default function InformeConsultor() {
           <section className="report-section">
             <div className="report-section-head">
               <div>
-                <p className="report-kicker">Motor de oportunidad economica</p>
+                <p className="report-kicker">Motor de oportunidad económica</p>
                 <h2>Dinero recuperable y capital atrapado</h2>
               </div>
             </div>
@@ -552,7 +552,7 @@ export default function InformeConsultor() {
           <div className="report-section-head">
             <div>
               <p className="report-kicker">Valor defendible</p>
-              <h2>Impacto mensual de Armonia</h2>
+              <h2>Impacto mensual de Armonía</h2>
             </div>
             <button
               type="button"

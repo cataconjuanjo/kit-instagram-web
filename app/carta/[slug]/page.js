@@ -23,6 +23,7 @@ import BotellaIcon from '../../components/icons/BotellaIcon'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
 import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
+import { formatoMoneda } from '../../lib/formatoEs'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import WineProfileRadarChart from '../../components/WineProfileRadarChart'
 import DuelCartaView from './DuelCartaView'
@@ -2170,7 +2171,7 @@ export default function CartaPublica() {
       )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
-          <span>Vista cliente · Armonia</span>
+          <span>Vista cliente · Armonía</span>
           <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
         </div>
       )}
@@ -2190,7 +2191,7 @@ export default function CartaPublica() {
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
-            <p className={styles.meta}>{restaurante.ciudad} · {platos.length} {platos.length === 1 ? 'plato disponible' : 'platos disponibles'}</p>
+            <p className={styles.meta}>{[restaurante.ciudad, `${platos.length} ${platos.length === 1 ? 'plato disponible' : 'platos disponibles'}`].filter(Boolean).join(' · ')}</p>
             <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
           <button className={styles.langButton} onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
@@ -2575,7 +2576,7 @@ export default function CartaPublica() {
                         <h3 className={styles.dishName}>{p.nombre}</h3>
                       </div>
                       <div>
-                        {Number(p.precio) > 0 && <p className={styles.dishPrice}>{Number(p.precio).toFixed(2)} €</p>}
+                        {Number(p.precio) > 0 && <p className={styles.dishPrice}>{formatoMoneda(p.precio, { decimales: 2, miles: 'always' })}</p>}
                         <span className={styles.dishAdd} style={{ color: seleccionado ? colorPrimario : '#c7b99a' }}>
                           {seleccionado ? '✓' : '+'}
                         </span>
@@ -3060,7 +3061,7 @@ export default function CartaPublica() {
                           <p style={{ margin: 0, fontSize: 15, color: '#111', fontWeight: seleccionado ? 500 : 400 }}>{p.nombre}</p>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                          {Number(p.precio) > 0 && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#999' }}>{Number(p.precio).toFixed(2)} €</p>}
+                          {Number(p.precio) > 0 && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#999' }}>{formatoMoneda(p.precio, { decimales: 2, miles: 'always' })}</p>}
                           <span style={{ fontSize: 20, color: seleccionado ? colorPrimario : '#ddd', lineHeight: 1 }}>
                             {seleccionado ? '✓' : '+'}
                           </span>

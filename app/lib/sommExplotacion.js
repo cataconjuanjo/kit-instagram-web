@@ -5,7 +5,7 @@
  *   Facturación − Consumo MP − Personal − Generales − Alquiler − Bancarios = Margen Explotación
  */
 
-import { redondear } from './wineEconomics'
+import { redondear } from './wineEconomics.js'
 
 function num(valor) {
   if (typeof valor === 'string') valor = valor.replace(',', '.')
@@ -16,19 +16,26 @@ function num(valor) {
 
 /**
  * Suma el coste total de personal con desglose completo.
- * La SS de empresa suele ser ~33% sobre la nómina bruta y es la partida
- * más infravalorada cuando solo se mira el salario neto.
+ *
+ * REGLA IMPORTANTE: las retenciones IRPF NO son coste de empresa.
+ * Ya estan contenidas dentro de la nomina bruta (lo que el empleado ve
+ * retenido en nomina es un anticipo del IRPF que la empresa INGRESA en
+ * Hacienda por cuenta del trabajador, no gasto adicional).
+ *
+ * Coste real de empresa = nomina bruta + SS empresa + extras.
+ * El campo retenciones_irpf se mantiene como INFORMATIVO para conciliar
+ * con el modelo 111, pero NO suma al total.
  */
 export function calcularTotalPersonal(params = {}) {
   const nominas = num(params.nominas_brutas)
   const ss = num(params.ss_empresa)
   const retenciones = num(params.retenciones_irpf)
   const extras = num(params.extras_personal)
-  const total = nominas + ss + retenciones + extras
+  const total = nominas + ss + extras
   return {
     nominas,
     ss,
-    retenciones,
+    retenciones, // informativo; NO se suma al total
     extras,
     total: redondear(total, 2),
     pctSobreNominas: nominas ? redondear(((total - nominas) / nominas) * 100, 1) : 0,
@@ -76,6 +83,29 @@ export function calcularTotalBancarios(params = {}) {
   return { comisiones, mantenimiento, resto, total: redondear(comisiones + mantenimiento + resto, 2) }
 }
 
+// ── Gastos fijos canonicos (demo 16/11): Motor y Explotacion comparten ──────
+
+/**
+ * Suma canonica de gastos fijos mensuales de bodega:
+ *   personal + alquiler + generales + bancarios
+ *
+ * Todos los componentes son opcionales (default 0). Pensado para usar como
+ * fuente unica en /dashboard/precios-somm (Motor de Precios) y
+ * /dashboard/explotacion (Cuenta de Explotacion), evitando que el Motor
+ * sume 1.442,26 euros (sin bancarios) mientras Explotacion suma 1.502
+ * euros (con 60 euros de bancarios).
+ */
+export function calcularTotalFijos({ personal = 0, alquiler = 0, generales = 0, bancarios = 0 } = {}) {
+  const total = num(personal) + num(alquiler) + num(generales) + num(bancarios)
+  return {
+    personal: num(personal),
+    alquiler: num(alquiler),
+    generales: num(generales),
+    bancarios: num(bancarios),
+    total: redondear(total, 2),
+  }
+}
+
 // ── Break-Even (Gap 3) ───────────────────────────────────────────────────────
 
 /**
@@ -95,7 +125,9 @@ export function calcularTotalBancarios(params = {}) {
  * @returns {{ breakEven: number, gastosFijos: number, margenContribucion: number }}
  */
 export function calcularBreakEven(personal, generales, alquiler, bancarios, pctMp) {
-  const gastosFijos = redondear(num(personal) + num(generales) + num(alquiler) + num(bancarios), 2)
+  // Delega en calcularTotalFijos para que Motor y Explotacion sumen
+  // exactamente los mismos componentes (fuente unica).
+  const { total: gastosFijos } = calcularTotalFijos({ personal, generales, alquiler, bancarios })
   const mp = Math.min(99, Math.max(0, num(pctMp)))
   const margenContribucion = (100 - mp) / 100
   if (!margenContribucion) return { breakEven: null, gastosFijos, margenContribucion: 0 }

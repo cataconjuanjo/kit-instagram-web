@@ -15,6 +15,7 @@ import {
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../../lib/demoServiceDay'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import { formatoMoneda } from '../../lib/formatoEs'
+import { margenBrutoPct } from '../../lib/wineEconomics'
 import styles from '../module.module.css'
 
 function leerDetalle(detalle) {
@@ -39,7 +40,8 @@ function prepararBriefing(vinos = [], platos = [], restaurante = {}) {
     .map(vino => {
       const venta = decimal(vino.precio_botella)
       const coste = decimal(vino.coste_compra)
-      const margenPct = venta && coste ? Math.round(((venta - coste) / venta) * 100) : null
+      // Canonico: margen sobre PVP SIN IVA (10% venta por defecto)
+      const margenPct = venta && coste ? Math.round(margenBrutoPct(venta, coste)) : null
       const stock = decimal(vino.stock)
       const score =
         (margenPct || 45) +

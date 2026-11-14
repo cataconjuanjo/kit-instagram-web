@@ -26,7 +26,7 @@ import {
   impactoTotalSeleccion,
   diferencialCopaVsBotella,
 } from '../../lib/sommPricing'
-import { calcularTotalPersonal, calcularTotalGastos, calcularTotalAlquiler } from '../../lib/sommExplotacion'
+import { calcularTotalPersonal, calcularTotalGastos, calcularTotalAlquiler, calcularTotalBancarios, calcularTotalFijos } from '../../lib/sommExplotacion'
 
 const TABS = [
   { id: 'simulador', label: 'Simulador multiplicador' },
@@ -65,7 +65,7 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
     beneficio_objetivo: '',
     ventas_previstas: '',
   })
-  const [derivado, setDerivado] = useState({ alquiler: 0, partidas: 0 })
+  const [derivado, setDerivado] = useState({ alquiler: 0, partidas: 0, bancarios: 0 })
   const [guardado, setGuardado] = useState(false)
   const [guardando, setGuardando] = useState(false)
   // Perfil Somm: los campos personal/alquileres/otros gastos van en un
@@ -77,7 +77,7 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
     async function cargar() {
       const { data } = await supabase
         .from('parametros_explotacion')
-        .select('nominas_brutas, ss_empresa, retenciones_irpf, extras_personal, partidas_alquiler, partidas_gastos, beneficio_objetivo, ventas_previstas')
+        .select('nominas_brutas, ss_empresa, retenciones_irpf, extras_personal, partidas_alquiler, partidas_gastos, comisiones_datafono, mantenimiento_datafono, resto_comisiones, beneficio_objetivo, ventas_previstas')
         .eq('restaurante_id', restauranteId)
         .eq('periodo', PERIODO_HOY)
         .maybeSingle()
@@ -85,16 +85,17 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
         const totalPersonal = calcularTotalPersonal(data).total || 0
         const totalAlquiler = calcularTotalAlquiler(data.partidas_alquiler || []).total
         const totalPartidas = calcularTotalGastos(data.partidas_gastos   || []).total
+        const totalBancarios = calcularTotalBancarios(data).total || 0
         setForm({
           personal_bodega:    totalPersonal || '',
           beneficio_objetivo: data.beneficio_objetivo || '',
           ventas_previstas:   data.ventas_previstas   || '',
         })
-        setDerivado({ alquiler: totalAlquiler, partidas: totalPartidas })
+        setDerivado({ alquiler: totalAlquiler, partidas: totalPartidas, bancarios: totalBancarios })
         // Auto-abrir "Punto de equilibrio" si ya hay valores, para que
         // el usuario vea qué está detrás del multiplicador. Si no hay
         // nada, queda plegado — el simulador funciona igual.
-        if (totalPersonal > 0 || totalAlquiler > 0 || totalPartidas > 0) {
+        if (totalPersonal > 0 || totalAlquiler > 0 || totalPartidas > 0 || totalBancarios > 0) {
           setBreakEvenAbierto(true)
         }
       }
@@ -102,10 +103,17 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
     if (restauranteId) cargar()
   }, [restauranteId])
 
-  // totalGastos = personal (completo) + alquileres del periodo + otras partidas (con amortización)
-  // Todos los valores de parametros_explotacion son ya la fracción bodega, no el restaurante completo.
+  // totalGastos canonico = personal + alquiler + generales + bancarios
+  // Fuente unica calcularTotalFijos para que Motor (/precios-somm) y
+  // Explotacion (/explotacion) sumen EXACTAMENTE los mismos componentes.
+  // Todos los valores de parametros_explotacion son ya la fraccion bodega.
   const totalGastos = useMemo(() => {
-    return num(form.personal_bodega) + derivado.alquiler + derivado.partidas
+    return calcularTotalFijos({
+      personal:  num(form.personal_bodega),
+      alquiler:  derivado.alquiler,
+      generales: derivado.partidas,
+      bancarios: derivado.bancarios,
+    }).total
   }, [form, derivado])
 
   const multiplicador = useMemo(() => {
@@ -158,13 +166,13 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
           </summary>
           <p style={{ fontSize: 12, color: '#666', margin: '8px 0 12px' }}>
             Si quieres que el multiplicador cubra también tus costes fijos
-            (personal, alquileres, otros gastos), introduce estos valores en
+            (personal, alquileres, otros gastos, bancarios), introduce estos valores en
             Explotación. Se recuperan automáticamente aquí. Déjalo en blanco
             si solo quieres fijar el margen por tramos.
           </p>
           <div className={styles.formGrid}>
             <label className={styles.label}>
-              Personal bodega (nóminas + SS + retenciones + extras)
+              Personal bodega (nóminas + SS + extras)
               <input className={styles.input} type="text" value={eur(num(form.personal_bodega))} readOnly disabled />
             </label>
             <label className={styles.label}>
@@ -174,6 +182,10 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
             <label className={styles.label}>
               Otros gastos del periodo
               <input className={styles.input} type="text" value={eur(derivado.partidas)} readOnly disabled />
+            </label>
+            <label className={styles.label}>
+              Bancarios del periodo
+              <input className={styles.input} type="text" value={eur(derivado.bancarios)} readOnly disabled />
             </label>
           </div>
           <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--panel-bg, #f7f5f0)', borderRadius: 4 }}>

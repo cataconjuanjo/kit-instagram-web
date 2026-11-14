@@ -405,7 +405,7 @@ export default function ImportarTPV() {
                 ))}
               </div>
             ) : (
-              <div className={styles.empty}>Aun no hay importaciones TPV.</div>
+              <div className={styles.empty}>Aún no hay importaciones TPV.</div>
             )}
           </div>
         </section>

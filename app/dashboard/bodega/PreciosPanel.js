@@ -15,8 +15,9 @@ function num(v) {
 }
 
 // A1: delega en formatoMoneda (es-ES canonico).
+// miles:'always' para que 4 digitos lleven separador (demo: 1.234,56 €).
 function eur(v, d = 2) {
-  return formatoMoneda(num(v), { decimales: d })
+  return formatoMoneda(num(v), { decimales: d, miles: 'always' })
 }
 
 function diff(actual, recomendado) {

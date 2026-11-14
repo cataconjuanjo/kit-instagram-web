@@ -45,14 +45,16 @@ export function formatoMoneda(valor, opts = {}) {
   const n = toNumeroFinito(valor)
   if (n === null) return PLACEHOLDER
 
-  const { signo = false } = opts
+  const { signo = false, miles = 'auto' } = opts
   let decimales = opts.decimales
   if (decimales === undefined || decimales === null) {
     if (opts.enTabla) decimales = Number.isInteger(n) ? 0 : 2
     else decimales = Number.isInteger(n) ? 0 : 2
   }
 
-  const useGrouping = usaSeparadorMiles(n)
+  // miles: 'always' = usa separador siempre (regla demo: 1.234,56 €).
+  // miles: 'auto'   = compat. legacy 4 cifras sin / 5+ con.
+  const useGrouping = miles === 'always' ? true : usaSeparadorMiles(n)
   const fmt = new Intl.NumberFormat('es-ES', {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
@@ -61,7 +63,6 @@ export function formatoMoneda(valor, opts = {}) {
 
   let out = fmt.format(n)
   if (signo && n > 0) out = '+' + out
-  // Espacio normal + € (consistente con "10.035 €").
   return out + ' €'
 }
 
@@ -174,3 +175,53 @@ export function formatoFechaCorta(fecha) {
 }
 
 export const PLACEHOLDER_VACIO = PLACEHOLDER
+
+/**
+ * Multiplicador con "×" prefijo (convencion demo): "×1,35", "×1.346".
+ * Forma alternativa a formatoMultiplicador, que devuelve "1,25x".
+ */
+export function formatoMultiplicadorPrefijo(valor, decimales = 2) {
+  const n = toNumeroFinito(valor)
+  if (n === null) return PLACEHOLDER
+  const fmt = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales,
+    useGrouping: true, // demo: miles siempre con punto
+  })
+  return '×' + fmt.format(n)
+}
+
+/**
+ * Fecha dd/mm/aaaa. Acepta ISO o Date. PLACEHOLDER si invalida.
+ */
+export function formatoFechaDiaMesAnio(fecha) {
+  if (!fecha) return PLACEHOLDER
+  let d
+  if (fecha instanceof Date) d = fecha
+  else if (typeof fecha === 'string') {
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(fecha)) {
+      const [dd, mm, yyyy] = fecha.split('/')
+      d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+    } else {
+      d = new Date(fecha)
+    }
+  } else return PLACEHOLDER
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return PLACEHOLDER
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
+/**
+ * Fecha "10 nov" (sin anio, minusculas). Para listas densas.
+ */
+export function formatoFechaDiaMes(fecha) {
+  if (!fecha) return PLACEHOLDER
+  let d
+  if (fecha instanceof Date) d = fecha
+  else if (typeof fecha === 'string') d = new Date(fecha)
+  else return PLACEHOLDER
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return PLACEHOLDER
+  const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  return `${d.getDate()} ${MESES[d.getMonth()]}`
+}

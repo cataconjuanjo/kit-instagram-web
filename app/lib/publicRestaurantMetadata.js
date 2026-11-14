@@ -41,13 +41,14 @@ function noIndexPublico() {
 
 function metadataFallback(tipo, slug) {
   const canonical = tipo === 'hub' ? `/r/${slug}` : `/carta/${slug}`
+  const titleFallback = tipo === 'hub' ? 'Hub Carta Viva' : 'Carta de vinos · Carta Viva'
   return {
-    title: tipo === 'hub' ? 'Hub Carta Viva' : 'Carta de vinos Carta Viva',
+    title: { absolute: titleFallback },
     description: 'Experiencia Carta Viva para consultar carta, enlaces y recomendaciones del restaurante.',
     alternates: { canonical },
     robots: noIndexPublico(),
     openGraph: {
-      title: tipo === 'hub' ? 'Hub Carta Viva' : 'Carta de vinos Carta Viva',
+      title: titleFallback,
       description: 'Carta digital y experiencia de vino para restaurantes.',
       url: canonical,
       siteName: 'Carta Viva',
@@ -56,7 +57,7 @@ function metadataFallback(tipo, slug) {
     },
     twitter: {
       card: 'summary_large_image',
-      title: tipo === 'hub' ? 'Hub Carta Viva' : 'Carta de vinos Carta Viva',
+      title: titleFallback,
       description: 'Carta digital y experiencia de vino para restaurantes.',
       images: [FALLBACK_OG_IMAGE],
     },
@@ -99,19 +100,22 @@ export async function metadataCartaPublica(slug) {
   const nombre = limpiarTexto(restaurante.nombre, 'restaurante')
   const ciudad = limpiarTexto(restaurante.ciudad)
   const canonical = `/carta/${restaurante.slug || slug}`
-  const title = `Carta de vinos de ${nombre}`
+  // Sufijo "· Carta Viva" explicito, aislado del template del root layout
+  // via title.absolute (que ignora el "%s · Cata con Juanjo" del root).
+  const titleCore = `Carta de vinos de ${nombre}`
+  const titleWithBrand = `${titleCore} · Carta Viva`
   const description = ciudad
     ? `Carta digital de vinos de ${nombre} en ${ciudad}. Consulta vinos, precios y recomendaciones desde Carta Viva.`
     : `Carta digital de vinos de ${nombre}. Consulta vinos, precios y recomendaciones desde Carta Viva.`
   const image = normalizarImagen(restaurante.banner_url || restaurante.logo_url)
 
   return {
-    title,
+    title: { absolute: titleWithBrand },
     description,
     alternates: { canonical },
     robots: noIndexPublico(),
     openGraph: {
-      title,
+      title: titleWithBrand,
       description,
       url: canonical,
       siteName: 'Carta Viva',
@@ -120,9 +124,32 @@ export async function metadataCartaPublica(slug) {
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: titleWithBrand,
       description,
       images: [image],
+    },
+  }
+}
+
+export async function metadataModoCamarero(slug) {
+  const restaurante = await cargarRestauranteSeo(slug)
+  const nombre = limpiarTexto(restaurante?.nombre, 'restaurante')
+  const canonical = `/camarero/${restaurante?.slug || slug}`
+  // title.absolute para evitar que el template del root ("%s · Cata con Juanjo")
+  // agregue sufijo propio. Queda "Modo camarero · <nombre> · Carta Viva".
+  const titleWithBrand = `Modo camarero · ${nombre} · Carta Viva`
+  const description = `Panel interno de sala para ${nombre}: recomendaciones, maridaje y stock en vivo.`
+  return {
+    title: { absolute: titleWithBrand },
+    description,
+    alternates: { canonical },
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+    openGraph: {
+      title: titleWithBrand,
+      description,
+      url: canonical,
+      siteName: 'Carta Viva',
+      type: 'website',
     },
   }
 }

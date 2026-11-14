@@ -125,7 +125,7 @@ export function construirMensajeResumenSemanal({ resumen = {}, restaurante = {},
                   </tr>
                   <tr><td colspan="3" style="height:10px;"></td></tr>
                   <tr>
-                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Recomendacion</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'beneficio_recomendacion_texto'))}</strong></td>
+                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Recomendación</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'beneficio_recomendacion_texto'))}</strong></td>
                     <td style="width:10px;"></td>
                     <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Escenarios</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'oportunidad_anual_texto'))}</strong></td>
                   </tr>

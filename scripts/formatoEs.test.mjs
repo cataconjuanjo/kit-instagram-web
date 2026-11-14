@@ -12,9 +12,46 @@ import {
   formatoVariacion,
   formatoPuntosPorcentuales,
   formatoMultiplicador,
+  formatoMultiplicadorPrefijo,
   formatoMesCorto,
   formatoFechaCorta,
+  formatoFechaDiaMesAnio,
+  formatoFechaDiaMes,
 } from '../app/lib/formatoEs.js'
+
+describe('formatoMoneda miles:always', () => {
+  it('4 cifras con separador de miles cuando miles=always', () => {
+    assert.equal(formatoMoneda(1234, { miles: 'always' }), '1.234 €')
+    assert.equal(formatoMoneda(1234.56, { miles: 'always' }), '1.234,56 €')
+  })
+  it('aun con 3 cifras, miles=always no afecta (no hay separador)', () => {
+    assert.equal(formatoMoneda(999, { miles: 'always' }), '999 €')
+  })
+})
+
+describe('formatoMultiplicadorPrefijo', () => {
+  it('×1,35 con 2 decimales', () => {
+    assert.equal(formatoMultiplicadorPrefijo(1.35), '×1,35')
+  })
+  it('milesimas con separador: ×1.346,00 (si es magnitud grande)', () => {
+    assert.equal(formatoMultiplicadorPrefijo(1346), '×1.346,00')
+  })
+})
+
+describe('formatoFechaDiaMesAnio', () => {
+  it('ISO -> dd/mm/aaaa', () => {
+    assert.equal(formatoFechaDiaMesAnio('2026-11-14'), '14/11/2026')
+  })
+  it('Date -> dd/mm/aaaa', () => {
+    assert.equal(formatoFechaDiaMesAnio(new Date(2026, 10, 1)), '01/11/2026')
+  })
+})
+
+describe('formatoFechaDiaMes', () => {
+  it('10 nov', () => {
+    assert.equal(formatoFechaDiaMes('2026-11-10'), '10 nov')
+  })
+})
 
 describe('formatoMoneda', () => {
   it('4 cifras SIN separador de miles', () => {

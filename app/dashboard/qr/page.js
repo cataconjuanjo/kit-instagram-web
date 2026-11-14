@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
@@ -27,7 +27,6 @@ export default function QRPage() {
   const [guardandoPublicacion, setGuardandoPublicacion] = useState(false)
   const [mensajePublicacion, setMensajePublicacion] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
-  const canvasRef = useRef(null)
 
   useEffect(() => {
     async function cargar() {
@@ -138,18 +137,20 @@ export default function QRPage() {
       setQrDataUrl('')
       return
     }
-    if (canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, urlDirecta, {
-        width: 300,
-        margin: 2,
-        color: { dark: '#171416', light: '#ffffff' },
-      }).catch(() => {})
-    }
+    let cancelado = false
     QRCode.toDataURL(urlDirecta, {
       width: 880,
       margin: 2,
       color: { dark: '#171416', light: '#ffffff' },
-    }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
+    })
+      .then(url => { if (!cancelado) setQrDataUrl(url) })
+      .catch(err => {
+        if (!cancelado) {
+          setQrDataUrl('')
+          console.error('[QR] No se pudo generar el dataURL:', err)
+        }
+      })
+    return () => { cancelado = true }
   }, [urlDirecta])
 
   async function registrarUso(event, metadata = {}) {
@@ -298,7 +299,7 @@ export default function QRPage() {
       >
         <section className={styles.empty}>
           <div>
-            <strong>Sin carta publica</strong>
+            <strong>Sin carta pública</strong>
             <p>Para esta cuenta, los accesos utiles estan en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
           </div>
         </section>
@@ -376,7 +377,23 @@ export default function QRPage() {
           </div>
           <div className={styles.panelBody}>
             <div className={styles.qrCard}>
-              <canvas ref={canvasRef} aria-label={`QR ${restaurante.nombre}`} />
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt={`QR ${restaurante.nombre}`}
+                  width={300}
+                  height={300}
+                  style={{ width: 300, height: 300, display: 'block' }}
+                />
+              ) : (
+                <div
+                  role="img"
+                  aria-label="Generando QR"
+                  style={{ width: 300, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#756d63', fontSize: 13 }}
+                >
+                  Generando QR...
+                </div>
+              )}
             </div>
             <div className={styles.urlBox} style={{ marginTop: 14 }}>{urlDirecta}</div>
             <div className={styles.actionRow} style={{ marginTop: 14 }}>
@@ -391,7 +408,7 @@ export default function QRPage() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Revisar y publicar</h2>
-              <p className={styles.panelSub}>Lo minimo antes de poner el QR delante del cliente.</p>
+              <p className={styles.panelSub}>Lo mínimo antes de poner el QR delante del cliente.</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -409,7 +426,7 @@ export default function QRPage() {
               <article className={styles.itemCard}>
                 <div className={styles.sectionHead} style={{ margin: 0 }}>
                   <div>
-                    <h3 className={styles.sectionTitle}>Contenido minimo</h3>
+                    <h3 className={styles.sectionTitle}>Contenido mínimo</h3>
                     <p className={styles.sectionText}>
                       {contenidoCarta.loading
                         ? 'Comprobando vinos y precios...'
@@ -443,7 +460,7 @@ export default function QRPage() {
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>Enlace publico</h2>
+            <h2 className={styles.panelTitle}>Enlace público</h2>
             <p className={styles.panelSub}>Para WhatsApp, equipo de sala, imprenta o redes.</p>
           </div>
           <span className={styles.badge}>{destinoLabel}</span>
