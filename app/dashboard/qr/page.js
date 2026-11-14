@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
@@ -27,7 +27,6 @@ export default function QRPage() {
   const [guardandoPublicacion, setGuardandoPublicacion] = useState(false)
   const [mensajePublicacion, setMensajePublicacion] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
-  const canvasRef = useRef(null)
 
   useEffect(() => {
     async function cargar() {
@@ -138,18 +137,20 @@ export default function QRPage() {
       setQrDataUrl('')
       return
     }
-    if (canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, urlDirecta, {
-        width: 300,
-        margin: 2,
-        color: { dark: '#171416', light: '#ffffff' },
-      }).catch(() => {})
-    }
+    let cancelado = false
     QRCode.toDataURL(urlDirecta, {
       width: 880,
       margin: 2,
       color: { dark: '#171416', light: '#ffffff' },
-    }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
+    })
+      .then(url => { if (!cancelado) setQrDataUrl(url) })
+      .catch(err => {
+        if (!cancelado) {
+          setQrDataUrl('')
+          console.error('[QR] No se pudo generar el dataURL:', err)
+        }
+      })
+    return () => { cancelado = true }
   }, [urlDirecta])
 
   async function registrarUso(event, metadata = {}) {
@@ -376,7 +377,23 @@ export default function QRPage() {
           </div>
           <div className={styles.panelBody}>
             <div className={styles.qrCard}>
-              <canvas ref={canvasRef} aria-label={`QR ${restaurante.nombre}`} />
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt={`QR ${restaurante.nombre}`}
+                  width={300}
+                  height={300}
+                  style={{ width: 300, height: 300, display: 'block' }}
+                />
+              ) : (
+                <div
+                  role="img"
+                  aria-label="Generando QR"
+                  style={{ width: 300, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#756d63', fontSize: 13 }}
+                >
+                  Generando QR...
+                </div>
+              )}
             </div>
             <div className={styles.urlBox} style={{ marginTop: 14 }}>{urlDirecta}</div>
             <div className={styles.actionRow} style={{ marginTop: 14 }}>
