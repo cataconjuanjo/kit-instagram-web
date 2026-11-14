@@ -346,12 +346,23 @@ function TabHistorico({ historico, esSomm = false }) {
               </thead>
               <tbody>
                 {anios.slice().reverse().map(anio => {
-                  const d = totalPorAnio[anio]
-                  // YoY del año: delegado al helper puro (mesesComparables
-                  // intersecta meses presentes en ambos años y excluye el
-                  // mes en curso del año actual).
+                  // Coherencia con el KPI YTD: para el ano actual, sumar solo
+                  // los meses COMPARABLES (los que entran al YTD, sin mes en
+                  // curso). Para anos cerrados, suma total = suma comparable,
+                  // asi que el resultado coincide con el modelo antiguo.
+                  const total = totalPorAnio[anio]
                   const yoyAnio    = yoyPorAnio[anio]
                   const comunes    = yoyAnio?.meses || []
+                  const esAnioEnCurso = anio === anioActual && comunes.length > 0 && comunes.length < 12
+                  const d = esAnioEnCurso
+                    ? {
+                        ingresos: historico.filter(h => h.anio === anio && comunes.includes(h.mes)).reduce((s, h) => s + (Number(h.ingresos) || 0), 0),
+                        consumo:  historico.filter(h => h.anio === anio && comunes.includes(h.mes)).reduce((s, h) => s + (Number(h.consumo_mp) || 0), 0),
+                        margen:   historico.filter(h => h.anio === anio && comunes.includes(h.mes)).reduce((s, h) => s + (esSomm
+                          ? ((Number(h.ingresos) || 0) - (Number(h.consumo_mp) || 0))
+                          : (h.margen_explotacion ?? (h.ingresos - h.consumo_mp - h.gastos_fijos))), 0),
+                      }
+                    : total
                   const yoyRaw     = yoyAnio?.ytd?.ingresos?.deltaPct ?? null
                   const yoy        = yoyRaw != null ? redondear(yoyRaw, 1) : null
                   const mesesLabel = comunes.length > 0 && comunes.length < 12
@@ -492,6 +503,9 @@ function TabPresupuesto({ restauranteId, historico }) {
     setTimeout(() => setGuardado(false), 2000)
   }
 
+  const hoy = new Date()
+  const mesEnCurso = (anio === hoy.getFullYear()) ? hoy.getMonth() + 1 : null
+
   const filasMeses = Array.from({ length: 12 }, (_, i) => {
     const mes = i + 1
     const objYoY = objetivosYoY.find(o => o.mes === mes)
@@ -506,11 +520,12 @@ function TabPresupuesto({ restauranteId, historico }) {
     const realRaw = realActual[mes]?.ingresos
     const tieneDatoReal = realRaw != null
     const real = Number(realRaw) || 0
+    const esMesEnCurso = mes === mesEnCurso
     const crecimientoReal = (ingresoBase && tieneDatoReal)
       ? redondear(((real - ingresoBase) / ingresoBase) * 100, 1)
       : null
     const superaObjetivo = objetivo && tieneDatoReal && real >= objetivo
-    return { mes, label: MESES_LABEL[i], ingresoBase, objetivo, real, tieneDatoReal, crecimientoReal, superaObjetivo }
+    return { mes, label: MESES_LABEL[i], ingresoBase, objetivo, real, tieneDatoReal, crecimientoReal, superaObjetivo, esMesEnCurso }
   })
 
   return (
@@ -599,7 +614,9 @@ function TabPresupuesto({ restauranteId, historico }) {
                     {f.crecimientoReal != null ? `${f.crecimientoReal >= 0 ? '+' : ''}${f.crecimientoReal}%` : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'center', fontSize: 15 }}>
-                    {f.tieneDatoReal && f.objetivo ? (
+                    {f.esMesEnCurso && f.tieneDatoReal && f.objetivo ? (
+                      <span aria-label="Mes en curso (parcial)" title="Mes en curso: el objetivo se evalua al cierre del mes" style={{ fontSize: 11, color: '#756d63', fontStyle: 'italic' }}>En curso</span>
+                    ) : f.tieneDatoReal && f.objetivo ? (
                       <span role="img" aria-label={f.superaObjetivo ? 'Supera el objetivo' : 'Por debajo del objetivo'} title={f.superaObjetivo ? 'Supera el objetivo' : 'Por debajo del objetivo'}>
                         {f.superaObjetivo ? '✅' : '❌'}
                       </span>
@@ -669,6 +686,8 @@ function TabBonus({ restauranteId, historico }) {
   }, [historico, anio])
 
   const filasMeses = useMemo(() => {
+    const hoy = new Date()
+    const mesEnCurso = (anio === hoy.getFullYear()) ? hoy.getMonth() + 1 : null
     return Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1
       // A5 (revisit): tieneFacturadoReal / tieneAnteriorReal distinguen
@@ -680,10 +699,15 @@ function TabBonus({ restauranteId, historico }) {
       const facturado = Number(facturadoRaw) || 0
       const anterior = Number(anteriorRaw) || 0
       const objetivo = presupuesto[mes]?.objetivo_facturacion || (anterior * (1 + num(umbral) / 100))
-      const r = calcularBonus(facturado, objetivo, num(umbral), num(bonusPct), anterior)
-      return { mes, label: MESES_LABEL[i], facturado, anterior, objetivo, tieneFacturadoReal, tieneAnteriorReal, ...r }
+      const esMesEnCurso = mes === mesEnCurso
+      // El mes en curso NO cuenta para el bonus (parcial). Se cerrara al
+      // terminar el mes. Para los demas, aplicamos la formula estandar.
+      const r = esMesEnCurso
+        ? { bonus: 0, crecimientoYoyPct: 0, superaUmbral: false, exceso: 0 }
+        : calcularBonus(facturado, objetivo, num(umbral), num(bonusPct), anterior)
+      return { mes, label: MESES_LABEL[i], facturado, anterior, objetivo, tieneFacturadoReal, tieneAnteriorReal, esMesEnCurso, ...r }
     })
-  }, [realActual, realAnterior, presupuesto, umbral, bonusPct])
+  }, [realActual, realAnterior, presupuesto, umbral, bonusPct, anio])
 
   const { acumulado } = useMemo(() => acumularBonus(filasMeses), [filasMeses])
   const mesesConBonus = filasMeses.filter(f => f.bonus > 0)
