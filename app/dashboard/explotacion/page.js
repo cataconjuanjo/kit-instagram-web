@@ -159,7 +159,7 @@ function SeccionPersonal({ params, onChange }) {
   const campos = [
     { key: 'nominas_brutas', label: 'Nóminas brutas' },
     { key: 'ss_empresa', label: 'Seguridad Social (empresa)' },
-    { key: 'retenciones_irpf', label: 'Retenciones IRPF' },
+    { key: 'retenciones_irpf', label: 'Retenciones IRPF (informativo · no suma al total)' },
     { key: 'extras_personal', label: 'Extras y horas complementarias' },
   ]
   const total = calcularTotalPersonal(params)
@@ -191,7 +191,7 @@ function SeccionPersonal({ params, onChange }) {
           <strong>Total personal: {eur(total.total)}</strong>
           {total.pctSobreNominas > 0 && (
             <span style={{ fontSize: 12, color: '#888' }}>
-              +{pct(total.pctSobreNominas)} sobre nóminas brutas (SS + retenciones)
+              +{pct(total.pctSobreNominas)} sobre nóminas brutas (SS + extras)
             </span>
           )}
         </div>
