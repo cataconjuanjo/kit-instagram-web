@@ -345,30 +345,42 @@ function TabHistorico({ historico, esSomm = false }) {
                 </tr>
               </thead>
               <tbody>
-                {anios.slice().reverse().map(anio => {
-                  // Coherencia con el KPI YTD: para el ano actual, sumar solo
-                  // los meses COMPARABLES (los que entran al YTD, sin mes en
-                  // curso). Para anos cerrados, suma total = suma comparable,
-                  // asi que el resultado coincide con el modelo antiguo.
-                  const total = totalPorAnio[anio]
-                  const yoyAnio    = yoyPorAnio[anio]
-                  const comunes    = yoyAnio?.meses || []
-                  const esAnioEnCurso = anio === anioActual && comunes.length > 0 && comunes.length < 12
-                  const d = esAnioEnCurso
-                    ? {
-                        ingresos: historico.filter(h => h.anio === anio && comunes.includes(h.mes)).reduce((s, h) => s + (Number(h.ingresos) || 0), 0),
-                        consumo:  historico.filter(h => h.anio === anio && comunes.includes(h.mes)).reduce((s, h) => s + (Number(h.consumo_mp) || 0), 0),
-                        margen:   historico.filter(h => h.anio === anio && comunes.includes(h.mes)).reduce((s, h) => s + (esSomm
-                          ? ((Number(h.ingresos) || 0) - (Number(h.consumo_mp) || 0))
-                          : (h.margen_explotacion ?? (h.ingresos - h.consumo_mp - h.gastos_fijos))), 0),
-                      }
-                    : total
-                  const yoyRaw     = yoyAnio?.ytd?.ingresos?.deltaPct ?? null
-                  const yoy        = yoyRaw != null ? redondear(yoyRaw, 1) : null
-                  const mesesLabel = comunes.length > 0 && comunes.length < 12
-                    ? ` (${MESES_LABEL[comunes[0] - 1]}–${MESES_LABEL[comunes[comunes.length - 1] - 1]})`
-                    : null
-                  return (
+                {(() => {
+                  // Meses COMPARABLES del ano en curso (los que entran al
+                  // KPI YTD, sin el mes abierto). Si el ano actual esta
+                  // parcial, usamos ESTOS MISMOS meses para recortar la
+                  // fila del ano anterior; asi "2026 (Ene-Oct)" y
+                  // "2025 (Ene-Oct)" comparan lo mismo que el +X% YoY.
+                  const comunesActuales = (anioActual != null ? (yoyPorAnio[anioActual]?.meses || []) : [])
+                  const recortarPorMesesActuales = comunesActuales.length > 0 && comunesActuales.length < 12
+                  return anios.slice().reverse().map(anio => {
+                    const total = totalPorAnio[anio]
+                    const yoyAnio    = yoyPorAnio[anio]
+                    const esAnioEnCurso = anio === anioActual && recortarPorMesesActuales
+                    const esAnioAnteriorAlActual = anio === (anioActual - 1) && recortarPorMesesActuales
+                    // Para el ano en curso y para el inmediatamente anterior,
+                    // recortar a los meses comparables del ano en curso.
+                    const mesesFila = esAnioEnCurso || esAnioAnteriorAlActual
+                      ? comunesActuales
+                      : null
+                    const d = mesesFila
+                      ? {
+                          ingresos: historico.filter(h => h.anio === anio && mesesFila.includes(h.mes)).reduce((s, h) => s + (Number(h.ingresos) || 0), 0),
+                          consumo:  historico.filter(h => h.anio === anio && mesesFila.includes(h.mes)).reduce((s, h) => s + (Number(h.consumo_mp) || 0), 0),
+                          margen:   historico.filter(h => h.anio === anio && mesesFila.includes(h.mes)).reduce((s, h) => s + (esSomm
+                            ? ((Number(h.ingresos) || 0) - (Number(h.consumo_mp) || 0))
+                            : (h.margen_explotacion ?? (h.ingresos - h.consumo_mp - h.gastos_fijos))), 0),
+                        }
+                      : total
+                    const yoyRaw     = yoyAnio?.ytd?.ingresos?.deltaPct ?? null
+                    const yoy        = yoyRaw != null ? redondear(yoyRaw, 1) : null
+                    const comunesLabel = yoyAnio?.meses || []
+                    const mesesLabel = mesesFila
+                      ? ` (${MESES_LABEL[mesesFila[0] - 1]}–${MESES_LABEL[mesesFila[mesesFila.length - 1] - 1]})`
+                      : (comunesLabel.length > 0 && comunesLabel.length < 12
+                        ? ` (${MESES_LABEL[comunesLabel[0] - 1]}–${MESES_LABEL[comunesLabel[comunesLabel.length - 1] - 1]})`
+                        : null)
+                    return (
                     <tr key={anio} style={{ borderBottom: '1px solid #f0ece4' }}>
                       <td style={{ padding: '7px 8px', fontWeight: 600 }}>
                         {anio}{mesesLabel && <span style={{ fontWeight: 400, fontSize: 11, color: '#888' }}>{mesesLabel}</span>}
@@ -389,7 +401,8 @@ function TabHistorico({ historico, esSomm = false }) {
                       </td>
                     </tr>
                   )
-                })}
+                })
+                })()}
               </tbody>
             </table>
           </div>
