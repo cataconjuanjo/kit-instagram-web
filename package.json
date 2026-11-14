@@ -37,7 +37,8 @@
     "test:qr-datauri":    "node --test scripts/qr-datauri.test.mjs",
     "test:margen-canonico":"node --test scripts/margenCanonico.test.mjs",
     "test:total-personal": "node --test scripts/totalPersonal.test.mjs",
-    "test:total-fijos":    "node --test scripts/totalFijos.test.mjs"
+    "test:total-fijos":    "node --test scripts/totalFijos.test.mjs",
+    "test:metadata-suffix":"node --test scripts/publicMetadataSuffix.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
