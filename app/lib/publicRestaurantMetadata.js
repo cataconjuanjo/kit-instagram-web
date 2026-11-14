@@ -127,6 +127,27 @@ export async function metadataCartaPublica(slug) {
   }
 }
 
+export async function metadataModoCamarero(slug) {
+  const restaurante = await cargarRestauranteSeo(slug)
+  const nombre = limpiarTexto(restaurante?.nombre, 'restaurante')
+  const canonical = `/camarero/${restaurante?.slug || slug}`
+  const title = `Modo camarero · ${nombre}`
+  const description = `Panel interno de sala para ${nombre}: recomendaciones, maridaje y stock en vivo.`
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: 'Carta Viva',
+      type: 'website',
+    },
+  }
+}
+
 export async function metadataHubPublico(slug) {
   const restaurante = await cargarRestauranteSeo(slug)
   if (!restaurante) return metadataFallback('hub', slug)
