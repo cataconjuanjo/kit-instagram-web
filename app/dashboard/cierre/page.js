@@ -160,6 +160,7 @@ export default function CierreServicio() {
   const [confirmarCierre, setConfirmarCierre] = useState(false)
   const [briefingAbierto, setBriefingAbierto] = useState(false)
   const [pasosCompletados, setPasosCompletados] = useState({})
+  const [cierreEstadoCargado, setCierreEstadoCargado] = useState(false)
   const prevPasosRef = useRef(null)
 
   useEffect(() => {
@@ -208,7 +209,14 @@ export default function CierreServicio() {
             setPasosCompletados(cierreRemoto?.pasos || {})
           } catch {
             setOcultos([])
+          } finally {
+            // Fin de la carga de estado (ocultos + pasos). Evita el flash
+            // en el que se muestran todas las señales como "pendientes"
+            // porque ocultos aun no se habia hidratado desde local/remoto.
+            setCierreEstadoCargado(true)
           }
+        } else {
+          setCierreEstadoCargado(true)
         }
       }
       setLoading(false)
@@ -487,8 +495,13 @@ export default function CierreServicio() {
     setTimeout(() => setSustitutoCopiado(''), 1800)
   }
 
-  if (loading) return <LoadingState />
+  if (loading || !cierreEstadoCargado) return <LoadingState />
   if (!restaurante) return null
+
+  // Sin actividad hoy: ni eventos de venta ni recomendaciones registradas
+  // en la ventana de dia operativo. Diferente de "limpio" (hubo actividad
+  // y todo quedo resuelto): al no haber nada, no procede evaluar pasos.
+  const sinServicioHoy = eventos.length === 0 && recomendaciones.length === 0
 
   const acciones = [
     datos.recomendacionesPendientes.length > 0 && `Validar ${datos.recomendacionesPendientes.length} recomendaciones sin resultado.`,
@@ -538,13 +551,19 @@ export default function CierreServicio() {
       <section className={styles.closeHero}>
         <div>
           <p className={styles.eyebrow}>Cierre guiado</p>
-          <h2>{turnoCerrado || pendientesCierre === 0 ? 'Servicio limpio' : 'Quedan decisiones por resolver'}</h2>
-          <p>Revisa señales de sala, ajusta stock cuando proceda y deja preparada la bodega para el siguiente turno.</p>
+          <h2>{sinServicioHoy
+            ? 'Sin servicio hoy'
+            : (turnoCerrado || pendientesCierre === 0) ? 'Servicio limpio' : 'Quedan decisiones por resolver'}</h2>
+          <p>{sinServicioHoy
+            ? 'No se han registrado ventas ni recomendaciones en la ventana del dia operativo.'
+            : 'Revisa señales de sala, ajusta stock cuando proceda y deja preparada la bodega para el siguiente turno.'}</p>
         </div>
-        <div className={styles.closeHeroScore}>
-          <strong>{progresoCierre}%</strong>
-          <span>{pasosHechos} de {pasosCierre.length} pasos</span>
-        </div>
+        {!sinServicioHoy && (
+          <div className={styles.closeHeroScore}>
+            <strong>{progresoCierre}%</strong>
+            <span>{pasosHechos} de {pasosCierre.length} pasos</span>
+          </div>
+        )}
       </section>
 
       <section className={styles.panel} style={{ marginBottom: 16 }}>
