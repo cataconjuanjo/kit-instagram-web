@@ -17,6 +17,7 @@ import { esPerfilBodega, esPerfilSomm, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
 import { fetchAllPages } from '../lib/fetchAllPages'
 import { formatoMoneda } from '../lib/formatoEs'
+import { margenBrutoPct } from '../lib/wineEconomics'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -774,12 +775,10 @@ function DashboardHome() {
 
   const valorStock = vinosActivos.reduce((sum, vino) => sum + (decimal(vino.stock) * decimal(vino.coste_compra)), 0)
   const vinosConMargen = vinosActivos.filter(vino => decimal(vino.precio_botella) > 0 && decimal(vino.coste_compra) > 0)
+  // Canonico: margen sobre PVP SIN IVA, via wineEconomics.margenBrutoPct (IVA 10% default)
   const margenMedio = vinosConMargen.length
-    ? Math.round(vinosConMargen.reduce((sum, vino) => {
-        const pvpNeto = decimal(vino.precio_botella) / 1.1
-        const coste = decimal(vino.coste_compra)
-        return sum + (pvpNeto > 0 ? ((pvpNeto - coste) / pvpNeto) * 100 : 0)
-      }, 0) / vinosConMargen.length)
+    ? Math.round(vinosConMargen.reduce((sum, vino) =>
+        sum + margenBrutoPct(decimal(vino.precio_botella), decimal(vino.coste_compra)), 0) / vinosConMargen.length)
     : 0
   const referenciasListas = vinosActivos.filter(vino =>
     decimal(vino.precio_botella) > 0 &&

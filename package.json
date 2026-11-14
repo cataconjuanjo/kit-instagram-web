@@ -34,7 +34,8 @@
     "test:confirm-modal": "node --test scripts/smoke-confirm-modal.mjs",
     "test:margen-bodega": "node --test scripts/margenBodega.test.mjs",
     "test:plan-access":   "node --test scripts/planAccess.test.mjs",
-    "test:qr-datauri":    "node --test scripts/qr-datauri.test.mjs"
+    "test:qr-datauri":    "node --test scripts/qr-datauri.test.mjs",
+    "test:margen-canonico":"node --test scripts/margenCanonico.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

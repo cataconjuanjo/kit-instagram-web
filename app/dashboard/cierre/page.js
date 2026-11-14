@@ -14,6 +14,7 @@ import { aplicarAjustesStock } from '../../lib/stockClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
+import { margenBrutoPct } from '../../lib/wineEconomics'
 
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
@@ -51,7 +52,8 @@ function margenPct(vino) {
   const precio = decimal(vino?.precio_botella)
   const coste = decimal(vino?.coste_compra)
   if (!precio || !coste) return null
-  return Math.round(((precio - coste) / precio) * 100)
+  // Canonico: margen sobre PVP SIN IVA (10% venta por defecto)
+  return Math.round(margenBrutoPct(precio, coste))
 }
 
 function distanciaPrecio(origen, candidato) {

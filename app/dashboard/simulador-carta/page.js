@@ -9,6 +9,7 @@ import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSel
 import { puedeUsar } from '../../lib/plans'
 import { normWine } from '../../lib/textNormalize'
 import { margenCopaPct } from '../../lib/pricingUtils'
+import { margenBrutoPct } from '../../lib/wineEconomics'
 import {
   agruparOfertasCatalogo,
   costePorBotella,
@@ -296,10 +297,11 @@ export default function SimuladorCarta() {
   const resumen = useMemo(() => {
     const activas = lineas.filter(l => l.estado !== 'fuera')
     const conMargen = activas.filter(l => Number(l.coste_compra) > 0 && Number(l.precio_botella) > 0)
+    // Canonico: margen sobre PVP SIN IVA via wineEconomics.margenBrutoPct (10% IVA default)
     const margenMedio = conMargen.length
       ? Math.round(
           conMargen.reduce((sum, l) =>
-            sum + ((Number(l.precio_botella) - Number(l.coste_compra)) / Number(l.precio_botella)) * 100, 0
+            sum + margenBrutoPct(Number(l.precio_botella), Number(l.coste_compra), economicSettings), 0
           ) / conMargen.length
         )
       : null
@@ -320,9 +322,10 @@ export default function SimuladorCarta() {
     function margenMedioOf(lista) {
       const v = lista.filter(l => Number(l.precio_botella) > 0 && Number(l.coste_compra) > 0)
       if (!v.length) return null
+      // Canonico: margen sobre PVP SIN IVA
       return Math.round(
         v.reduce((sum, l) =>
-          sum + ((Number(l.precio_botella) - Number(l.coste_compra)) / Number(l.precio_botella)) * 100, 0
+          sum + margenBrutoPct(Number(l.precio_botella), Number(l.coste_compra), economicSettings), 0
         ) / v.length
       )
     }
@@ -1150,7 +1153,7 @@ export default function SimuladorCarta() {
               }
             </span>
             <span className={simStyles.kpiHeroLabel}>Margen medio est.</span>
-            <span className={simStyles.kpiHeroHint}>{resumen.margenMedio !== null ? 'sobre PVP con IVA · solo activas con coste' : 'Registra el coste de tus vinos para ver el margen'}</span>
+            <span className={simStyles.kpiHeroHint}>{resumen.margenMedio !== null ? 'sobre PVP sin IVA · solo activas con coste' : 'Registra el coste de tus vinos para ver el margen'}</span>
           </div>
         </div>
 
