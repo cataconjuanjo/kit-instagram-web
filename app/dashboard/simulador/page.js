@@ -744,7 +744,7 @@ export default function SimuladorRentabilidad() {
                 ))}
               </div>
             ) : (
-              <div className={styles.empty}>Completa coste, PVP, stock o ventas para defender una accion rentable.</div>
+              <div className={styles.empty}>Completa coste, PVP, stock o ventas para defender una acción rentable.</div>
             )}
           </div>
         </section>
@@ -802,7 +802,7 @@ export default function SimuladorRentabilidad() {
                 ))}
               </div>
             ) : (
-              <div className={styles.empty}>Aun no hay escenarios guardados. Guarda uno cuando quieras llevar una propuesta a gerencia.</div>
+              <div className={styles.empty}>Aún no hay escenarios guardados. Guarda uno cuando quieras llevar una propuesta a gerencia.</div>
             )}
           </div>
         </section>

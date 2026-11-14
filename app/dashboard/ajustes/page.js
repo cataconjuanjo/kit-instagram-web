@@ -255,13 +255,13 @@ export default function AjustesHub() {
           <Link className={styles.hubCard} href="/dashboard/vinos">
             <p className={styles.eyebrow}>Base de bodega</p>
             <h2>Referencias</h2>
-            <p>Fichas, anadas, coste, proveedor, stock minimo y estado comercial.</p>
+            <p>Fichas, anadas, coste, proveedor, stock mínimo y estado comercial.</p>
             <span>Gestionar vinos</span>
           </Link>
           <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/bodega">
             <p className={styles.eyebrow}>Compra</p>
             <h2>Stock y pedido</h2>
-            <p>Bajo minimo, compra sugerida, movimientos y capital inmovilizado.</p>
+            <p>Bajo mínimo, compra sugerida, movimientos y capital inmovilizado.</p>
             <span>Ver bodega</span>
           </Link>
           <Link className={styles.hubCard} href="/dashboard/menu-engineering">
@@ -295,7 +295,7 @@ export default function AjustesHub() {
             <div className={styles.itemCard} style={{ marginBottom: 12 }}>
               <p className={styles.eyebrow}>Estado actual</p>
               <h3 className={styles.sectionTitle}>{actividadIniciada ? `Cuenta desde ${etiquetaActividadReal(restaurante)}` : 'Actividad real no iniciada'}</h3>
-              <p className={styles.sectionText}>No borra datos antiguos. Solo evita que el historico de pruebas se use para decisiones comerciales.</p>
+              <p className={styles.sectionText}>No borra datos antiguos. Solo evita que el histórico de pruebas se use para decisiones comerciales.</p>
             </div>
             {esAdmin && (
               <div className={styles.itemStack}>

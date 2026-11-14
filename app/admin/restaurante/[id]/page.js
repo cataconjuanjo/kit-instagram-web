@@ -1030,7 +1030,7 @@ export default function RestauranteWorkspace() {
             <div className="ws-header-actions">
               <button onClick={copiarResumen} aria-label="Copiar resumen del restaurante">Copiar datos</button>
               <button onClick={gestionar}>Abrir dashboard</button>
-              <button onClick={() => window.print()} aria-label="Imprimir esta pagina">Imprimir pagina</button>
+              <button onClick={() => window.print()} aria-label="Imprimir esta página">Imprimir página</button>
               <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Descargar informe</a>
               <OpenCartaPruebaButton restauranteId={restaurante.id}>Probar carta</OpenCartaPruebaButton>
             </div>
@@ -1160,7 +1160,7 @@ export default function RestauranteWorkspace() {
               <div>
                 <p className="admin-kicker">Fase 1 - Motor persistente</p>
                 <h3 className="ws-section-title">Consultoria inteligente</h3>
-                <p className="ws-match-sub">Calcula KPIs, guarda historico, detecta problemas, genera recomendaciones y clasifica referencias con datos de los ultimos 30 dias.</p>
+                <p className="ws-match-sub">Calcula KPIs, guarda histórico, detecta problemas, genera recomendaciones y clasifica referencias con datos de los últimos 30 dias.</p>
               </div>
               <button className="ws-btn-primary" onClick={recalcularConsultoriaFase1} disabled={recalculandoFase1}>
                 {recalculandoFase1 ? 'Recalculando...' : 'Recalcular y guardar'}
@@ -1255,7 +1255,7 @@ export default function RestauranteWorkspace() {
                       <div className="opportunity-engine">
                         <div className="opportunity-head">
                           <div>
-                            <h5>Oportunidad economica</h5>
+                            <h5>Oportunidad económica</h5>
                             <p>{consultoriaFase1.oportunidad.snapshot.resumen}</p>
                           </div>
                         </div>
@@ -1350,7 +1350,7 @@ export default function RestauranteWorkspace() {
                               <small>{Number(item.margen_bruto_pct).toFixed(1)}% margen - {Number(item.popularidad_pct).toFixed(1)}% popularidad</small>
                             </div>
                           ))}
-                          {!items.length && <p className="ws-empty-inline">Sin referencias en esta categoria.</p>}
+                          {!items.length && <p className="ws-empty-inline">Sin referencias en esta categoría.</p>}
                         </details>
                       )
                     })}
@@ -1438,7 +1438,7 @@ export default function RestauranteWorkspace() {
                     <div className="inventory-intelligence-head">
                       <div>
                         <h4>Inteligencia de carta</h4>
-                        <p>Lee productividad por referencia, concentracion de ventas, huecos de precio y bajo rendimiento.</p>
+                        <p>Lee productividad por referencia, concentración de ventas, huecos de precio y bajo rendimiento.</p>
                       </div>
                       <Link href="/dashboard/menu-engineering" className="ws-btn-secondary">Ver menu engineering</Link>
                     </div>
@@ -1811,7 +1811,7 @@ export default function RestauranteWorkspace() {
 
             <div className="ws-match-list">
               {vinosCatalogo.length === 0 && (
-                <div className="ws-empty-block">Aun no hay catalogos de proveedor cargados. Cuando subas tarifas, aqui apareceran cruces automaticos.</div>
+                <div className="ws-empty-block">Aún no hay catalogos de proveedor cargados. Cuando subas tarifas, aqui apareceran cruces automaticos.</div>
               )}
               {vinosCatalogo.length > 0 && matchesCatalogo.length === 0 && (
                 <div className="ws-empty-block">No hay coincidencias claras con los filtros actuales. Prueba otro proveedor o revisa nombres/bodegas del catalogo.</div>
@@ -2096,7 +2096,7 @@ export default function RestauranteWorkspace() {
               <h3 className="ws-section-title">Informe ejecutivo</h3>
               <div className="report-inline-actions">
                 <button type="button" onClick={copiarInformeEjecutivo}>Copiar resumen</button>
-                <button type="button" onClick={() => window.print()} aria-label="Imprimir esta pagina">Imprimir</button>
+                <button type="button" onClick={() => window.print()} aria-label="Imprimir esta página">Imprimir</button>
                 <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" className="ws-btn-secondary">Abrir version imprimible</a>
               </div>
             </div>

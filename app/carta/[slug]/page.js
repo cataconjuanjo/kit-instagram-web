@@ -2170,7 +2170,7 @@ export default function CartaPublica() {
       )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
-          <span>Vista cliente · Armonia</span>
+          <span>Vista cliente · Armonía</span>
           <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
         </div>
       )}

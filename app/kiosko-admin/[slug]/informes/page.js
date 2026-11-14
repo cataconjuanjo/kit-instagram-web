@@ -65,7 +65,7 @@ export default function InformesPage() {
 
         {!cargando && !error && informes.length === 0 && (
           <div style={{ background: '#fff', borderRadius: 12, padding: '40px 24px', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: '1.1rem', color: '#999' }}>Aun no hay informes generados</p>
+            <p style={{ margin: 0, fontSize: '1.1rem', color: '#999' }}>Aún no hay informes generados</p>
             <p style={{ margin: '8px 0 0', fontSize: '.82rem', color: '#bbb' }}>
               El primer informe se enviara el proximo martes a las 8:00
             </p>

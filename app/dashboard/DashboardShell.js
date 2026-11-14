@@ -759,7 +759,7 @@ export default function DashboardLayout({ children }) {
               <dl>
                 <div><dt>Ctrl+K</dt><dd>Busqueda global</dd></div>
                 <div><dt>Ctrl+N</dt><dd>Nuevo vino o plato segun contexto</dd></div>
-                <div><dt>Ctrl+E</dt><dd>Enfocar accion de edicion visible</dd></div>
+                <div><dt>Ctrl+E</dt><dd>Enfocar acción de edicion visible</dd></div>
                 <div><dt>Ctrl+S</dt><dd>Guardar formulario visible</dd></div>
                 <div><dt>Ctrl+1-5</dt><dd>{perfilSomm ? 'Inicio, Referencias, Precios, Explotación de bodega, Ajustes' : perfilBodega ? 'Inicio, Referencias, Bodega, Inventario, Ajustes' : 'Inicio, Carta, Sala, Bodega, Ajustes'}</dd></div>
                 <div><dt>?</dt><dd>Ver esta ayuda</dd></div>

@@ -581,7 +581,7 @@ export default function Platos() {
         <section className={styles.empty}>
           <div>
             <strong>Foco profesional</strong>
-            <p>Los datos que importan aqui son coste, proveedor, stock minimo, venta real, margen y capital inmovilizado por vino.</p>
+            <p>Los datos que importan aqui son coste, proveedor, stock mínimo, venta real, margen y capital inmovilizado por vino.</p>
           </div>
         </section>
       </ModuleShell>
@@ -874,7 +874,7 @@ export default function Platos() {
                 <input type="text" value={nuevoPlato.descripcion} onChange={e => setNuevoPlato({ ...nuevoPlato, descripcion: e.target.value })}
                   placeholder="Ej. deshuesado, salsa de PX, meloso, umami"
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-                <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta publica.</p>
+                <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta pública.</p>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
@@ -910,7 +910,7 @@ export default function Platos() {
           <div className={styles.toolbarSummary}>
             <p className={styles.resultCount}>{rangoPlatos} de {platosVisibles.length} platos</p>
             <label className={styles.pageSizeControl}>
-              <span>Por pagina</span>
+              <span>Por página</span>
               <select value={pageSizePlatos} onChange={e => { setPageSizePlatos(Number(e.target.value)); setPaginaPlatos(1) }}>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
@@ -960,7 +960,7 @@ export default function Platos() {
             <button type="button" onClick={() => ordenarPorPlato('descripcion')}>Pistas {ordenPlatos.key === 'descripcion' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <span />
             <input aria-label="Filtrar plato" value={filtrosColumnaPlatos.plato} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, plato: e.target.value }); setPaginaPlatos(1) }} placeholder="Filtrar plato" />
-            <input aria-label="Filtrar categoria" value={filtrosColumnaPlatos.categoria} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, categoria: e.target.value }); setPaginaPlatos(1) }} placeholder="Categoria" />
+            <input aria-label="Filtrar categoría" value={filtrosColumnaPlatos.categoria} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, categoria: e.target.value }); setPaginaPlatos(1) }} placeholder="Categoría" />
             <input aria-label="Filtrar precio" value={filtrosColumnaPlatos.precio} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, precio: e.target.value }); setPaginaPlatos(1) }} placeholder="Precio" />
             <input aria-label="Filtrar pistas de venta" value={filtrosColumnaPlatos.descripcion} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, descripcion: e.target.value }); setPaginaPlatos(1) }} placeholder="Pistas" />
             <button type="button" className={styles.clearFilters} onClick={() => { setFiltrosColumnaPlatos({ plato: '', categoria: '', precio: '', descripcion: '' }); setPaginaPlatos(1) }}>Limpiar</button>
@@ -1037,7 +1037,7 @@ export default function Platos() {
                         <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
                         <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-                        <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta publica.</p>
+                        <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta pública.</p>
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>

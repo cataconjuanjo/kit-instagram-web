@@ -299,7 +299,7 @@ export default function QRPage() {
       >
         <section className={styles.empty}>
           <div>
-            <strong>Sin carta publica</strong>
+            <strong>Sin carta pública</strong>
             <p>Para esta cuenta, los accesos utiles estan en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
           </div>
         </section>
@@ -408,7 +408,7 @@ export default function QRPage() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Revisar y publicar</h2>
-              <p className={styles.panelSub}>Lo minimo antes de poner el QR delante del cliente.</p>
+              <p className={styles.panelSub}>Lo mínimo antes de poner el QR delante del cliente.</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -426,7 +426,7 @@ export default function QRPage() {
               <article className={styles.itemCard}>
                 <div className={styles.sectionHead} style={{ margin: 0 }}>
                   <div>
-                    <h3 className={styles.sectionTitle}>Contenido minimo</h3>
+                    <h3 className={styles.sectionTitle}>Contenido mínimo</h3>
                     <p className={styles.sectionText}>
                       {contenidoCarta.loading
                         ? 'Comprobando vinos y precios...'
@@ -460,7 +460,7 @@ export default function QRPage() {
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>Enlace publico</h2>
+            <h2 className={styles.panelTitle}>Enlace público</h2>
             <p className={styles.panelSub}>Para WhatsApp, equipo de sala, imprenta o redes.</p>
           </div>
           <span className={styles.badge}>{destinoLabel}</span>

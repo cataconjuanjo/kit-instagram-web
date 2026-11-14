@@ -554,7 +554,7 @@ export default function Personalizar() {
       >
         <section className={styles.empty}>
           <div>
-            <strong>Sin escaparate publico</strong>
+            <strong>Sin escaparate público</strong>
             <p>Para esta cuenta, la identidad visual de carta se sustituye por control de referencias, inventario y decisiones economicas.</p>
           </div>
         </section>
@@ -632,7 +632,7 @@ export default function Personalizar() {
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Plantillas visuales</h2>
-            <p className={styles.panelSub}>Aplica un paquete completo de carta, hub y formato de precios. Despues puedes ajustar cualquier detalle.</p>
+            <p className={styles.panelSub}>Aplica un paquete completo de carta, hub y formato de precios. Después puedes ajustar cualquier detalle.</p>
           </div>
           <span className={styles.badge}>Carta + hub</span>
         </div>

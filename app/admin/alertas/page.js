@@ -202,7 +202,7 @@ export default function AdminAlertasPage() {
           </label>
           <label>
             Buscar
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Restaurante, alerta, accion..." />
+            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Restaurante, alerta, acción..." />
           </label>
         </div>
 

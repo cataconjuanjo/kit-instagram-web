@@ -1889,7 +1889,7 @@ export default function Estadisticas() {
       <section className={styles.panel} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>Implantacion de Armonia</h2>
+            <h2 className={styles.panelTitle}>Implantacion de Armonía</h2>
             <p className={styles.panelSub}>Mide si el restaurante esta consiguiendo que el cliente use las tres patas: por platos, recomendacion guiada y vino elegido.</p>
           </div>
           <span className={`${styles.trafficBadge} ${styles[estadoImplantacionArmonia.clase]}`}>
@@ -2496,7 +2496,7 @@ export default function Estadisticas() {
               <div>
                 <div className={styles.sectionHead}>
                   <div>
-                    <h3 className={styles.sectionTitle}>Accion rentable</h3>
+                    <h3 className={styles.sectionTitle}>Acción rentable</h3>
                     <p className={styles.sectionText}>Siguiente movimiento comercial respetando el encaje gastronomico.</p>
                   </div>
                 </div>
@@ -2523,7 +2523,7 @@ export default function Estadisticas() {
                     ))}
                   </div>
                 ) : (
-                  <div className={styles.empty}>Sin accion economica clara en este periodo.</div>
+                  <div className={styles.empty}>Sin acción económica clara en este periodo.</div>
                 )}
               </div>
             </section>

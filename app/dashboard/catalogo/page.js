@@ -155,7 +155,7 @@ export default function CatalogoProveedores() {
           <div className={styles.stat}><p className={styles.statValue}>{total}</p><p className={styles.statLabel}>Referencias encontradas</p></div>
           <div className={styles.stat}><p className={styles.statValue}>{proveedores.length}</p><p className={styles.statLabel}>Distribuidores</p></div>
           <div className={styles.stat}><p className={styles.statValue}>{margenMedio || '-' }%</p><p className={styles.statLabel}>Margen medio sugerido</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(valorCatalogo)}</p><p className={styles.statLabel}>Coste de esta pagina</p></div>
+          <div className={styles.stat}><p className={styles.statValue}>{eur(valorCatalogo)}</p><p className={styles.statLabel}>Coste de esta página</p></div>
         </section>
 
         <section className={styles.panel} style={{ marginBottom: 16 }}>
