@@ -53,6 +53,7 @@ import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import WineProfileRadarChart from '../../components/WineProfileRadarChart'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
@@ -2125,11 +2126,11 @@ export default function Camarero() {
                   <div className={styles.statsGrid}>
                     <div className={styles.stat}>
                       <p className={styles.statLabel}>Ticket comida</p>
-                      <p className={styles.statValue}>{ticketActualVenta.toFixed(2)} EUR</p>
+                      <p className={styles.statValue}>{formatoMoneda(ticketActualVenta, { decimales: 2, miles: 'always' })}</p>
                     </div>
                     <div className={styles.stat}>
                       <p className={styles.statLabel}>Botella lógica</p>
-                      <p className={styles.statValue}>{rangoActualVenta.min.toFixed(0)}-{rangoActualVenta.max.toFixed(0)} EUR</p>
+                      <p className={styles.statValue}>{formatoMoneda(rangoActualVenta.min, { decimales: 0, miles: 'always' })}-{formatoMoneda(rangoActualVenta.max, { decimales: 0, miles: 'always' })}</p>
                     </div>
                   </div>
                 )}
@@ -2254,7 +2255,7 @@ export default function Camarero() {
                             <button key={plato.id} type="button" onClick={() => alternarPlatoMesa(plato)}
                               className={`${styles.dishButton} ${seleccionado ? styles.dishSelected : ''}`}>
                               <span className={styles.dishName}>{plato.nombre}</span>
-                              <span className={styles.dishPrice}>{plato.precio ? `${Number(plato.precio).toFixed(2)} EUR` : plato.categoria || 'Carta'}</span>
+                              <span className={styles.dishPrice}>{plato.precio ? formatoMoneda(plato.precio, { decimales: 2, miles: 'always' }) : plato.categoria || 'Carta'}</span>
                             </button>
                           )
                         })}
@@ -2316,7 +2317,7 @@ export default function Camarero() {
                           {[
                             tipoLabel[recomendacionActivaVenta.vino.tipo],
                             recomendacionActivaVenta.vino.bodega,
-                            recomendacionActivaVenta.vino.precio_botella ? `${Number(recomendacionActivaVenta.vino.precio_botella).toFixed(0)} EUR` : null,
+                            recomendacionActivaVenta.vino.precio_botella ? formatoMoneda(recomendacionActivaVenta.vino.precio_botella, { decimales: 0, miles: 'always' }) : null,
                           ].filter(Boolean).join(' · ')}
                         </p>
                       </div>
@@ -2380,7 +2381,7 @@ export default function Camarero() {
                         <input inputMode="decimal" value={contextoServicio.ticket_mesa} onChange={e => actualizarContextoServicio('ticket_mesa', e.target.value)} placeholder="86" />
                       </label>
                       <p className={styles.serviceContextTotal}>
-                        {importeRapidoEstimado > 0 ? `${importeRapidoEstimado.toFixed(2)} EUR vino` : 'Sin precio'}
+                        {importeRapidoEstimado > 0 ? `${formatoMoneda(importeRapidoEstimado, { decimales: 2, miles: 'always' })} vino` : 'Sin precio'}
                       </p>
                     </div>
                     <div className={styles.quickActionGrid}>
@@ -2424,7 +2425,7 @@ export default function Camarero() {
                       <article key={item.plato.id || item.plato.nombre} className={styles.dishRecommendCard}>
                         <div className={styles.recommendMeta}>
                           <span className={styles.tag}>{item.label}</span>
-                          {item.plato.precio && <span className={styles.price}>{Number(item.plato.precio).toFixed(2)} EUR</span>}
+                          {item.plato.precio && <span className={styles.price}>{formatoMoneda(item.plato.precio, { decimales: 2, miles: 'always' })}</span>}
                         </div>
                         <h3>{item.plato.nombre}</h3>
                         {item.plato.descripcion && <p className={styles.dishDescription}>{item.plato.descripcion}</p>}
@@ -2646,11 +2647,11 @@ export default function Camarero() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 10 }}>
             <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: '10px 12px' }}>
               <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Ticket comida</p>
-              <p style={{ fontSize: 18, color: '#fff', margin: 0, fontWeight: 600 }}>{ticketActualVenta.toFixed(2)} EUR</p>
+              <p style={{ fontSize: 18, color: '#fff', margin: 0, fontWeight: 600 }}>{formatoMoneda(ticketActualVenta, { decimales: 2, miles: 'always' })}</p>
             </div>
             <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: '10px 12px' }}>
               <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Botella lógica</p>
-              <p style={{ fontSize: 18, color: '#fff', margin: 0, fontWeight: 600 }}>{rangoActualVenta.min.toFixed(0)}-{rangoActualVenta.max.toFixed(0)} EUR</p>
+              <p style={{ fontSize: 18, color: '#fff', margin: 0, fontWeight: 600 }}>{formatoMoneda(rangoActualVenta.min, { decimales: 0, miles: 'always' })}-{formatoMoneda(rangoActualVenta.max, { decimales: 0, miles: 'always' })}</p>
             </div>
           </div>
         )}

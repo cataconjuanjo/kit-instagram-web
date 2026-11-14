@@ -14,6 +14,7 @@ import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import ConfirmationDialog from '../ConfirmationDialog'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 const rasgosMaridaje = [
   { label: 'Brasa', texto: 'brasa' },
@@ -979,7 +980,7 @@ export default function Platos() {
                 }}>
                   <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
                   <p data-label="Categoria" style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
-                  <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
+                  <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? formatoMoneda(p.precio, { decimales: 2, miles: 'always' }) : '—'}</p>
                   <p data-label="Pistas" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
                   <div
                     className={`${styles.rowMenu}${menuPlato === p.id ? ' ' + styles.rowMenuOpen : ''}`}

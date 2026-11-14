@@ -23,6 +23,7 @@ import BotellaIcon from '../../components/icons/BotellaIcon'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
 import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
+import { formatoMoneda } from '../../lib/formatoEs'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import WineProfileRadarChart from '../../components/WineProfileRadarChart'
 import DuelCartaView from './DuelCartaView'
@@ -2575,7 +2576,7 @@ export default function CartaPublica() {
                         <h3 className={styles.dishName}>{p.nombre}</h3>
                       </div>
                       <div>
-                        {Number(p.precio) > 0 && <p className={styles.dishPrice}>{Number(p.precio).toFixed(2)} €</p>}
+                        {Number(p.precio) > 0 && <p className={styles.dishPrice}>{formatoMoneda(p.precio, { decimales: 2, miles: 'always' })}</p>}
                         <span className={styles.dishAdd} style={{ color: seleccionado ? colorPrimario : '#c7b99a' }}>
                           {seleccionado ? '✓' : '+'}
                         </span>
@@ -3060,7 +3061,7 @@ export default function CartaPublica() {
                           <p style={{ margin: 0, fontSize: 15, color: '#111', fontWeight: seleccionado ? 500 : 400 }}>{p.nombre}</p>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                          {Number(p.precio) > 0 && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#999' }}>{Number(p.precio).toFixed(2)} €</p>}
+                          {Number(p.precio) > 0 && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#999' }}>{formatoMoneda(p.precio, { decimales: 2, miles: 'always' })}</p>}
                           <span style={{ fontSize: 20, color: seleccionado ? colorPrimario : '#ddd', lineHeight: 1 }}>
                             {seleccionado ? '✓' : '+'}
                           </span>
