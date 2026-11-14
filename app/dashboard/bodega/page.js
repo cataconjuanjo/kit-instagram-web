@@ -224,7 +224,14 @@ export default function ControlBodega() {
     const hash = window.location.hash
     window.requestAnimationFrame(() => {
       if (hash === '#pedido') { setPedidoAbierto(true); return }
-      if (hash === '#propuestas') { setPanelAbierto('propuestas'); return }
+      if (hash === '#propuestas') {
+        setPanelAbierto('propuestas')
+        // Esperar al render del panel antes de hacer scroll al id.
+        window.requestAnimationFrame(() => {
+          document.getElementById('propuestas')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+        return
+      }
       const filtrosPorHash = {
         '#referencias-pendientes': 'pendientes',
         '#referencias-sin-coste': 'sin_coste',
