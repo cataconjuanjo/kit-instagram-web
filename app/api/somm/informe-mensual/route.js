@@ -72,6 +72,8 @@ export async function GET(req) {
     })
 
     const pctMp = facturacion > 0 ? (consumoMp / facturacion) * 100 : 0
+    const margenBruto = facturacion - consumoMp
+    const pctMargenBruto = facturacion > 0 ? (margenBruto / facturacion) * 100 : 0
     const be = calcularBreakEven(totalPersonal, totalGastos, totalAlquiler, totalBancarios, pctMp)
 
     // Generar PDF
@@ -105,7 +107,7 @@ export async function GET(req) {
     // Cabecera
     doc.setFillColor(26, 26, 26)
     doc.rect(0, 0, W, 28, 'F')
-    line('Carta Viva Somm', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
+    line('Carta Viva', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
     line('Informe de Explotación Mensual', margin, 18, { size: 9, color: [180, 170, 155] })
     line(nombreMes(periodo), W - margin, 11, { size: 12, bold: true, color: [255, 255, 255], align: 'right' })
     if (restaurante?.nombre) {
@@ -131,7 +133,7 @@ export async function GET(req) {
     const filas = [
       { label: 'Facturación', value: formatEur(facturacion), pct: null, bold: true },
       { label: '− Consumo Materia Prima', value: formatEur(consumoMp), pct: resultado.pctMp, negativo: true },
-      { label: '= Margen Bruto', value: formatEur(resultado.margenBruto), pct: resultado.pctMargenBruto, bold: true },
+      { label: '= Margen Bruto', value: formatEur(margenBruto), pct: pctMargenBruto, bold: true },
       { label: '− Personal', value: formatEur(totalPersonal), pct: resultado.pctPersonal, negativo: true },
       { label: '− Gastos Operacionales', value: formatEur(totalGastos), pct: resultado.pctGenerales, negativo: true },
       { label: '− Alquileres', value: formatEur(totalAlquiler), pct: resultado.pctAlquiler, negativo: true },
@@ -160,16 +162,16 @@ export async function GET(req) {
     y += 7
 
     // Resultado explotación
-    const margenPositivo = resultado.margenExplotacion >= 0
+    const margenPositivo = resultado.resultado >= 0
     doc.setFillColor(margenPositivo ? 240 : 255, margenPositivo ? 248 : 240, margenPositivo ? 240 : 240)
     doc.rect(margin, y - 5, W - margin * 2, 10, 'F')
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(margenPositivo ? 30 : 200, margenPositivo ? 130 : 50, margenPositivo ? 30 : 50)
     doc.text('= Margen de Explotación', margin + 2, y)
-    doc.text(formatEur(resultado.margenExplotacion), W - margin - 30, y, { align: 'right' })
+    doc.text(formatEur(resultado.resultado), W - margin - 30, y, { align: 'right' })
     doc.setFontSize(10)
-    doc.text(formatPct(resultado.pctMargenExplotacion), W - margin, y, { align: 'right' })
+    doc.text(formatPct(resultado.pctResultado), W - margin, y, { align: 'right' })
     y += 14
 
     // Break-Even
@@ -222,7 +224,7 @@ export async function GET(req) {
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(180, 170, 155)
-    doc.text(`Generado el ${fechaGeneracion} · Carta Viva Somm`, margin, 287)
+    doc.text(`Generado el ${fechaGeneracion} · Carta Viva`, margin, 287)
     doc.text('Confidencial', W - margin, 287, { align: 'right' })
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'))

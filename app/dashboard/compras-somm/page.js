@@ -512,13 +512,11 @@ export default function ComprasSomm() {
                   {nombreMes(p)}
                 </button>
               ))}
-              {esPerfilSomm(restaurante) && (
-                <ExportarExcelCompras
-                  registros={registros}
-                  periodoFiltro={periodoFiltro}
-                  restauranteNombre={restaurante?.nombre}
-                />
-              )}
+              <ExportarExcelCompras
+                registros={registros}
+                periodoFiltro={periodoFiltro}
+                restauranteNombre={restaurante?.nombre}
+              />
             </div>
             <TablaFacturas
               registros={registros}

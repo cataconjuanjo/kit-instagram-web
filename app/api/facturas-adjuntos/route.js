@@ -11,8 +11,8 @@ async function requireSumiller(restauranteId) {
     .select('plan')
     .eq('id', restauranteId)
     .single()
-  if (rest?.plan !== 'sumiller') {
-    return { error: 'Solo disponible para plan sumiller.', status: 403 }
+  if (rest?.plan !== 'sumiller' && rest?.plan !== 'premium') {
+    return { error: 'Solo disponible para los planes Somm y Acompañado.', status: 403 }
   }
   return null
 }

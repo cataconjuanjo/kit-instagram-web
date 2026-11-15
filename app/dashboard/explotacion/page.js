@@ -30,6 +30,20 @@ import {
   CATEGORIAS_GASTOS_PRESET,
 } from '../../lib/sommExplotacion'
 
+async function apiFetch(path, opts = {}) {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token || ''
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  })
+  return res
+}
+
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 function periodoHoy() {
@@ -444,6 +458,39 @@ function ExplotacionContent() {
   })
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [pdfCargando, setPdfCargando] = useState(false)
+  const [pdfError, setPdfError] = useState('')
+
+  async function descargarPdf() {
+    if (!restaurante?.id || pdfCargando) return
+    setPdfError('')
+    setPdfCargando(true)
+    try {
+      const url = `/api/somm/informe-mensual?restaurante_id=${restaurante.id}&periodo=${periodo}`
+      const res = await apiFetch(url, { method: 'GET' })
+      if (!res.ok) {
+        let msg = `No se pudo generar el PDF (${res.status}).`
+        try {
+          const body = await res.json()
+          if (body?.error) msg = body.error
+        } catch {}
+        throw new Error(msg)
+      }
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = `informe-explotacion-${periodo}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      setPdfError(err?.message || 'Error al descargar el PDF.')
+    } finally {
+      setPdfCargando(false)
+    }
+  }
 
   // Datos de la P&L
   const [facturacion, setFacturacion] = useState('')
@@ -740,24 +787,27 @@ function ExplotacionContent() {
                 Mes sin cerrar: los datos son entrada manual
               </span>
             )}
-            <a
-              href={restaurante ? `/api/somm/informe-mensual?restaurante_id=${restaurante.id}&periodo=${periodo}` : '#'}
-              download
+            <button
+              type="button"
+              onClick={descargarPdf}
+              disabled={!restaurante || pdfCargando}
               style={{
                 padding: '8px 16px',
                 border: '1px solid #d8d3c8',
                 borderRadius: 6,
                 fontSize: 13,
                 color: '#444',
-                textDecoration: 'none',
                 background: '#fff',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                cursor: (!restaurante || pdfCargando) ? 'not-allowed' : 'pointer',
+                opacity: (!restaurante || pdfCargando) ? 0.6 : 1,
               }}
             >
-              ↓ PDF
-            </a>
+              {pdfCargando ? 'Generando…' : '↓ PDF'}
+            </button>
+            {pdfError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{pdfError}</span>}
             {guardado && <span style={{ fontSize: 13, color: '#27ae60' }}>Guardado ✓</span>}
           </div>
         }
