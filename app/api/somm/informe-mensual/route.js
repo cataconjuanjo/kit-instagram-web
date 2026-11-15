@@ -12,12 +12,36 @@ import {
 
 function num(v) { return Number(v) || 0 }
 
+// Las fuentes estándar de jsPDF (helvetica) sólo cubren WinAnsi-1252.
+// Si cae un carácter fuera (signo "−" U+2212, en/em dashes, comillas curvas,
+// espacios finos o no separables) jsPDF cambia el stream de esa línea a
+// UTF-16 y el texto se renderiza con separaciones raras o glifos .
+// ascii() sanea las cadenas antes de pintarlas.
+function ascii(txt) {
+  if (txt == null) return ''
+  return String(txt)
+    .replace(/[−‐‑–—]/g, '-')  // minus, hyphen, en-dash, em-dash
+    .replace(/[‘’‚′]/g, "'")        // smart single quotes
+    .replace(/[“”„″]/g, '"')        // smart double quotes
+    .replace(/[    ]/g, ' ')        // thin / nbsp spaces
+}
+
 function formatEur(n) {
-  return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0) + ' €'
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '0,00 €'
+  const abs = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(Math.abs(v))
+  return ascii((v < 0 ? '-' : '') + abs) + ' €'
 }
 
 function formatPct(n) {
-  return (n !== null && n !== undefined) ? n.toFixed(1) + '%' : '—'
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return '-'
+  const v = Number(n)
+  const abs = Math.abs(v).toFixed(1).replace('.', ',')
+  return (v < 0 ? '-' : '') + abs + ' %'
 }
 
 function nombreMes(periodo) {
@@ -87,7 +111,7 @@ export async function GET(req) {
       doc.setFontSize(size)
       doc.setFont('helvetica', bold ? 'bold' : 'normal')
       doc.setTextColor(...color)
-      doc.text(text, x, yPos, { align })
+      doc.text(ascii(text), x, yPos, { align })
     }
 
     function hrule(yPos, color = [220, 215, 200]) {
@@ -104,9 +128,11 @@ export async function GET(req) {
       }
     }
 
-    // Cabecera
+    // Cabecera (banda negra + línea fina de acento dorado)
     doc.setFillColor(26, 26, 26)
     doc.rect(0, 0, W, 28, 'F')
+    doc.setFillColor(201, 168, 106)
+    doc.rect(0, 28, W, 1.2, 'F')
     line('Carta Viva', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
     line('Informe de Explotación Mensual', margin, 18, { size: 9, color: [180, 170, 155] })
     line(nombreMes(periodo), W - margin, 11, { size: 12, bold: true, color: [255, 255, 255], align: 'right' })
@@ -132,19 +158,28 @@ export async function GET(req) {
 
     const filas = [
       { label: 'Facturación', value: formatEur(facturacion), pct: null, bold: true },
-      { label: '− Consumo Materia Prima', value: formatEur(consumoMp), pct: resultado.pctMp, negativo: true },
+      { label: '- Consumo Materia Prima', value: formatEur(consumoMp), pct: resultado.pctMp, negativo: true },
       { label: '= Margen Bruto', value: formatEur(margenBruto), pct: pctMargenBruto, bold: true },
-      { label: '− Personal', value: formatEur(totalPersonal), pct: resultado.pctPersonal, negativo: true },
-      { label: '− Gastos Operacionales', value: formatEur(totalGastos), pct: resultado.pctGenerales, negativo: true },
-      { label: '− Alquileres', value: formatEur(totalAlquiler), pct: resultado.pctAlquiler, negativo: true },
-      { label: '− Gastos Bancarios', value: formatEur(totalBancarios), pct: resultado.pctBancarios, negativo: true },
+      { label: '- Personal', value: formatEur(totalPersonal), pct: resultado.pctPersonal, negativo: true },
+      { label: '- Gastos Operacionales', value: formatEur(totalGastos), pct: resultado.pctGenerales, negativo: true },
+      { label: '- Alquileres', value: formatEur(totalAlquiler), pct: resultado.pctAlquiler, negativo: true },
+      { label: '- Gastos Bancarios', value: formatEur(totalBancarios), pct: resultado.pctBancarios, negativo: true },
     ]
 
-    for (const f of filas) {
+    filas.forEach((f, idx) => {
+      // Línea separadora reforzada antes de cada total (bold) que no sea el primero.
+      if (f.bold && idx > 0) {
+        hrule(y - 4, [210, 200, 180])
+      }
+      // Fondo alternado suave (zebra) en filas pares.
+      if (idx % 2 === 1) {
+        doc.setFillColor(250, 248, 243)
+        doc.rect(margin - 2, y - 5, W - margin * 2 + 4, 7, 'F')
+      }
       doc.setFontSize(10)
       doc.setFont('helvetica', f.bold ? 'bold' : 'normal')
       doc.setTextColor(30, 30, 30)
-      doc.text(f.label, margin, y)
+      doc.text(ascii(f.label), margin, y)
       doc.text(f.value, W - margin - 30, y, { align: 'right' })
       if (f.pct !== null && f.pct !== undefined) {
         doc.setFontSize(9)
@@ -155,24 +190,40 @@ export async function GET(req) {
       if (f.bold) {
         hrule(y - 2, [235, 230, 220])
       }
-    }
+    })
 
     y += 2
     hrule(y, [26, 26, 26])
     y += 7
 
-    // Resultado explotación
+    // Resultado explotación: caja destacada en verde (positivo) o rojo (negativo)
     const margenPositivo = resultado.resultado >= 0
-    doc.setFillColor(margenPositivo ? 240 : 255, margenPositivo ? 248 : 240, margenPositivo ? 240 : 240)
-    doc.rect(margin, y - 5, W - margin * 2, 10, 'F')
+    // Fondo de la caja (tinte suave)
+    doc.setFillColor(
+      margenPositivo ? 232 : 253,
+      margenPositivo ? 244 : 235,
+      margenPositivo ? 232 : 235,
+    )
+    doc.rect(margin, y - 6, W - margin * 2, 12, 'F')
+    // Barra lateral del color principal para reforzar el signo
+    doc.setFillColor(
+      margenPositivo ? 39 : 220,
+      margenPositivo ? 160 : 60,
+      margenPositivo ? 80 : 60,
+    )
+    doc.rect(margin, y - 6, 1.6, 12, 'F')
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(margenPositivo ? 30 : 200, margenPositivo ? 130 : 50, margenPositivo ? 30 : 50)
-    doc.text('= Margen de Explotación', margin + 2, y)
+    doc.setTextColor(
+      margenPositivo ? 18 : 170,
+      margenPositivo ? 110 : 40,
+      margenPositivo ? 45 : 40,
+    )
+    doc.text(ascii('= Margen de Explotación'), margin + 4, y)
     doc.text(formatEur(resultado.resultado), W - margin - 30, y, { align: 'right' })
     doc.setFontSize(10)
     doc.text(formatPct(resultado.pctResultado), W - margin, y, { align: 'right' })
-    y += 14
+    y += 16
 
     // Break-Even
     line('PUNTO DE EQUILIBRIO', margin, y, { size: 8, bold: true, color: [150, 140, 130] })
@@ -214,17 +265,17 @@ export async function GET(req) {
       if (desvFact !== null) {
         const color = desvFact >= 0 ? [39, 174, 96] : [231, 76, 60]
         line('Desviación', margin, y)
-        line(`${desvFact >= 0 ? '+' : ''}${desvFact.toFixed(1)}%`, W - margin, y, { align: 'right', color })
+        line(`${desvFact >= 0 ? '+' : ''}${formatPct(desvFact)}`, W - margin, y, { align: 'right', color })
         y += 7
       }
     }
 
     // Pie de página
-    const fechaGeneracion = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+    const fechaGeneracion = ascii(new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }))
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(180, 170, 155)
-    doc.text(`Generado el ${fechaGeneracion} · Carta Viva`, margin, 287)
+    doc.text(ascii(`Generado el ${fechaGeneracion} · Carta Viva`), margin, 287)
     doc.text('Confidencial', W - margin, 287, { align: 'right' })
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
