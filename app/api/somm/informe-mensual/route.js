@@ -128,9 +128,11 @@ export async function GET(req) {
       }
     }
 
-    // Cabecera
+    // Cabecera (banda negra + línea fina de acento dorado)
     doc.setFillColor(26, 26, 26)
     doc.rect(0, 0, W, 28, 'F')
+    doc.setFillColor(201, 168, 106)
+    doc.rect(0, 28, W, 1.2, 'F')
     line('Carta Viva', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
     line('Informe de Explotación Mensual', margin, 18, { size: 9, color: [180, 170, 155] })
     line(nombreMes(periodo), W - margin, 11, { size: 12, bold: true, color: [255, 255, 255], align: 'right' })
@@ -164,7 +166,16 @@ export async function GET(req) {
       { label: '- Gastos Bancarios', value: formatEur(totalBancarios), pct: resultado.pctBancarios, negativo: true },
     ]
 
-    for (const f of filas) {
+    filas.forEach((f, idx) => {
+      // Línea separadora reforzada antes de cada total (bold) que no sea el primero.
+      if (f.bold && idx > 0) {
+        hrule(y - 4, [210, 200, 180])
+      }
+      // Fondo alternado suave (zebra) en filas pares.
+      if (idx % 2 === 1) {
+        doc.setFillColor(250, 248, 243)
+        doc.rect(margin - 2, y - 5, W - margin * 2 + 4, 7, 'F')
+      }
       doc.setFontSize(10)
       doc.setFont('helvetica', f.bold ? 'bold' : 'normal')
       doc.setTextColor(30, 30, 30)
@@ -179,24 +190,40 @@ export async function GET(req) {
       if (f.bold) {
         hrule(y - 2, [235, 230, 220])
       }
-    }
+    })
 
     y += 2
     hrule(y, [26, 26, 26])
     y += 7
 
-    // Resultado explotación
+    // Resultado explotación: caja destacada en verde (positivo) o rojo (negativo)
     const margenPositivo = resultado.resultado >= 0
-    doc.setFillColor(margenPositivo ? 240 : 255, margenPositivo ? 248 : 240, margenPositivo ? 240 : 240)
-    doc.rect(margin, y - 5, W - margin * 2, 10, 'F')
+    // Fondo de la caja (tinte suave)
+    doc.setFillColor(
+      margenPositivo ? 232 : 253,
+      margenPositivo ? 244 : 235,
+      margenPositivo ? 232 : 235,
+    )
+    doc.rect(margin, y - 6, W - margin * 2, 12, 'F')
+    // Barra lateral del color principal para reforzar el signo
+    doc.setFillColor(
+      margenPositivo ? 39 : 220,
+      margenPositivo ? 160 : 60,
+      margenPositivo ? 80 : 60,
+    )
+    doc.rect(margin, y - 6, 1.6, 12, 'F')
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(margenPositivo ? 30 : 200, margenPositivo ? 130 : 50, margenPositivo ? 30 : 50)
-    doc.text(ascii('= Margen de Explotación'), margin + 2, y)
+    doc.setTextColor(
+      margenPositivo ? 18 : 170,
+      margenPositivo ? 110 : 40,
+      margenPositivo ? 45 : 40,
+    )
+    doc.text(ascii('= Margen de Explotación'), margin + 4, y)
     doc.text(formatEur(resultado.resultado), W - margin - 30, y, { align: 'right' })
     doc.setFontSize(10)
     doc.text(formatPct(resultado.pctResultado), W - margin, y, { align: 'right' })
-    y += 14
+    y += 16
 
     // Break-Even
     line('PUNTO DE EQUILIBRIO', margin, y, { size: 8, bold: true, color: [150, 140, 130] })
