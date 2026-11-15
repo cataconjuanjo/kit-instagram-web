@@ -107,7 +107,7 @@ export async function GET(req) {
     // Cabecera
     doc.setFillColor(26, 26, 26)
     doc.rect(0, 0, W, 28, 'F')
-    line('Carta Viva Somm', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
+    line('Carta Viva', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
     line('Informe de Explotación Mensual', margin, 18, { size: 9, color: [180, 170, 155] })
     line(nombreMes(periodo), W - margin, 11, { size: 12, bold: true, color: [255, 255, 255], align: 'right' })
     if (restaurante?.nombre) {
@@ -224,7 +224,7 @@ export async function GET(req) {
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(180, 170, 155)
-    doc.text(`Generado el ${fechaGeneracion} · Carta Viva Somm`, margin, 287)
+    doc.text(`Generado el ${fechaGeneracion} · Carta Viva`, margin, 287)
     doc.text('Confidencial', W - margin, 287, { align: 'right' })
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
