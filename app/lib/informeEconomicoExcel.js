@@ -49,62 +49,58 @@ function construirSheetResumen({
 
   // Filas; la fila 1 de Excel es el header, así que las data rows empiezan en 2.
   // Los índices que uso en las fórmulas son los de la columna "valor" = B.
+  // Convención del dominio (ver excelSomm.js): las fórmulas se pasan a
+  // ExcelJS SIN "=" inicial. El "=" lo añade Excel al mostrarlas; si lo
+  // incluimos acaba literal en <f>=...</f> y rompe el recálculo.
   const rowsPL = []
   // Fila 2: Facturación (siempre 100%)
   rowsPL.push({
     concepto: 'Facturación',
     valor: facturacion,
-    pct: { formula: '=B2/B2', result: facturacion > 0 ? 1 : 0 },
+    pct: { formula: 'B2/B2', result: facturacion > 0 ? 1 : 0 },
   })
   // Fila 3: Consumo MP
   rowsPL.push({
     concepto: '- Consumo de materia prima',
     valor: consumoMp,
-    pct: { formula: '=B3/B2', result: ratio(consumoMp) },
+    pct: { formula: 'B3/B2', result: ratio(consumoMp) },
   })
   // Fila 4: Margen Bruto (fórmula)
   rowsPL.push({
     concepto: '= Margen bruto',
-    valor: { formula: '=B2-B3', result: margenBruto },
-    pct: { formula: '=B4/B2', result: ratio(margenBruto) },
+    valor: { formula: 'B2-B3', result: margenBruto },
+    pct: { formula: 'B4/B2', result: ratio(margenBruto) },
   })
 
   const rowsExtra = []
-  let resultadoFormula
-  if (esSomm) {
-    // Perfil Somm: la pantalla sólo habla de bodega (no personal/alquileres).
-    // No metemos las filas de Personal/Gastos/Alquiler/Bancarios ni el
-    // resultado de explotación global (que no tiene sentido sin esos costes).
-    resultadoFormula = null
-  } else {
+  if (!esSomm) {
     // Filas 5–8: Personal, Gastos, Alquileres, Bancarios
     rowsExtra.push({
       concepto: '- Personal',
       valor: totalPersonal,
-      pct: { formula: '=B5/B2', result: ratio(totalPersonal) },
+      pct: { formula: 'B5/B2', result: ratio(totalPersonal) },
     })
     rowsExtra.push({
       concepto: '- Gastos operacionales',
       valor: totalGastos,
-      pct: { formula: '=B6/B2', result: ratio(totalGastos) },
+      pct: { formula: 'B6/B2', result: ratio(totalGastos) },
     })
     rowsExtra.push({
       concepto: '- Alquileres',
       valor: totalAlquiler,
-      pct: { formula: '=B7/B2', result: ratio(totalAlquiler) },
+      pct: { formula: 'B7/B2', result: ratio(totalAlquiler) },
     })
     rowsExtra.push({
       concepto: '- Gastos bancarios',
       valor: totalBancarios,
-      pct: { formula: '=B8/B2', result: ratio(totalBancarios) },
+      pct: { formula: 'B8/B2', result: ratio(totalBancarios) },
     })
     // Fila 9: Resultado de explotación
     rowsExtra.push({
       concepto: '= Resultado de explotación',
-      valor: { formula: '=B4-B5-B6-B7-B8', result: resultadoNum },
-      pct: { formula: '=B9/B2', result: ratio(resultadoNum) },
+      valor: { formula: 'B4-B5-B6-B7-B8', result: resultadoNum },
+      pct: { formula: 'B9/B2', result: ratio(resultadoNum) },
     })
-    resultadoFormula = true
   }
 
   const rows = [...rowsPL, ...rowsExtra]
@@ -149,7 +145,7 @@ function construirSheetPersonal(personal) {
     { concepto: 'Seguridad Social (empresa)',   valor: ss },
     { concepto: 'Extras y horas complementarias', valor: extras },
     { concepto: 'Total personal',
-      valor: { formula: '=SUM(B2:B4)', result: totalPersonal } },
+      valor: { formula: 'SUM(B2:B4)', result: totalPersonal } },
     { concepto: 'Retenciones IRPF (informativo, no suma)', valor: retenciones },
   ]
   return {
@@ -245,38 +241,50 @@ function construirSheetCompras({ registrosCompras, periodo, restauranteNombre })
 
 // ── Hoja "Canales" ─────────────────────────────────────────────────────────
 
-function construirSheetCanales({ canales, facturacion }) {
+function construirSheetCanales({ canales }) {
   const canalesDef = [
     { key: 'copa_barra',      label: 'Copa en barra' },
     { key: 'botella_mesa',    label: 'Botella en mesa' },
     { key: 'grupos_eventos',  label: 'Grupos / Eventos' },
     { key: 'take_away',       label: 'Para llevar' },
   ]
-  const rows = canalesDef.map((c, i) => {
-    const importe = r2(num(canales?.[c.key]))
-    const fila = i + 2  // fila 1 es header, canal 1 → fila 2
-    return {
-      canal: c.label,
-      importe,
-      // % sobre facturación total, no sobre la suma de canales (así casa
-      // con la pantalla de Explotación que compara con la facturación real).
-      pct: facturacion > 0
-        ? { formula: `=B${fila}/B${canalesDef.length + 3}`, result: r4(importe / facturacion) }
-        : 0,
+  // 1) Importes crudos por canal.
+  const rawRows = canalesDef.map(c => ({
+    canal: c.label,
+    importe: r2(num(canales?.[c.key])),
+  }))
+  // 2) TOTAL y layout de celdas. Header en fila 1, canales en 2..nFilas+1,
+  //    fila TOTAL en nFilas+2. Para 4 canales ⇒ TOTAL en fila 6.
+  const nFilas   = rawRows.length
+  const totalRow = nFilas + 2
+  const totalImporte = r2(rawRows.reduce((s, r) => s + r.importe, 0))
+
+  // 3) % por canal = importe / TOTAL de canales. Si todos los canales están
+  //    asignados a la facturación, coincide con % s/facturación. Si no,
+  //    el TOTAL siempre suma 100 %, que es lo que espera el lector del
+  //    informe (el detalle del reparto dentro del vino).
+  const rows = rawRows.map((r, i) => {
+    const fila = i + 2
+    if (totalImporte > 0) {
+      return {
+        ...r,
+        pct: {
+          formula: `B${fila}/B${totalRow}`,
+          result: r4(r.importe / totalImporte),
+        },
+      }
     }
+    return { ...r, pct: 0 }
   })
-  const totalImporte = r2(rows.reduce((s, r) => s + num(r.importe), 0))
-  const nFilas = rows.length  // 4
-  // Totales: fila 6 (header=1 + 4 canales + 1 total = 6). La referencia de
-  // "facturación total" para el % va a esa misma fila 6 (B6).
+
   const totals = {
     canal: 'TOTAL',
     importe: {
       formula: `SUM(B2:B${nFilas + 1})`,
       result: totalImporte,
     },
-    pct: facturacion > 0
-      ? { formula: `=B${nFilas + 2}/B${nFilas + 2}`, result: totalImporte > 0 && facturacion > 0 ? r4(totalImporte / facturacion) : 0 }
+    pct: totalImporte > 0
+      ? { formula: `B${totalRow}/B${totalRow}`, result: 1 }
       : 0,
   }
   return {
@@ -284,7 +292,7 @@ function construirSheetCanales({ canales, facturacion }) {
     columns: [
       { header: 'Canal',        key: 'canal',   width: 22 },
       { header: 'Importe (€)',  key: 'importe', width: 14, format: FMT_EUR },
-      { header: '% s/fact.',    key: 'pct',     width: 12, format: FMT_PCT },
+      { header: '%',            key: 'pct',     width: 10, format: FMT_PCT },
     ],
     rows,
     totals,
@@ -379,7 +387,7 @@ export function construirInformeEconomicoWorkbook({
   const sheetCompras = construirSheetCompras({ registrosCompras, periodo, restauranteNombre })
   if (sheetCompras) sheets.push(sheetCompras)
 
-  sheets.push(construirSheetCanales({ canales, facturacion: fact }))
+  sheets.push(construirSheetCanales({ canales }))
 
   const sheetCierre = construirSheetCierre({ datosVino })
   if (sheetCierre) sheets.push(sheetCierre)
