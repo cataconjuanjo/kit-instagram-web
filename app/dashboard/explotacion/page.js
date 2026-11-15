@@ -29,6 +29,8 @@ import {
   compararConBenchmark,
   CATEGORIAS_GASTOS_PRESET,
 } from '../../lib/sommExplotacion'
+import { construirInformeEconomicoWorkbook } from '../../lib/informeEconomicoExcel'
+import { descargarWorkbook } from '../../lib/excelSommDownload'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -460,6 +462,8 @@ function ExplotacionContent() {
   const [guardado, setGuardado] = useState(false)
   const [pdfCargando, setPdfCargando] = useState(false)
   const [pdfError, setPdfError] = useState('')
+  const [excelCargando, setExcelCargando] = useState(false)
+  const [excelError, setExcelError] = useState('')
 
   async function descargarPdf() {
     if (!restaurante?.id || pdfCargando) return
@@ -489,6 +493,47 @@ function ExplotacionContent() {
       setPdfError(err?.message || 'Error al descargar el PDF.')
     } finally {
       setPdfCargando(false)
+    }
+  }
+
+  async function descargarExcelInforme() {
+    if (!restaurante?.id || excelCargando) return
+    setExcelError('')
+    setExcelCargando(true)
+    try {
+      // Las compras del periodo no están en estado: se cargan bajo demanda.
+      // RLS de libro_compras ya filtra por restaurante.
+      const { data: regsCompras, error: errCompras } = await supabase
+        .from('libro_compras')
+        .select('id, proveedor, periodo, facturas')
+        .eq('restaurante_id', restaurante.id)
+        .eq('periodo', periodo)
+      if (errCompras) throw new Error(errCompras.message || 'No se pudieron cargar las compras del periodo.')
+
+      const spec = construirInformeEconomicoWorkbook({
+        restauranteNombre: restaurante?.nombre_comercial || restaurante?.nombre || restaurante?.slug || 'restaurante',
+        periodo,
+        esSomm,
+        facturacion: num(facturacion),
+        consumoMp: num(consumoMp),
+        totalPersonal: totales.totalPersonal,
+        totalGastos: totales.totalGastos,
+        totalAlquiler: totales.totalAlquiler,
+        totalBancarios: totales.totalBancarios,
+        breakEven: totales.breakEven,
+        personal,
+        gastosPartidas,
+        alquilerPartidas,
+        bancarios,
+        canales,
+        registrosCompras: regsCompras || [],
+        datosVino,
+      })
+      await descargarWorkbook(spec)
+    } catch (err) {
+      setExcelError(err?.message || 'Error al generar el Excel.')
+    } finally {
+      setExcelCargando(false)
     }
   }
 
@@ -807,7 +852,29 @@ function ExplotacionContent() {
             >
               {pdfCargando ? 'Generando…' : '↓ PDF'}
             </button>
+            <button
+              type="button"
+              onClick={descargarExcelInforme}
+              disabled={!restaurante || excelCargando}
+              title="Descargar informe económico del periodo en Excel (varias hojas)"
+              style={{
+                padding: '8px 16px',
+                border: '1px solid #d8d3c8',
+                borderRadius: 6,
+                fontSize: 13,
+                color: '#444',
+                background: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: (!restaurante || excelCargando) ? 'not-allowed' : 'pointer',
+                opacity: (!restaurante || excelCargando) ? 0.6 : 1,
+              }}
+            >
+              {excelCargando ? 'Generando…' : 'Informe económico (Excel)'}
+            </button>
             {pdfError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{pdfError}</span>}
+            {excelError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{excelError}</span>}
             {guardado && <span style={{ fontSize: 13, color: '#27ae60' }}>Guardado ✓</span>}
           </div>
         }
