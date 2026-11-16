@@ -27,6 +27,7 @@ import {
   diferencialCopaVsBotella,
 } from '../../lib/sommPricing'
 import { calcularTotalPersonal, calcularTotalGastos, calcularTotalAlquiler, calcularTotalBancarios, calcularTotalFijos } from '../../lib/sommExplotacion'
+import { imputarParametros } from '../../lib/imputacionBodega'
 
 const TABS = [
   { id: 'simulador', label: 'Simulador multiplicador' },
@@ -75,17 +76,37 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
 
   useEffect(() => {
     async function cargar() {
-      const { data } = await supabase
+      // Intentamos leer también imputacion_pct. Si la columna no existe
+      // en BD (SQL pendiente), PostgREST devuelve 42703: en ese caso
+      // hacemos fallback al SELECT anterior sin imputacion_pct. El
+      // resto del flujo usa imputarParametros, que con imputacion_pct
+      // ausente devuelve los importes tal cual (comportamiento actual).
+      const CAMPOS_BASE = 'nominas_brutas, ss_empresa, retenciones_irpf, extras_personal, partidas_alquiler, partidas_gastos, comisiones_datafono, mantenimiento_datafono, resto_comisiones, beneficio_objetivo, ventas_previstas'
+      let { data, error } = await supabase
         .from('parametros_explotacion')
-        .select('nominas_brutas, ss_empresa, retenciones_irpf, extras_personal, partidas_alquiler, partidas_gastos, comisiones_datafono, mantenimiento_datafono, resto_comisiones, beneficio_objetivo, ventas_previstas')
+        .select(`${CAMPOS_BASE}, imputacion_pct`)
         .eq('restaurante_id', restauranteId)
         .eq('periodo', PERIODO_HOY)
         .maybeSingle()
+      if (error && (error.code === '42703' || /imputacion_pct/i.test(error.message || ''))) {
+        const retry = await supabase
+          .from('parametros_explotacion')
+          .select(CAMPOS_BASE)
+          .eq('restaurante_id', restauranteId)
+          .eq('periodo', PERIODO_HOY)
+          .maybeSingle()
+        data = retry.data
+      }
       if (data) {
-        const totalPersonal = calcularTotalPersonal(data).total || 0
-        const totalAlquiler = calcularTotalAlquiler(data.partidas_alquiler || []).total
-        const totalPartidas = calcularTotalGastos(data.partidas_gastos   || []).total
-        const totalBancarios = calcularTotalBancarios(data).total || 0
+        // Imputar ANTES de agregar: el motor de precios debe trabajar
+        // con la fracción bodega canónica (no con el total del concepto).
+        // Con imputacion_pct ausente o {}, el objeto imputado es
+        // idéntico al original → ningún número cambia.
+        const imp = imputarParametros(data)
+        const totalPersonal  = calcularTotalPersonal(imp).total || 0
+        const totalAlquiler  = calcularTotalAlquiler(imp.partidas_alquiler || []).total
+        const totalPartidas  = calcularTotalGastos(imp.partidas_gastos   || []).total
+        const totalBancarios = calcularTotalBancarios(imp).total || 0
         setForm({
           personal_bodega:    totalPersonal || '',
           beneficio_objetivo: data.beneficio_objetivo || '',
