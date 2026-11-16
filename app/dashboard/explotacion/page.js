@@ -31,6 +31,8 @@ import {
 } from '../../lib/sommExplotacion'
 import { construirInformeEconomicoWorkbook } from '../../lib/informeEconomicoExcel'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
+import { readDesglose } from '../../lib/cierreDesglose'
+import { calcularConsumoMP } from '../../lib/consumoMP'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -903,6 +905,9 @@ function ExplotacionContent() {
         <section className={styles.panel}>
           <div className={styles.panelHead}>
             <h2 className={styles.panelTitle}>Facturación y Materia Prima</h2>
+            <p className={styles.panelSub} style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+              Importes imputables a la bodega (vino).
+            </p>
           </div>
           <div className={styles.panelBody}>
             <div className={styles.formGrid}>
@@ -916,6 +921,45 @@ function ExplotacionContent() {
                 <small style={{ color: '#888', marginTop: 4, display: 'block', fontSize: 11 }}>
                   Consumo = Compras + Stock Inicial − Stock Final (no es lo mismo que las compras del mes)
                 </small>
+                {(() => {
+                  // Sugerencia de consumo CALCULADO desde el desglose del
+                  // cierre. Nunca sobrescribe el valor manual; sólo lo
+                  // ofrece con un botón explícito.
+                  const cmp = calcularConsumoMP({ desglose: readDesglose(datosVino), datos: datosVino })
+                  const manual = num(consumoMp)
+                  const diff   = (cmp.estado === 'calculado' && manual > 0)
+                    ? cmp.valor - manual
+                    : null
+                  return (
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#8b8278', lineHeight: 1.5 }}>
+                      {cmp.estado === 'calculado' && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                          <span>
+                            Consumo calculado: <strong style={{ color: '#1a1a1a' }}>{eur(cmp.valor, 2)}</strong>
+                            {' '}(inventario inicial + compras − final)
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.ghost}
+                            onClick={() => setConsumoMp(String(cmp.valor))}
+                            style={{ fontSize: 11, padding: '2px 8px' }}
+                          >
+                            Usar consumo calculado
+                          </button>
+                        </div>
+                      )}
+                      {(cmp.estado === 'parcial' || cmp.estado === 'sin_datos') && cmp.motivo && (
+                        <span>Consumo calculado no disponible: {cmp.motivo}</span>
+                      )}
+                      {diff !== null && Math.abs(diff) >= 0.01 && (
+                        <div style={{ marginTop: 2, color: Math.abs(diff) > manual * 0.1 ? '#b85454' : '#8b8278' }}>
+                          Diferencia con el valor manual:{' '}
+                          <strong>{diff >= 0 ? '+' : '−'} {eur(Math.abs(diff), 2)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </label>
             </div>
             {datosVino && (
