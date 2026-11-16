@@ -1,0 +1,39 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Fase 4 — rollback de imputacion_pct en parametros_explotacion
+-- ─────────────────────────────────────────────────────────────────────────
+--
+-- ADVERTENCIA
+--   Al eliminar la columna se PIERDEN los % imputables guardados por el
+--   usuario desde el UP. Haz backup antes de ejecutar este rollback:
+--
+--     SELECT restaurante_id, periodo, imputacion_pct
+--       INTO backup_imputacion_pct_pre_rollback
+--       FROM public.parametros_explotacion
+--      WHERE imputacion_pct <> '{}'::jsonb;
+--
+--   Después:
+--     SELECT * FROM backup_imputacion_pct_pre_rollback LIMIT 10;
+--
+-- COMPROBACIÓN PREVIA
+--   SELECT count(*) AS filas_con_imputacion
+--     FROM public.parametros_explotacion
+--    WHERE imputacion_pct <> '{}'::jsonb;
+--   -- Si el número no es 0, confirma que hay backup antes de continuar.
+--
+-- EFECTO EN EL CÓDIGO
+--   El código funciona con la columna ausente: el flag runtime
+--   `imputacionDisponible` cae a false, los inputs de % se ocultan y el
+--   payload del upsert deja de incluir `imputacion_pct`. Ningún
+--   importe cambia porque `imputarParametros` interpreta la falta de
+--   `imputacion_pct` como 100 % en todo.
+--
+-- COMPROBACIÓN POSTERIOR
+--   SELECT column_name FROM information_schema.columns
+--    WHERE table_schema = 'public'
+--      AND table_name   = 'parametros_explotacion'
+--      AND column_name  = 'imputacion_pct';
+--   -- Debe devolver 0 filas.
+-- ─────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.parametros_explotacion
+  DROP COLUMN IF EXISTS imputacion_pct;
