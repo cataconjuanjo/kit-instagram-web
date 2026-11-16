@@ -13,6 +13,7 @@ import {
 } from '../../lib/yoyCierre'
 import { formatoMoneda } from '../../lib/formatoEs'
 import { margenTrasMerma } from '../../lib/margenBodega'
+import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from '../../lib/cierreDesglose'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -30,6 +31,22 @@ async function authedFetch(path, opts = {}) {
 // A1: delega en formatoMoneda (es-ES canonico).
 function eur(v) {
   return formatoMoneda(v, { decimales: 2 })
+}
+
+// Formateo seguro de unidades para el bloque "Desglose del cierre".
+// null/undefined → "—"; números → entero sin decimales (consumo físico).
+function uds(v) {
+  if (v == null || !Number.isFinite(Number(v))) return '—'
+  return new Intl.NumberFormat('es-ES').format(Number(v))
+}
+
+// Importes del desglose. Separador de miles + coma, sin "€" (la columna
+// ya se titula "Valor (€)"). Muestra "—" para null/undefined.
+function eurDesglose(v) {
+  if (v == null || !Number.isFinite(Number(v))) return '—'
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(Number(v))
 }
 
 function mesLabel(mes) {
@@ -698,6 +715,116 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               )}
             </tbody>
           </table>
+
+          {/* Desglose del cierre — v1. Añadido a los snapshots a partir de
+              2026-11. Los cierres antiguos no lo tienen: readDesglose()
+              devuelve null y mostramos un aviso en gris en vez de la
+              tabla. El bloque es coherente con el espíritu del cierre
+              Somm (sólo bodega) y no contiene ningún campo de los que
+              ya se ocultan a Somm (personal / alquileres / bancarios /
+              resultado neto), así que se renderiza en ambos perfiles. */}
+          {(() => {
+            const d = readDesglose(datos)
+            return (
+              <div style={{ marginTop: 20, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 10 }}>
+                  Desglose del cierre
+                </p>
+                {!d && (
+                  <p style={{ fontSize: 13, opacity: 0.45 }}>
+                    Desglose detallado no disponible para este cierre (snapshot anterior a v1).
+                  </p>
+                )}
+                {d && (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left',  padding: '4px 0', opacity: 0.55, fontWeight: 500, fontSize: 11 }}>Concepto</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0', opacity: 0.55, fontWeight: 500, fontSize: 11 }}>uds</th>
+                        <th style={{ textAlign: 'right', padding: '4px 8px', opacity: 0.55, fontWeight: 500, fontSize: 11 }}>Valor (€)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td colSpan={3} style={{ paddingTop: 10, fontWeight: 700, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.4 }}>Stock inicial</td></tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Stock inicial (valorado)</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.stock_inicial?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.stock_inicial?.valor_eur)}</td>
+                      </tr>
+
+                      <tr><td colSpan={3} style={{ paddingTop: 10, fontWeight: 700, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.4 }}>Entradas</td></tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Compras brutas</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.entradas?.compras_bruto?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.entradas?.compras_bruto?.valor_eur)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Devoluciones</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.entradas?.devoluciones?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.entradas?.devoluciones?.valor_eur)}</td>
+                      </tr>
+                      <tr style={{ fontWeight: 600 }}>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Compras netas</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.entradas?.compras_netas?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.entradas?.compras_netas?.valor_eur)}</td>
+                      </tr>
+
+                      <tr><td colSpan={3} style={{ paddingTop: 10, fontWeight: 700, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.4 }}>Ventas</td></tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Botella</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right' }}>{uds(d.ventas_botella?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.ventas_botella?.valor_eur)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Copa (copas servidas)</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right' }}>{uds(d.ventas_copa?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.ventas_copa?.valor_eur)}</td>
+                      </tr>
+
+                      <tr><td colSpan={3} style={{ paddingTop: 10, fontWeight: 700, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.4 }}>Salidas sin venta</td></tr>
+                      {CATEGORIAS_SALIDA_SIN_VENTA.map(cat => {
+                        const r = d.salidas_sin_venta?.[cat.key]
+                        return (
+                          <tr key={cat.key}>
+                            <td style={{ padding: '3px 0 3px 8px' }}>{cat.label}</td>
+                            <td style={{ padding: '3px 0', textAlign: 'right' }}>{uds(r?.uds)}</td>
+                            <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(r?.valor_eur)}</td>
+                          </tr>
+                        )
+                      })}
+                      <tr style={{ fontWeight: 600 }}>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Total salidas sin venta</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right' }}>{uds(d.salidas_sin_venta?.total?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.salidas_sin_venta?.total?.valor_eur)}</td>
+                      </tr>
+
+                      <tr><td colSpan={3} style={{ paddingTop: 10, fontWeight: 700, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.4 }}>Cierre de inventario</td></tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Stock final teórico</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.stock_final_teorico?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.stock_final_teorico?.valor_eur)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Ajuste de inventario</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.ajuste_inventario?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.ajuste_inventario?.valor_eur)}</td>
+                      </tr>
+                      <tr style={{ fontWeight: 600 }}>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Stock final real</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.stock_final_real?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.stock_final_real?.valor_eur)}</td>
+                      </tr>
+                      <tr style={{ fontWeight: 700 }}>
+                        <td style={{ padding: '3px 0 3px 8px' }}>Consumo (identidad de inventario)</td>
+                        <td style={{ padding: '3px 0', textAlign: 'right', opacity: 0.55 }}>{uds(d.consumo?.uds)}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right' }}>{eurDesglose(d.consumo?.valor_eur)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Gastos — se oculta por completo en perfil Somm.
               Motivo: el Somm solo gestiona vino; personal/alquileres/
