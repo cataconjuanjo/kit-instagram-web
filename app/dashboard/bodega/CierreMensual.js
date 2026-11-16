@@ -15,6 +15,7 @@ import { formatoMoneda } from '../../lib/formatoEs'
 import { margenTrasMerma } from '../../lib/margenBodega'
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from '../../lib/cierreDesglose'
 import { calcularRatios } from '../../lib/ratiosCierre'
+import { conciliarCompras } from '../../lib/conciliacionCompras'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -169,7 +170,7 @@ function DataRow({ label, value, strong, dim, color, vari, variTitle, variDir })
 
 // ── PDF ────────────────────────────────────────────────────────────────────────
 
-async function generarPDF(datos, datosAnt, mes, restaurante) {
+async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = []) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const PW = 210, ML = 14, MR = 14, CW = PW - ML - MR
@@ -393,6 +394,42 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
     tabla(['Concepto', 'uds', 'Valor (EUR)'], filas, [100, 30, 52])
   }
 
+  // Conciliación de compras (F3): compara compras_netas del cierre con
+  // suma de importes del Libro de Compras del mismo mes. Solo avisa.
+  const concil = conciliarCompras({
+    comprasApp: datos?.compras_netas,
+    facturasLibro,
+    mes,
+  })
+  if (y > 230) { doc.addPage(); y = 14 }
+  sep()
+  hdr('Conciliacion de compras', 10)
+  const etiqConcil = {
+    ok:        'Coincide',
+    revisar:   'Revisar',
+    sin_libro: 'Sin facturas en el Libro',
+    sin_app:   'Sin compras en la app',
+  }[concil.estado] || '-'
+  const pctTxt = concil.pct != null
+    ? ` (${(concil.pct * 100).toFixed(1).replace('.', ',')} %)`
+    : ''
+  const signo = concil.diferencia >= 0 ? '+' : '-'
+  tabla(
+    ['Concepto', 'Valor', 'Nota'],
+    [
+      ['Compras app (cierre)',           eur(concil.totalApp),   ''],
+      [`Libro de Compras (${concil.meta.cuenta_facturas} fact.)`, eur(concil.totalLibro), ''],
+      ['Diferencia',                     `${signo} ${eur(Math.abs(concil.diferencia))}${pctTxt}`, etiqConcil],
+    ],
+    [92, 54, 36]
+  )
+  if (concil.estado === 'revisar') {
+    sub('Las compras registradas en la app y las facturas del Libro de Compras no coinciden. Revisa antes de cerrar el mes.')
+  }
+  if (concil.meta.sin_fecha > 0) {
+    sub(`${concil.meta.sin_fecha} factura(s) del Libro sin fecha explicita (se cuentan en el mes ${concil.meta.mes}).`)
+  }
+
   const totalPags = doc.getNumberOfPages()
   for (let p = 1; p <= totalPags; p++) {
     doc.setPage(p)
@@ -443,15 +480,23 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   const [guardandoGasto, setGuardandoGasto] = useState(false)
   const [exportandoPDF, setExportandoPDF] = useState(false)
   const [exportandoXLS, setExportandoXLS] = useState(false)
+  // Facturas del Libro de Compras del mes — lectura directa de la tabla
+  // libro_compras (jsonb). Se usa sólo para conciliar; nunca se escribe.
+  const [facturasLibro, setFacturasLibro] = useState(null)
 
   const cargar = useCallback(async () => {
     if (!restauranteId || !mes) return
     setLoading(true)
     setError(null)
     try {
-      const [resActual, resAnt] = await Promise.all([
+      const [resActual, resAnt, resLibro] = await Promise.all([
         authedFetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${mes}`),
         authedFetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${prevMes(mes)}`),
+        supabase
+          .from('libro_compras')
+          .select('proveedor, periodo, facturas')
+          .eq('restaurante_id', restauranteId)
+          .eq('periodo', mes),
       ])
       const jsonActual = await resActual.json()
       if (!resActual.ok) throw new Error(jsonActual.error || 'Error al cargar')
@@ -463,10 +508,15 @@ export default function CierreMensual({ restauranteId, restaurante }) {
       } else {
         setDatosMesAnt(null)
       }
+
+      // RLS filtra por restaurante; aquí solo preparamos la lista para
+      // la conciliación. Si la query falla silenciosamente, usamos [].
+      setFacturasLibro(Array.isArray(resLibro?.data) ? resLibro.data : [])
     } catch (e) {
       setError(e.message)
       setEstado(null)
       setDatosMesAnt(null)
+      setFacturasLibro(null)
     } finally {
       setLoading(false)
     }
@@ -659,7 +709,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   async function exportarPDF() {
     if (!datos) return
     setExportandoPDF(true)
-    try { await generarPDF(datos, datosMesAnt, mes, restaurante) }
+    try { await generarPDF(datos, datosMesAnt, mes, restaurante, facturasLibro || []) }
     catch (e) { setError(e.message) }
     finally { setExportandoPDF(false) }
   }
@@ -965,6 +1015,80 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                   {tarjeta('Cobertura (días)', numDec(r.cobertura_dias, 1),     motivoRatio(f, 'cobertura_dias'))}
                   {tarjeta('Dif. inventario %',pctRatio(r.diferencia_inventario_pct), motivoRatio(f, 'diferencia_inv'))}
                 </div>
+              </div>
+            )
+          })()}
+
+          {/* Conciliación de compras (F3). Compara compras_netas del
+              cierre con la suma de importes del Libro de Compras del
+              mismo mes. Sólo avisa; no modifica compras ni facturas. */}
+          {(() => {
+            const c = conciliarCompras({
+              comprasApp: datos?.compras_netas,
+              facturasLibro: facturasLibro || [],
+              mes,
+            })
+            const colorPorEstado = {
+              ok:        { bg: 'rgba(74,140,111,0.10)', dot: '#4A8C6F', txt: '#4A8C6F' },
+              revisar:   { bg: 'rgba(184,84,84,0.12)',  dot: '#b85454', txt: '#b85454' },
+              sin_libro: { bg: 'rgba(255,255,255,0.03)', dot: '#8b8278', txt: '#8b8278' },
+              sin_app:   { bg: 'rgba(255,255,255,0.03)', dot: '#8b8278', txt: '#8b8278' },
+            }
+            const col = colorPorEstado[c.estado] || colorPorEstado.sin_libro
+            const etiquetaEstado = {
+              ok:        'Coincide',
+              revisar:   'Revisar',
+              sin_libro: 'Sin facturas en el Libro',
+              sin_app:   'Sin compras en la app',
+            }[c.estado]
+            const avisoRevisar = c.estado === 'revisar'
+              ? 'Las compras registradas en la app y las facturas del Libro de Compras no coinciden. Revisa antes de cerrar el mes.'
+              : null
+            return (
+              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 8, background: col.bg, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.55, margin: 0 }}>
+                    Conciliación de compras
+                  </p>
+                  <span style={{ fontSize: 12, color: col.txt, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.dot, display: 'inline-block' }} />
+                    {etiquetaEstado}
+                  </span>
+                </div>
+                <div style={{ marginTop: 10, display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 2 }}>Compras app (cierre)</div>
+                    <div style={{ fontWeight: 700 }}>{eur(c.totalApp)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 2 }}>
+                      Libro de Compras ({c.meta.cuenta_facturas} factura{c.meta.cuenta_facturas === 1 ? '' : 's'})
+                    </div>
+                    <div style={{ fontWeight: 700 }}>{eur(c.totalLibro)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 2 }}>Diferencia</div>
+                    <div style={{ fontWeight: 700, color: col.txt }}>
+                      {c.diferencia >= 0 ? '+' : '−'} {eur(Math.abs(c.diferencia))}
+                      {c.pct != null && (
+                        <span style={{ fontSize: 11, marginLeft: 6, opacity: 0.7 }}>
+                          ({(c.pct * 100).toFixed(1).replace('.', ',')} %)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {c.meta.sin_fecha > 0 && (
+                  <p style={{ marginTop: 8, fontSize: 11, opacity: 0.65 }}>
+                    {c.meta.sin_fecha} factura{c.meta.sin_fecha === 1 ? '' : 's'} del Libro sin fecha explícita (se cuentan en el mes {c.meta.mes}).
+                  </p>
+                )}
+                {avisoRevisar && (
+                  <p style={{ marginTop: 8, fontSize: 12, color: col.txt }}>{avisoRevisar}</p>
+                )}
+                <p style={{ marginTop: 6, fontSize: 11, opacity: 0.5 }}>
+                  Tolerancia: 1 € o 1 %. Se concilia sólo el total; no se cruza por proveedor (el snapshot no guarda compras por proveedor).
+                </p>
               </div>
             )
           })()}
