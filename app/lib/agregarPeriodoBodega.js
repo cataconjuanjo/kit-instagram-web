@@ -334,6 +334,14 @@ export function _construirDesglose({
   devoluciones  = 0,     devoluciones_uds  = 0,
   compras_netas = 0,     compras_netas_uds = 0,
   por_canal     = {},
+  // coste_ventas_teorico es la fuente canónica del cierre; se calcula
+  // agregando por vino. canal.{botella,copa}.coste viene acumulado por
+  // línea, lo que introduce un residual de 1–10 céntimos entre la suma
+  // de canales + salidas y el total. Si se pasa el total aquí, el
+  // residual se cuadra al céntimo repartiéndolo en el canal de venta
+  // mayor; si no se pasa (compatibilidad con callers viejos), no se
+  // ajusta nada.
+  coste_ventas_teorico = null,
 } = {}) {
   const c = por_canal
   const salidas = {
@@ -369,8 +377,23 @@ export function _construirDesglose({
     salidas.rotura.uds +
     salidas.cata.uds
   )
-  const ventas_botella_coste = r2(c.botella?.coste || 0)
-  const ventas_copa_coste    = r2(c.copa?.coste    || 0)
+  let ventas_botella_coste = r2(c.botella?.coste || 0)
+  let ventas_copa_coste    = r2(c.copa?.coste    || 0)
+  // Cuadre al céntimo: residual = coste_ventas_teorico − (ventas+salidas).
+  // Se mete en el canal de venta mayor (botella/copa). Si ambos canales
+  // son 0 (sólo salidas), no se reparte porque romperíamos el acumulado
+  // de los 7 subcanales de salidas y la UI mostraría una cifra "fantasma".
+  if (coste_ventas_teorico != null) {
+    const sumaComponentes = r2(ventas_botella_coste + ventas_copa_coste + salidas_total_valor)
+    const residual = r2(coste_ventas_teorico - sumaComponentes)
+    if (Math.abs(residual) >= 0.01 && (ventas_botella_coste + ventas_copa_coste) > 0) {
+      if (ventas_botella_coste >= ventas_copa_coste) {
+        ventas_botella_coste = r2(ventas_botella_coste + residual)
+      } else {
+        ventas_copa_coste = r2(ventas_copa_coste + residual)
+      }
+    }
+  }
   const ventas_total_coste   = r2(ventas_botella_coste + ventas_copa_coste)
 
   const haySaldoInicial = stock_inicial != null
@@ -657,6 +680,8 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   )
 
   // Desglose: construcción delegada a función pura exportada (testeable).
+  // Se pasa coste_ventas_teorico para que el reparto de redondeo entre
+  // canales + salidas cuadre al céntimo con el total del cierre.
   const desglose = _construirDesglose({
     stock_inicial, stock_inicial_uds,
     stock_final,
@@ -664,6 +689,7 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     devoluciones,  devoluciones_uds,
     compras_netas, compras_netas_uds,
     por_canal: informe.por_canal,
+    coste_ventas_teorico,
   })
 
   return {
