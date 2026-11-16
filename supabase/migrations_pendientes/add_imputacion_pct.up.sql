@@ -1,0 +1,68 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Fase 4 — imputacion_pct en parametros_explotacion (ADITIVO, no destructivo)
+-- ─────────────────────────────────────────────────────────────────────────
+--
+-- Añade una columna jsonb opcional con los % imputables a la bodega por
+-- concepto. Por defecto {} → el código la interpreta como 100 % en TODOS
+-- los conceptos, que es idéntico al comportamiento actual ("ya son
+-- fracción bodega"). Ningún importe existente cambia.
+--
+-- Estructura esperada del jsonb (ver app/lib/imputacionBodega.js):
+--   {
+--     "nominas_brutas": 30,
+--     "ss_empresa": 30,
+--     "extras_personal": 30,
+--     "retenciones_irpf": 30,
+--     "comisiones_datafono": 100,
+--     "mantenimiento_datafono": 100,
+--     "resto_comisiones": 100,
+--     "partidas_gastos":   { "<id_partida>": 50, ... },
+--     "partidas_alquiler": { "<id_partida>": 30, ... }
+--   }
+--
+-- CARACTERÍSTICAS
+--   - ADD COLUMN IF NOT EXISTS: idempotente, se puede re-ejecutar.
+--   - DEFAULT '{}'::jsonb: todas las filas existentes reciben un objeto
+--     vacío y los consumers lo tratan como "100 % en todo".
+--   - NOT NULL con default: evita gestionar NULL en el código.
+--   - No se toca la RLS (las policies ya cubren toda la tabla por
+--     restaurante_id = auth.jwt().email).
+--   - No se toca ninguna otra columna, ni índice, ni trigger.
+--
+-- BACKUP RECOMENDADO ANTES DE APLICAR
+--   Supabase SQL Editor:
+--     SELECT * INTO backup_parametros_explotacion_pre_imputacion
+--     FROM public.parametros_explotacion;
+--   (y conservar la tabla hasta confirmar que la UI y el PDF siguen
+--    generando los mismos números para todos los restaurantes activos)
+--
+-- COMPROBACIÓN PREVIA (debe devolver 0 filas; si devuelve 1 la columna
+-- ya existe y el ADD COLUMN IF NOT EXISTS no hará nada):
+--   SELECT column_name, data_type, column_default, is_nullable
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public'
+--      AND table_name   = 'parametros_explotacion'
+--      AND column_name  = 'imputacion_pct';
+--
+-- COMPROBACIÓN POSTERIOR (debe devolver 1 fila con jsonb, NOT NULL,
+-- default '{}'):
+--   SELECT column_name, data_type, column_default, is_nullable
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public'
+--      AND table_name   = 'parametros_explotacion'
+--      AND column_name  = 'imputacion_pct';
+--
+-- COMPROBACIÓN POSTERIOR DE DATOS (todas las filas existentes deben
+-- tener imputacion_pct = '{}'::jsonb, es decir, comportamiento idéntico
+-- al actual):
+--   SELECT count(*)                                AS filas,
+--          count(*) FILTER (WHERE imputacion_pct = '{}'::jsonb) AS defaulted
+--     FROM public.parametros_explotacion;
+--   -- filas y defaulted deben coincidir.
+-- ─────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.parametros_explotacion
+  ADD COLUMN IF NOT EXISTS imputacion_pct jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+COMMENT ON COLUMN public.parametros_explotacion.imputacion_pct IS
+  'Porcentaje imputable a la bodega por concepto. Default {} ≡ 100 % en todo. Ver app/lib/imputacionBodega.js para la forma canónica.';

@@ -9,6 +9,7 @@ import {
   calcularBreakEven,
   calcularResultadoExplotacion,
 } from '../../../lib/sommExplotacion'
+import { imputarParametros } from '../../../lib/imputacionBodega'
 
 function num(v) { return Number(v) || 0 }
 
@@ -78,13 +79,19 @@ export async function GET(req) {
         .eq('anio', parseInt(periodo.slice(0, 4))).eq('mes', parseInt(periodo.slice(5))).maybeSingle(),
     ])
 
-    // Calcular P&L
+    // Calcular P&L. Imputamos ANTES de agregar: con imputacion_pct
+    // ausente o {} (columna no aplicada, o usuario sin tocar los %),
+    // el objeto imputado es idéntico al original → el PDF saca los
+    // mismos números que antes. SELECT * trae imputacion_pct si existe;
+    // si no, viene undefined y imputarParametros lo trata como "100 %
+    // en todo".
     const facturacion = num(historico?.ingresos)
     const consumoMp = num(historico?.consumo_mp)
-    const totalPersonal = calcularTotalPersonal(params || {}).total
-    const totalGastos = calcularTotalGastos(params?.partidas_gastos || []).total
-    const totalAlquiler = calcularTotalAlquiler(params?.partidas_alquiler || []).total
-    const totalBancarios = calcularTotalBancarios(params || {}).total
+    const paramsImp = imputarParametros(params || {})
+    const totalPersonal = calcularTotalPersonal(paramsImp).total
+    const totalGastos = calcularTotalGastos(paramsImp.partidas_gastos || []).total
+    const totalAlquiler = calcularTotalAlquiler(paramsImp.partidas_alquiler || []).total
+    const totalBancarios = calcularTotalBancarios(paramsImp).total
 
     const resultado = calcularResultadoExplotacion({
       facturacion,

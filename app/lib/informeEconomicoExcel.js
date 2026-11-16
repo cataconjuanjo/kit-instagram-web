@@ -18,6 +18,7 @@
  */
 
 import { construirComprasWorkbook, slugRestaurante } from './excelSomm.js'
+import { getPct } from './imputacionBodega.js'
 
 const FMT_EUR = '#,##0.00 €'
 const FMT_PCT = '0.0 %'        // numFmt sobre ratio (0.32 → "32.0 %")
@@ -132,27 +133,50 @@ function construirSheetResumen({
 //
 // nóminas, SS, extras, total con fórmula, retenciones informativas.
 
-function construirSheetPersonal(personal) {
+// personal viene con los importes TOTAL del concepto. imputacion_pct
+// se lee aquí para pintar la columna "% bodega" y una fórmula del
+// "Imputado". Si imputacion_pct no está (SQL pendiente o %-default),
+// el % sale 100 y el imputado = importe total → ningún número cambia.
+function construirSheetPersonal(personal, imputacion_pct) {
   const nominas     = num(personal?.nominas_brutas)
   const ss          = num(personal?.ss_empresa)
   const extras      = num(personal?.extras_personal)
   const retenciones = num(personal?.retenciones_irpf)
-  const totalPersonal = r2(nominas + ss + extras)
+  // % como ratio (0..1) para que el numFmt '0.0 %' lo pinte como "X,X %".
+  const pctNom = getPct(imputacion_pct, 'nominas_brutas')   / 100
+  const pctSs  = getPct(imputacion_pct, 'ss_empresa')       / 100
+  const pctEx  = getPct(imputacion_pct, 'extras_personal')  / 100
+  const pctRe  = getPct(imputacion_pct, 'retenciones_irpf') / 100
+  const totalImputado = r2(nominas * pctNom + ss * pctSs + extras * pctEx)
 
   // Header fila 1 → data filas 2..5, total en fila 6.
+  // Columnas: A=Concepto · B=Importe total (€) · C=% bodega (ratio) ·
+  //           D=Imputado (€) (fórmula B*C sin "=" inicial)
+  const filaImp = (rowNum) => ({
+    formula: `IF(OR(NOT(ISNUMBER(B${rowNum})),NOT(ISNUMBER(C${rowNum}))),"",B${rowNum}*C${rowNum})`,
+    result:  0,  // se completa abajo con el valor real por fila
+  })
   const rows = [
-    { concepto: 'Nóminas brutas',               valor: nominas },
-    { concepto: 'Seguridad Social (empresa)',   valor: ss },
-    { concepto: 'Extras y horas complementarias', valor: extras },
-    { concepto: 'Total personal',
-      valor: { formula: 'SUM(B2:B4)', result: totalPersonal } },
-    { concepto: 'Retenciones IRPF (informativo, no suma)', valor: retenciones },
+    // row 2
+    { concepto: 'Nóminas brutas',                 valor: nominas,     pct: pctNom, imputado: { ...filaImp(2), result: r2(nominas * pctNom) } },
+    // row 3
+    { concepto: 'Seguridad Social (empresa)',     valor: ss,          pct: pctSs,  imputado: { ...filaImp(3), result: r2(ss      * pctSs) } },
+    // row 4
+    { concepto: 'Extras y horas complementarias', valor: extras,      pct: pctEx,  imputado: { ...filaImp(4), result: r2(extras  * pctEx) } },
+    // row 5 (total imputado)
+    { concepto: 'Total personal (imputado)',      valor: null,        pct: null,
+      imputado: { formula: 'SUM(D2:D4)', result: totalImputado } },
+    // row 6 (retenciones informativas; no suman)
+    { concepto: 'Retenciones IRPF (informativo, no suma)', valor: retenciones, pct: pctRe,
+      imputado: { ...filaImp(6), result: r2(retenciones * pctRe) } },
   ]
   return {
     name: 'Personal',
     columns: [
-      { header: 'Concepto',     key: 'concepto', width: 42 },
-      { header: 'Importe (€)',  key: 'valor',    width: 14, format: FMT_EUR },
+      { header: 'Concepto',           key: 'concepto', width: 44 },
+      { header: 'Importe total (€)',  key: 'valor',    width: 16, format: FMT_EUR },
+      { header: '% bodega',           key: 'pct',      width: 10, format: FMT_PCT },
+      { header: 'Imputado a bodega',  key: 'imputado', width: 18, format: FMT_EUR },
     ],
     rows,
     freezeHeader: true,
@@ -164,7 +188,7 @@ function construirSheetPersonal(personal) {
 // Combina gastos generales (prorrateados), alquileres y bancarios en una
 // sola tabla con columna "tipo". Total con fórmula al final.
 
-function construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios }) {
+function construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios, imputacion_pct }) {
   const rows = []
   // Gastos operacionales con prorrateo por amortizar_meses.
   for (const p of (gastosPartidas || [])) {
@@ -176,6 +200,7 @@ function construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios }) {
       tipo: 'Gasto operacional',
       concepto: p.categoria || p.id || '—',
       importe: importeMensual,
+      pct: getPct(imputacion_pct, 'partidas_gastos', p.id) / 100,
     })
   }
   // Alquileres.
@@ -186,6 +211,7 @@ function construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios }) {
       tipo: 'Alquiler',
       concepto: p.concepto || p.id || '—',
       importe: r2(importe),
+      pct: getPct(imputacion_pct, 'partidas_alquiler', p.id) / 100,
     })
   }
   // Bancarios.
@@ -197,18 +223,35 @@ function construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios }) {
   for (const b of bancariosDef) {
     const importe = num(bancarios?.[b.key])
     if (!importe) continue
-    rows.push({ tipo: 'Bancario', concepto: b.concepto, importe: r2(importe) })
+    rows.push({
+      tipo: 'Bancario',
+      concepto: b.concepto,
+      importe: r2(importe),
+      pct: getPct(imputacion_pct, b.key) / 100,
+    })
   }
 
-  const totalImporte = r2(rows.reduce((s, r) => s + num(r.importe), 0))
+  // Imputado por fila: fórmula C*D (sin "=" inicial), result precalculado
+  // para Numbers/LibreOffice. IF para mostrar "" si C o D no son números.
   const nFilas = rows.length
+  rows.forEach((r, i) => {
+    const row = i + 2  // data empieza en fila 2 (header=1)
+    r.imputado = {
+      formula: `IF(OR(NOT(ISNUMBER(C${row})),NOT(ISNUMBER(D${row}))),"",C${row}*D${row})`,
+      result:  r2(num(r.importe) * num(r.pct)),
+    }
+  })
+  const totalImporte  = r2(rows.reduce((s, r) => s + num(r.importe), 0))
+  const totalImputado = r2(rows.reduce((s, r) => s + (num(r.importe) * num(r.pct)), 0))
 
   return {
     name: 'Gastos',
     columns: [
-      { header: 'Tipo',         key: 'tipo',     width: 20 },
-      { header: 'Concepto',     key: 'concepto', width: 34 },
-      { header: 'Importe (€)',  key: 'importe',  width: 14, format: FMT_EUR },
+      { header: 'Tipo',               key: 'tipo',     width: 20 },
+      { header: 'Concepto',           key: 'concepto', width: 34 },
+      { header: 'Importe total (€)',  key: 'importe',  width: 16, format: FMT_EUR },
+      { header: '% bodega',           key: 'pct',      width: 10, format: FMT_PCT },
+      { header: 'Imputado a bodega',  key: 'imputado', width: 18, format: FMT_EUR },
     ],
     rows,
     totals: nFilas > 0 ? {
@@ -216,6 +259,10 @@ function construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios }) {
       importe: {
         formula: `SUM(C2:C${nFilas + 1})`,
         result: totalImporte,
+      },
+      imputado: {
+        formula: `SUM(E2:E${nFilas + 1})`,
+        result: totalImputado,
       },
     } : null,
     freezeHeader: true,
@@ -361,6 +408,9 @@ export function construirInformeEconomicoWorkbook({
   registrosCompras,
   // cierre mensual de bodega (snapshot) o null si no existe
   datosVino,
+  // % imputable a bodega por concepto (ver app/lib/imputacionBodega.js).
+  // Default {} ≡ 100 % en todo ≡ comportamiento histórico.
+  imputacion_pct = {},
 }) {
   const slug = slugRestaurante(restauranteNombre)
   const filename = `informe-economico-${slug}-${periodo}.xlsx`
@@ -380,8 +430,8 @@ export function construirInformeEconomicoWorkbook({
   }))
 
   if (!esSomm) {
-    sheets.push(construirSheetPersonal(personal))
-    sheets.push(construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios }))
+    sheets.push(construirSheetPersonal(personal, imputacion_pct))
+    sheets.push(construirSheetGastos({ gastosPartidas, alquilerPartidas, bancarios, imputacion_pct }))
   }
 
   const sheetCompras = construirSheetCompras({ registrosCompras, periodo, restauranteNombre })

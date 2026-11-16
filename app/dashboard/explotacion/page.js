@@ -33,6 +33,7 @@ import { construirInformeEconomicoWorkbook } from '../../lib/informeEconomicoExc
 import { descargarWorkbook } from '../../lib/excelSommDownload'
 import { readDesglose } from '../../lib/cierreDesglose'
 import { calcularConsumoMP } from '../../lib/consumoMP'
+import { imputarParametros, getPct, normalizarPct } from '../../lib/imputacionBodega'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -348,6 +349,138 @@ function SeccionAlquileres({ partidas, onChange }) {
   )
 }
 
+// ── Sección: Imputación a bodega (% bodega por concepto) ─────────────────────
+//
+// Panel único donde el encargado introduce un % imputable a la bodega
+// para cada concepto. Default 100 → el P&L sale idéntico al anterior,
+// que es el comportamiento histórico ("ya son fracción bodega"). Si el
+// SQL `ADD COLUMN imputacion_pct` no está aplicado (`disponible=false`),
+// el panel se muestra en modo informativo: lee los importes actuales
+// pero deshabilita los inputs y avisa.
+
+function SeccionImputacion({
+  personal, bancarios, partidasGastos, partidasAlquiler,
+  imputacionPct, onImputacionChange, disponible,
+}) {
+  const filas = []
+  // Personal (escalares)
+  const personalCampos = [
+    { key: 'nominas_brutas',   label: 'Nóminas brutas' },
+    { key: 'ss_empresa',       label: 'Seguridad Social (empresa)' },
+    { key: 'extras_personal',  label: 'Extras y horas complementarias' },
+    { key: 'retenciones_irpf', label: 'Retenciones IRPF (informativo)' },
+  ]
+  for (const c of personalCampos) {
+    filas.push({
+      concepto: c.label,
+      importeTotal: num(personal?.[c.key]),
+      pct: getPct(imputacionPct, c.key),
+      set: (v) => onImputacionChange({ ...imputacionPct, [c.key]: v }),
+    })
+  }
+  // Alquileres
+  for (const p of (partidasAlquiler || [])) {
+    filas.push({
+      concepto: `Alquiler · ${p.concepto || p.id}`,
+      importeTotal: num(p.importe),
+      pct: getPct(imputacionPct, 'partidas_alquiler', p.id),
+      set: (v) => onImputacionChange({
+        ...imputacionPct,
+        partidas_alquiler: { ...(imputacionPct?.partidas_alquiler || {}), [p.id]: v },
+      }),
+    })
+  }
+  // Gastos operacionales (sólo activadas: importe > 0)
+  for (const p of (partidasGastos || [])) {
+    if (num(p.importe) <= 0) continue
+    filas.push({
+      concepto: `Gasto · ${p.categoria || p.id}`,
+      importeTotal: num(p.importe),
+      pct: getPct(imputacionPct, 'partidas_gastos', p.id),
+      set: (v) => onImputacionChange({
+        ...imputacionPct,
+        partidas_gastos: { ...(imputacionPct?.partidas_gastos || {}), [p.id]: v },
+      }),
+    })
+  }
+  // Bancarios
+  const bancariosCampos = [
+    { key: 'comisiones_datafono',    label: 'Comisiones datáfono' },
+    { key: 'mantenimiento_datafono', label: 'Mantenimiento datáfono' },
+    { key: 'resto_comisiones',       label: 'Resto de comisiones bancarias' },
+  ]
+  for (const c of bancariosCampos) {
+    filas.push({
+      concepto: c.label,
+      importeTotal: num(bancarios?.[c.key]),
+      pct: getPct(imputacionPct, c.key),
+      set: (v) => onImputacionChange({ ...imputacionPct, [c.key]: v }),
+    })
+  }
+
+  return (
+    <section className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h2 className={styles.panelTitle}>Imputación a bodega</h2>
+        <p className={styles.panelSub}>
+          Introduce el importe total del concepto y el % que corresponde a la
+          bodega. Ej.: alquiler 3.000 € al 30 % = 900 €. La materia prima
+          (consumo de vino) es 100 % bodega por definición y no aparece aquí.
+        </p>
+      </div>
+      <div className={styles.panelBody}>
+        {!disponible && (
+          <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(245,158,11,0.08)', borderRadius: 6, border: '1px solid rgba(245,158,11,0.25)', fontSize: 12, color: '#b15a00' }}>
+            Imputación no disponible hasta actualizar la base de datos. Los importes
+            se tratan como 100 % bodega (comportamiento actual).
+          </div>
+        )}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e8e3d8' }}>
+                <th style={{ textAlign: 'left',  padding: '6px 8px', fontWeight: 500 }}>Concepto</th>
+                <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500 }}>Importe total</th>
+                <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500 }}>% bodega</th>
+                <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500 }}>Imputado a bodega</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((f, i) => {
+                const imputado = f.importeTotal * normalizarPct(f.pct) / 100
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid #f5f2ec' }}>
+                    <td style={{ padding: '6px 8px' }}>{f.concepto}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: f.importeTotal > 0 ? '#2a2723' : '#bbb' }}>
+                      {f.importeTotal > 0 ? eur(f.importeTotal, 2) : '—'}
+                    </td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                      <input
+                        className={styles.input}
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={f.pct}
+                        onChange={e => f.set(normalizarPct(Number(e.target.value)))}
+                        disabled={!disponible}
+                        style={{ width: 70, textAlign: 'right' }}
+                      />
+                    </td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: f.importeTotal > 0 ? 600 : 400, color: f.importeTotal > 0 ? '#2a2723' : '#bbb' }}>
+                      {f.importeTotal > 0 ? eur(imputado, 2) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ── Sección de Gastos Bancarios ───────────────────────────────────────────────
 
 function SeccionBancarios({ params, onChange }) {
@@ -530,6 +663,10 @@ function ExplotacionContent() {
         canales,
         registrosCompras: regsCompras || [],
         datosVino,
+        // F4: % bodega por concepto. Con imputacion_pct = {} las nuevas
+        // columnas del Excel se pintan a 100 % → imputado = importe
+        // total, idéntico al comportamiento anterior.
+        imputacion_pct: imputacionPct,
       })
       await descargarWorkbook(spec)
     } catch (err) {
@@ -577,6 +714,14 @@ function ExplotacionContent() {
   // sin pisar los campos ocultos (personal/alquiler/bancarios/partidas
   // de gastos que no se tocan en la vista Somm).
   const [paramsRaw, setParamsRaw] = useState(null)
+  // Imputación a bodega por concepto (% bodega). El SQL que añade la
+  // columna parametros_explotacion.imputacion_pct está pendiente de
+  // aplicar; el código funciona con y sin la columna (ver cargar()).
+  //   imputacionDisponible: null = desconocido, true/false tras detectar.
+  //   imputacionPct: jsonb canónico. {} significa "100 % en todo" (idéntico
+  //     al comportamiento histórico "ya son fracción bodega").
+  const [imputacionDisponible, setImputacionDisponible] = useState(null)
+  const [imputacionPct, setImputacionPct] = useState({})
   const esSomm = esPerfilSomm(restaurante)
 
   useEffect(() => {
@@ -600,6 +745,25 @@ function ExplotacionContent() {
         .limit(60)
       setHistorico(hist || [])
 
+      // Detección runtime de la columna imputacion_pct. Si la columna
+      // no existe (SQL pendiente), PostgREST devuelve un error con code
+      // '42703' / mensaje "column ... does not exist". En ese caso
+      // ocultamos los inputs de % y no enviamos la clave en el upsert.
+      try {
+        const { error: errCol } = await supabase
+          .from('parametros_explotacion')
+          .select('imputacion_pct')
+          .limit(1)
+        const falta = !!errCol && (
+          errCol.code === '42703' ||
+          /imputacion_pct/i.test(errCol.message || '') ||
+          /does not exist/i.test(errCol.message || '')
+        )
+        setImputacionDisponible(!falta)
+      } catch {
+        setImputacionDisponible(false)
+      }
+
       setLoading(false)
     }
     cargar()
@@ -616,6 +780,14 @@ function ExplotacionContent() {
         .maybeSingle()
 
       setParamsRaw(data || null)
+      // imputacion_pct sólo llega si la columna existe en BD. Si no
+      // está, se queda como {} → imputarParametros devuelve los
+      // importes tal cual (comportamiento histórico).
+      setImputacionPct(
+        (data?.imputacion_pct && typeof data.imputacion_pct === 'object')
+          ? data.imputacion_pct
+          : {}
+      )
       if (data) {
         setFacturacion(data.facturacion_total || '')
         setConsumoMp(data.consumo_mp || '')
@@ -696,10 +868,26 @@ function ExplotacionContent() {
   }, [restaurante, periodo])
 
   const totales = useMemo(() => {
-    const totalPersonal = calcularTotalPersonal(personal).total
-    const { total: totalGastos } = calcularTotalGastos(gastosPartidas)
-    const totalAlquiler = calcularTotalAlquiler(alquilerPartidas).total
-    const totalBancarios = calcularTotalBancarios(bancarios).total
+    // Aplicar % bodega por concepto ANTES de agregar. Con
+    // imputacion_pct = {} (sin dato guardado), el objeto imputado
+    // es idéntico al original → ningún número cambia.
+    const paramsVista = {
+      nominas_brutas:          num(personal.nominas_brutas),
+      ss_empresa:              num(personal.ss_empresa),
+      extras_personal:         num(personal.extras_personal),
+      retenciones_irpf:        num(personal.retenciones_irpf),
+      comisiones_datafono:     num(bancarios.comisiones_datafono),
+      mantenimiento_datafono:  num(bancarios.mantenimiento_datafono),
+      resto_comisiones:        num(bancarios.resto_comisiones),
+      partidas_gastos:         gastosPartidas,
+      partidas_alquiler:       alquilerPartidas,
+      imputacion_pct:          imputacionPct,
+    }
+    const imputado = imputarParametros(paramsVista)
+    const totalPersonal  = calcularTotalPersonal(imputado).total
+    const { total: totalGastos } = calcularTotalGastos(imputado.partidas_gastos)
+    const totalAlquiler  = calcularTotalAlquiler(imputado.partidas_alquiler).total
+    const totalBancarios = calcularTotalBancarios(imputado).total
     const resultado = calcularResultadoExplotacion({
       facturacion: num(facturacion),
       consumoMp: num(consumoMp),
@@ -710,7 +898,7 @@ function ExplotacionContent() {
     })
     const { breakEven } = calcularBreakEven(totalPersonal, totalGastos, totalAlquiler, totalBancarios, resultado.pctMp)
     return { ...resultado, totalPersonal, totalGastos, totalAlquiler, totalBancarios, breakEven }
-  }, [facturacion, consumoMp, personal, gastosPartidas, alquilerPartidas, bancarios])
+  }, [facturacion, consumoMp, personal, gastosPartidas, alquilerPartidas, bancarios, imputacionPct])
 
   const benchmark = useMemo(() => {
     if (!totales.facturacion) return null
@@ -779,6 +967,13 @@ function ExplotacionContent() {
         take_away: num(canales.take_away),
       },
       updated_at: new Date().toISOString(),
+    }
+    // Sólo enviamos imputacion_pct si la columna existe en BD. Con la
+    // columna ausente, el upsert fallaría con 42703 "column does not
+    // exist"; omitiendo el campo el guardado funciona igual que antes
+    // y el P&L recalcula al 100 % por concepto.
+    if (imputacionDisponible) {
+      payload.imputacion_pct = imputacionPct
     }
 
     await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
@@ -1205,6 +1400,18 @@ function ExplotacionContent() {
         {!esSomm && <SeccionGastos partidas={gastosPartidas} onChange={setGastosPartidas} />}
         {!esSomm && <SeccionAlquileres partidas={alquilerPartidas} onChange={setAlquilerPartidas} />}
         {!esSomm && <SeccionBancarios params={bancarios} onChange={setBancarios} />}
+
+        {!esSomm && (
+          <SeccionImputacion
+            personal={personal}
+            bancarios={bancarios}
+            partidasGastos={gastosPartidas}
+            partidasAlquiler={alquilerPartidas}
+            imputacionPct={imputacionPct}
+            onImputacionChange={setImputacionPct}
+            disponible={imputacionDisponible === true}
+          />
+        )}
 
         <MapaCalorEstacional historico={historico} />
 
