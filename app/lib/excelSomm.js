@@ -634,20 +634,25 @@ export function construirSheetRatios(datos, mes) {
     formula: 'IFERROR(IF(B7<=0,"",B8/B7),"")',
     result: resultOrEmpty(ratios.coste_pct_sobre_ventas),
   }})
+  // Para los ratios que dependen de celdas del Desglose, hay que
+  // distinguir "celda vacía" de "0": Excel trata celda vacía como 0 al
+  // operar aritméticamente, lo que producía cobertura = 0 cuando
+  // Desglose!C23 estaba vacío. ISNUMBER(celda_vacía) = FALSE, así que
+  // la guarda detecta el caso correctamente y la fórmula devuelve "".
   rows.push({ concepto: 'Consumo / compras', valor: {
-    formula: 'IFERROR(IF(B9<=0,"",B10/B9),"")',
+    formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B9)),NOT(ISNUMBER(B10)),B9=0),"",B10/B9),"")',
     result: resultOrEmpty(ratios.consumo_vs_compras),
   }})
   rows.push({ concepto: 'Rotación', valor: {
-    formula: 'IFERROR(IF((B11+B12)=0,"",B8/((B11+B12)/2)),"")',
+    formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B11)),NOT(ISNUMBER(B12)),(B11+B12)=0),"",B8/((B11+B12)/2)),"")',
     result: resultOrEmpty(ratios.rotacion),
   }})
   rows.push({ concepto: 'Cobertura (días)', valor: {
-    formula: 'IFERROR(IF(B8<=0,"",B12*B15/B8),"")',
+    formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B12)),NOT(ISNUMBER(B8)),B8<=0),"",B12*B15/B8),"")',
     result: resultOrEmpty(ratios.cobertura_dias),
   }})
   rows.push({ concepto: 'Diferencia inventario %', valor: {
-    formula: 'IFERROR(IF(B13=0,"",B14/B13),"")',
+    formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B13)),NOT(ISNUMBER(B14)),B13=0),"",B14/B13),"")',
     result: resultOrEmpty(ratios.diferencia_inventario_pct),
   }})
 

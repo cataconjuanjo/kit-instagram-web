@@ -18,6 +18,19 @@ function num(v) {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * Lectura ESTRICTA: solo acepta números finitos reales. null, undefined,
+ * strings, NaN, Infinity → null, sin coerción.
+ *
+ * Se usa para los campos del desglose, donde null expresa intencionalmente
+ * "no se ha podido medir" (p. ej. stock_final_real cuando sólo hay un
+ * conteo del mes). Un fallback silencioso a d.stock_final del snapshot
+ * resucitaba ese valor y producía ratios espurios (0,0 en cobertura).
+ */
+function numLegit(v) {
+  return (typeof v === 'number' && Number.isFinite(v)) ? v : null
+}
+
 /** true si todos los args son números finitos */
 function finite(...args) {
   return args.every(v => typeof v === 'number' && Number.isFinite(v))
@@ -54,8 +67,10 @@ export function calcularRatios({ datos, desglose } = {}) {
   const ingrCopNeto = (ingrCopBruto != null) ? ingrCopBruto / factorIva : null
 
   // Coste por canal: viene del desglose ya cuadrado al céntimo.
-  const costeBot = num(dg?.ventas_botella?.valor_eur)
-  const costeCop = num(dg?.ventas_copa?.valor_eur)
+  // Lectura estricta: null del desglose → null; no fallback al snapshot
+  // raíz (que no tiene costes por canal de todos modos).
+  const costeBot = numLegit(dg?.ventas_botella?.valor_eur)
+  const costeCop = numLegit(dg?.ventas_copa?.valor_eur)
 
   // ── Margen por canal (€ y %) ───────────────────────────────────────
   const margen_botella_eur = finite(ingrBotNeto, costeBot)
@@ -80,33 +95,58 @@ export function calcularRatios({ datos, desglose } = {}) {
     : null
 
   // ── Consumo vs compras ─────────────────────────────────────────────
-  const consumoValor  = num(dg?.consumo?.valor_eur)
-  const comprasNetas  = num(dg?.entradas?.compras_netas?.valor_eur) ?? num(d.compras_netas)
-  const consumo_vs_compras = finite(consumoValor, comprasNetas) && comprasNetas !== 0
-    ? consumoValor / comprasNetas
-    : null
+  // Lectura estricta del desglose. Si el snapshot es antiguo (sin
+  // desglose), consumo no existe → null; compras_netas sí está en el
+  // raíz y se admite como fallback. Nunca se mezclan: cuando hay
+  // desglose se respeta su null (no hay inventario inicial o final).
+  const consumoValor = numLegit(dg?.consumo?.valor_eur)
+  const comprasNetas = dg
+    ? numLegit(dg?.entradas?.compras_netas?.valor_eur)
+    : num(d.compras_netas)
+  const consumo_vs_compras =
+    (typeof consumoValor === 'number') &&
+    (typeof comprasNetas === 'number') &&
+    comprasNetas !== 0
+      ? consumoValor / comprasNetas
+      : null
 
   // ── Rotación (coste / stock medio) ─────────────────────────────────
-  const stockIni = num(dg?.stock_inicial?.valor_eur) ?? num(d.stock_inicial)
-  const stockFin = num(dg?.stock_final_real?.valor_eur) ?? num(d.stock_final)
-  const stockMedio = finite(stockIni, stockFin) ? (stockIni + stockFin) / 2 : null
-  const rotacion = finite(costeTot, stockMedio) && stockMedio > 0
-    ? costeTot / stockMedio
-    : null
+  // Mismo criterio: si hay desglose, su decisión manda (null = no se ha
+  // podido medir). Sólo cuando no hay desglose se intenta leer el
+  // snapshot raíz (cierres antiguos).
+  const stockIni = dg
+    ? numLegit(dg?.stock_inicial?.valor_eur)
+    : num(d.stock_inicial)
+  const stockFin = dg
+    ? numLegit(dg?.stock_final_real?.valor_eur)
+    : num(d.stock_final)
+  const stockMedio =
+    (typeof stockIni === 'number') && (typeof stockFin === 'number')
+      ? (stockIni + stockFin) / 2
+      : null
+  const rotacion =
+    (typeof costeTot === 'number') && (typeof stockMedio === 'number') && stockMedio > 0
+      ? costeTot / stockMedio
+      : null
 
   // ── Cobertura (días) ───────────────────────────────────────────────
   // stock_final / (coste_ventas / días) = stock_final * días / coste_ventas
   const dias = diasDelMes(d.mes)
-  const cobertura_dias = finite(stockFin, costeTot, dias) && costeTot > 0
-    ? (stockFin * dias) / costeTot
-    : null
+  const cobertura_dias =
+    (typeof stockFin === 'number') &&
+    (typeof costeTot === 'number') &&
+    (typeof dias === 'number') &&
+    costeTot > 0
+      ? (stockFin * dias) / costeTot
+      : null
 
   // ── Diferencia de inventario (%) ───────────────────────────────────
-  const ajuste  = num(dg?.ajuste_inventario?.valor_eur)
-  const teorico = num(dg?.stock_final_teorico?.valor_eur)
-  const diferencia_inventario_pct = finite(ajuste, teorico) && teorico !== 0
-    ? ajuste / teorico
-    : null
+  const ajuste  = numLegit(dg?.ajuste_inventario?.valor_eur)
+  const teorico = numLegit(dg?.stock_final_teorico?.valor_eur)
+  const diferencia_inventario_pct =
+    (typeof ajuste === 'number') && (typeof teorico === 'number') && teorico !== 0
+      ? ajuste / teorico
+      : null
 
   return {
     margen_botella_pct,
