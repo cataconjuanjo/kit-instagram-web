@@ -663,6 +663,10 @@ function ExplotacionContent() {
         canales,
         registrosCompras: regsCompras || [],
         datosVino,
+        // F4: % bodega por concepto. Con imputacion_pct = {} las nuevas
+        // columnas del Excel se pintan a 100 % → imputado = importe
+        // total, idéntico al comportamiento anterior.
+        imputacion_pct: imputacionPct,
       })
       await descargarWorkbook(spec)
     } catch (err) {
