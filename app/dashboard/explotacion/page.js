@@ -562,6 +562,14 @@ function ExplotacionContent() {
   })
   const [historico, setHistorico] = useState([])
   const [datosVino, setDatosVino] = useState(null)
+  // Fuente del desglose para la sugerencia de "Consumo calculado".
+  // Viene del mismo endpoint que usa el panel Cierre mensual, que
+  // devuelve el snapshot firmado (cierre.snapshot) si existe o el
+  // cálculo en vivo (datos) si no. Así cubrimos los dos casos sin
+  // depender sólo de los cierres ya guardados en BD.
+  //   null  = aún no cargado o no se pudo cargar.
+  //   {...} = snapshot o cálculo en vivo, con o sin bloque desglose v1.
+  const [datosCierreApi, setDatosCierreApi] = useState(null)
   const [cierreExiste, setCierreExiste] = useState(null) // null=cargando, true/false
   const [aplicandoCierre, setAplicandoCierre] = useState(false)
   // Perfil Somm: la pantalla habla solo de vino. Guardamos la fila
@@ -662,6 +670,26 @@ function ExplotacionContent() {
         setCierreExiste(null)
       } else {
         setCierreExiste(!!cierre)
+      }
+
+      // Fuente para "Consumo calculado": mismo endpoint que el panel
+      // Cierre mensual. Si el mes está cerrado, viene el snapshot; si
+      // no, el cálculo en vivo. Ambos incluyen `desglose` (Fase 1) y
+      // permiten ofrecer el consumo real sin tener que firmar el cierre.
+      try {
+        const res = await apiFetch(
+          `/api/cierres-mes?restaurante_id=${restaurante.id}&mes=${periodo}`,
+          { method: 'GET' }
+        )
+        if (res.ok) {
+          const json = await res.json()
+          const src = json?.cerrado ? json?.cierre?.snapshot : json?.datos
+          setDatosCierreApi(src || null)
+        } else {
+          setDatosCierreApi(null)
+        }
+      } catch {
+        setDatosCierreApi(null)
       }
     }
     cargarPeriodo()
@@ -923,9 +951,11 @@ function ExplotacionContent() {
                 </small>
                 {(() => {
                   // Sugerencia de consumo CALCULADO desde el desglose del
-                  // cierre. Nunca sobrescribe el valor manual; sólo lo
-                  // ofrece con un botón explícito.
-                  const cmp = calcularConsumoMP({ desglose: readDesglose(datosVino), datos: datosVino })
+                  // cierre del periodo. Fuente = datosCierreApi, que
+                  // combina snapshot firmado + cálculo en vivo (ver
+                  // cargarPeriodo arriba). Nunca sobrescribe el valor
+                  // manual; sólo lo ofrece con un botón explícito.
+                  const cmp = calcularConsumoMP({ desglose: readDesglose(datosCierreApi), datos: datosCierreApi })
                   const manual = num(consumoMp)
                   const diff   = (cmp.estado === 'calculado' && manual > 0)
                     ? cmp.valor - manual

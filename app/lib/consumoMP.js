@@ -25,11 +25,15 @@ function numLegit(v) {
  */
 export function calcularConsumoMP({ desglose, datos } = {}) {
   const dg = desglose || null
-  // Si no hay desglose en absoluto, no hay nada que ofrecer.
+  // Si no hay desglose en absoluto (cierres firmados antes de v1 o
+  // respuesta sin bloque desglose), no hay nada que ofrecer. El caso se
+  // identifica explícitamente para que la UI pueda mostrar un texto
+  // distinto de "sin conteos del mes".
   if (!dg || dg.desglose_v !== 1) {
     return {
       valor: null,
       estado: 'sin_datos',
+      caso: 'snapshot_antiguo',
       motivo: 'El cierre de este periodo no incluye desglose (snapshot anterior a v1).',
     }
   }
@@ -44,6 +48,7 @@ export function calcularConsumoMP({ desglose, datos } = {}) {
     return {
       valor: consumoVal,
       estado: 'calculado',
+      caso: 'ambos_saldos',
       motivo: null,
     }
   }
@@ -55,25 +60,23 @@ export function calcularConsumoMP({ desglose, datos } = {}) {
     return {
       valor: null,
       estado: 'parcial',
-      motivo: 'Falta inventario inicial del periodo (necesita dos conteos del mes).',
+      caso: 'falta_inicial',
+      motivo: 'Falta inventario inicial',
     }
   }
 
-  // Sin conteos o faltan ambos saldos.
+  // Sin conteos (o faltan ambos saldos). El agregador actual sólo
+  // acumula stock_inicial cuando hay 2+ conteos y stock_final_real
+  // cuando el desglose puede cerrarse: si los dos son null, es que no
+  // hubo conteos del mes.
   //
-  // Nota: no probamos el "solo inicial sin final" porque hoy el cálculo
-  // de calcularMesBodega sólo acumula stock_inicial cuando hay 2+ conteos
-  // (es decir, hay inicial si y sólo si hay final también). El caso
-  // teórico es irrelevante para el flujo actual; si en el futuro el
-  // agregador cambia, cae en esta misma rama de "sin_datos".
-  //
-  // `datos` se expone en la firma por si el consumer necesita pistas
-  // adicionales (p. ej. para el mensaje "sin conteos vs con un único
-  // conteo"); de momento basta con el estado sin inspeccionarlo.
+  // `datos` se mantiene en la firma por si el consumer necesita pistas
+  // adicionales; de momento no lo inspeccionamos.
   void datos
   return {
     valor: null,
     estado: 'sin_datos',
-    motivo: 'Sin conteos de inventario del periodo: no se puede calcular el consumo.',
+    caso: 'sin_conteos',
+    motivo: 'Sin inventario inicial y final contado en este mes',
   }
 }
