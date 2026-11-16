@@ -1,3 +1,5 @@
+import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from './cierreDesglose.js'
+
 /**
  * excelSomm.js — Construye SPECS de workbook para las 3 exportaciones del
  * perfil Somm: libro de bodega, libro de compras, cierre mensual.
@@ -349,6 +351,13 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm 
 
   // Hoja Gastos (réplica del OLD). En perfil Somm no se incluye.
   const sheets = [sheetResumen, sheetVinos]
+
+  // Hoja "Desglose" (v1): sólo si el snapshot trae un desglose reconocido.
+  // Los cierres antiguos (sin desglose o versión desconocida) se exportan
+  // igual que antes, sin esta hoja.
+  const sheetDesglose = construirSheetDesgloseCierre(datos)
+  if (sheetDesglose) sheets.push(sheetDesglose)
+
   const gastos = Array.isArray(datos?.gastos) ? datos.gastos : []
   if (!esSomm && gastos.length > 0) {
     const gastosRows = gastos.map(g => ({
@@ -388,4 +397,145 @@ function totalesCierreVinos(rows) {
     }
   }
   return row
+}
+
+// ── Hoja "Desglose" del cierre mensual (desglose_v = 1) ─────────────────────
+//
+// Tres columnas: Concepto | uds | Valor (€). Secciones vacías (fila con
+// sólo el título en A) separan los bloques como en la UI. Las fórmulas se
+// pasan SIN "=" inicial para alinear con el resto del dominio (ExcelJS
+// lo añade solo). Cada fórmula referencia celdas con valor real.
+//
+// Layout determinista (necesario para que las fórmulas no apunten a hueco):
+//    1  header
+//    2  sección "STOCK INICIAL"
+//    3  Stock inicial (valorado)
+//    4  sección "ENTRADAS"
+//    5  Compras brutas
+//    6  Devoluciones
+//    7  Compras netas              (fórmula: C5-C6)
+//    8  sección "VENTAS"
+//    9  Botella
+//   10  Copa
+//   11  sección "SALIDAS SIN VENTA"
+//   12  Invitación (botella)
+//   13  Invitación (copa)
+//   14  Cocina
+//   15  Grupo / Evento
+//   16  Maridaje
+//   17  Rotura / defecto
+//   18  Cata interna
+//   19  Total salidas sin venta    (uds: SUM(B12:B18), valor: SUM(C12:C18))
+//   20  sección "CIERRE DE INVENTARIO"
+//   21  Stock final teórico        (fórmula: C3+C7-C9-C10-C19, si hay stock_inicial)
+//   22  Ajuste de inventario       (fórmula: C23-C21, si hay teórico y real)
+//   23  Stock final real
+//   24  Consumo                    (fórmula: C3+C7-C23, si hay stock_inicial y real)
+export function construirSheetDesgloseCierre(datos) {
+  const d = readDesglose(datos)
+  if (!d) return null
+
+  const rows = []
+  const section = (label) => rows.push({ concepto: label, uds: null, valor: null })
+  const r2 = (n) => Math.round(Number(n || 0) * 100) / 100
+
+  // 2–3: STOCK INICIAL
+  section('STOCK INICIAL')
+  rows.push({
+    concepto: 'Stock inicial (valorado)',
+    uds:      d.stock_inicial?.uds ?? null,
+    valor:    d.stock_inicial?.valor_eur ?? null,
+  })
+
+  // 4–7: ENTRADAS
+  section('ENTRADAS')
+  rows.push({
+    concepto: 'Compras brutas',
+    uds:      d.entradas?.compras_bruto?.uds ?? null,
+    valor:    Number(d.entradas?.compras_bruto?.valor_eur) || 0,
+  })
+  rows.push({
+    concepto: 'Devoluciones',
+    uds:      d.entradas?.devoluciones?.uds ?? null,
+    valor:    Number(d.entradas?.devoluciones?.valor_eur) || 0,
+  })
+  rows.push({
+    concepto: 'Compras netas',
+    uds:      d.entradas?.compras_netas?.uds ?? null,
+    valor:    { formula: 'C5-C6', result: r2(d.entradas?.compras_netas?.valor_eur) },
+  })
+
+  // 8–10: VENTAS
+  section('VENTAS')
+  rows.push({
+    concepto: 'Botella',
+    uds:      Number(d.ventas_botella?.uds) || 0,
+    valor:    Number(d.ventas_botella?.valor_eur) || 0,
+  })
+  rows.push({
+    concepto: 'Copa (copas servidas)',
+    uds:      Number(d.ventas_copa?.uds) || 0,
+    valor:    Number(d.ventas_copa?.valor_eur) || 0,
+  })
+
+  // 11–19: SALIDAS SIN VENTA
+  section('SALIDAS SIN VENTA')
+  for (const cat of CATEGORIAS_SALIDA_SIN_VENTA) {
+    const line = d.salidas_sin_venta?.[cat.key]
+    rows.push({
+      concepto: cat.label,
+      uds:      Number(line?.uds) || 0,
+      valor:    Number(line?.valor_eur) || 0,
+    })
+  }
+  rows.push({
+    concepto: 'Total salidas sin venta',
+    uds:   { formula: 'SUM(B12:B18)', result: Number(d.salidas_sin_venta?.total?.uds) || 0 },
+    valor: { formula: 'SUM(C12:C18)', result: r2(d.salidas_sin_venta?.total?.valor_eur) },
+  })
+
+  // 20–24: CIERRE DE INVENTARIO
+  section('CIERRE DE INVENTARIO')
+  const stockIni       = d.stock_inicial?.valor_eur
+  const stockFinalReal = d.stock_final_real?.valor_eur
+  const puedeTeorico   = stockIni != null
+  const puedeRealAjuste = puedeTeorico && stockFinalReal != null
+
+  rows.push({
+    concepto: 'Stock final teórico',
+    uds:      d.stock_final_teorico?.uds ?? null,
+    valor:    puedeTeorico
+      ? { formula: 'C3+C7-C9-C10-C19', result: r2(d.stock_final_teorico?.valor_eur) }
+      : (d.stock_final_teorico?.valor_eur ?? null),
+  })
+  rows.push({
+    concepto: 'Ajuste de inventario',
+    uds:      d.ajuste_inventario?.uds ?? null,
+    valor:    puedeRealAjuste
+      ? { formula: 'C23-C21', result: r2(d.ajuste_inventario?.valor_eur) }
+      : (d.ajuste_inventario?.valor_eur ?? null),
+  })
+  rows.push({
+    concepto: 'Stock final real',
+    uds:      d.stock_final_real?.uds ?? null,
+    valor:    d.stock_final_real?.valor_eur ?? null,
+  })
+  rows.push({
+    concepto: 'Consumo (identidad de inventario)',
+    uds:      d.consumo?.uds ?? null,
+    valor:    puedeRealAjuste
+      ? { formula: 'C3+C7-C23', result: r2(d.consumo?.valor_eur) }
+      : (d.consumo?.valor_eur ?? null),
+  })
+
+  return {
+    name: 'Desglose',
+    columns: [
+      { header: 'Concepto', key: 'concepto', width: 34 },
+      { header: 'uds',      key: 'uds',      width: 10, format: FMT_INT },
+      { header: 'Valor',    key: 'valor',    width: 14, format: FMT_EUR },
+    ],
+    rows,
+    freezeHeader: true,
+  }
 }
