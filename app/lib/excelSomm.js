@@ -1,5 +1,6 @@
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from './cierreDesglose.js'
 import { calcularRatios, diasDelMes } from './ratiosCierre.js'
+import { conciliarCompras } from './conciliacionCompras.js'
 
 /**
  * excelSomm.js — Construye SPECS de workbook para las 3 exportaciones del
@@ -283,7 +284,7 @@ const COLS_CIERRE_VINOS = [
   { header: 'Tiene coste',       key: 'tiene_coste',    width: 10 },
 ]
 
-export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm = false }) {
+export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm = false, facturasLibro = [] }) {
   const slug = slugRestaurante(restauranteNombre)
   const filename = `${slug}-cierre-${mes}.xlsx`
 
@@ -366,6 +367,13 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm 
   // números de fila usados aquí dependen de él.
   const sheetRatios = construirSheetRatios(datos, mes)
   if (sheetRatios) sheets.push(sheetRatios)
+
+  // Hoja "Conciliacion" (F3): compara compras_netas del cierre con la
+  // suma de importes del Libro de Compras del mismo mes. Se añade
+  // siempre, incluso cuando el libro está vacío (en ese caso la fórmula
+  // deja Diferencia = totalApp y el estado marca "Sin facturas").
+  const sheetConcil = construirSheetConciliacion({ datos, mes, facturasLibro })
+  if (sheetConcil) sheets.push(sheetConcil)
 
   const gastos = Array.isArray(datos?.gastos) ? datos.gastos : []
   if (!esSomm && gastos.length > 0) {
@@ -665,6 +673,62 @@ export function construirSheetRatios(datos, mes) {
     name: 'Ratios',
     columns: [
       { header: 'Concepto', key: 'concepto', width: 34 },
+      { header: 'Valor',    key: 'valor',    width: 18 },
+    ],
+    rows,
+    freezeHeader: true,
+  }
+}
+
+// ── Hoja "Conciliacion" del cierre mensual (F3) ───────────────────────────
+//
+// Dos columnas: Concepto | Valor. Layout determinista (las fórmulas
+// referencian estas filas):
+//    1  header
+//    2  "Mes" (texto YYYY-MM)
+//    3  Compras app (cierre)        — valor numérico (compras_netas)
+//    4  Libro de Compras (total)    — valor numérico (suma importe)
+//    5  Diferencia                  — fórmula sin "=" inicial: B3-B4
+//    6  % sobre Libro               — fórmula con IFERROR + ISNUMBER
+//    7  Facturas del Libro          — contador (número entero)
+//    8  Estado                      — texto precalculado
+//    9  Nota de tolerancia          — texto fijo
+export function construirSheetConciliacion({ datos, mes, facturasLibro = [] } = {}) {
+  const c = conciliarCompras({
+    comprasApp: datos?.compras_netas,
+    facturasLibro,
+    mes,
+  })
+  const etiqueta = {
+    ok:        'Coincide',
+    revisar:   'Revisar',
+    sin_libro: 'Sin facturas en el Libro',
+    sin_app:   'Sin compras en la app',
+  }[c.estado] || '-'
+
+  const rows = [
+    { concepto: 'Mes',                  valor: c.meta.mes || mes || '' },
+    { concepto: 'Compras app (cierre)', valor: c.totalApp },
+    { concepto: 'Libro de Compras',     valor: c.totalLibro },
+    { concepto: 'Diferencia (app − libro)', valor: {
+      formula: 'B3-B4',
+      result:  c.diferencia,
+    }},
+    { concepto: '% sobre Libro', valor: {
+      // IFERROR + ISNUMBER para distinguir vacío/0: si B4 es 0 o vacío,
+      // devolvemos "" en vez de #DIV/0! o 0 engañoso. Ratio (0.03 = 3 %).
+      formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B4)),B4=0),"",(B3-B4)/B4),"")',
+      result:  (c.pct == null) ? '' : c.pct,
+    }},
+    { concepto: `Facturas del Libro${c.meta.sin_fecha ? ` (${c.meta.sin_fecha} sin fecha)` : ''}`,
+      valor: c.meta.cuenta_facturas },
+    { concepto: 'Estado', valor: etiqueta },
+    { concepto: 'Tolerancia', valor: `${c.meta.tolerancia.eur} € o ${c.meta.tolerancia.pct * 100} %` },
+  ]
+  return {
+    name: 'Conciliacion',
+    columns: [
+      { header: 'Concepto', key: 'concepto', width: 36 },
       { header: 'Valor',    key: 'valor',    width: 18 },
     ],
     rows,

@@ -31,6 +31,8 @@ import {
 } from '../../lib/sommExplotacion'
 import { construirInformeEconomicoWorkbook } from '../../lib/informeEconomicoExcel'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
+import { readDesglose } from '../../lib/cierreDesglose'
+import { calcularConsumoMP } from '../../lib/consumoMP'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -560,6 +562,14 @@ function ExplotacionContent() {
   })
   const [historico, setHistorico] = useState([])
   const [datosVino, setDatosVino] = useState(null)
+  // Fuente del desglose para la sugerencia de "Consumo calculado".
+  // Viene del mismo endpoint que usa el panel Cierre mensual, que
+  // devuelve el snapshot firmado (cierre.snapshot) si existe o el
+  // cálculo en vivo (datos) si no. Así cubrimos los dos casos sin
+  // depender sólo de los cierres ya guardados en BD.
+  //   null  = aún no cargado o no se pudo cargar.
+  //   {...} = snapshot o cálculo en vivo, con o sin bloque desglose v1.
+  const [datosCierreApi, setDatosCierreApi] = useState(null)
   const [cierreExiste, setCierreExiste] = useState(null) // null=cargando, true/false
   const [aplicandoCierre, setAplicandoCierre] = useState(false)
   // Perfil Somm: la pantalla habla solo de vino. Guardamos la fila
@@ -660,6 +670,26 @@ function ExplotacionContent() {
         setCierreExiste(null)
       } else {
         setCierreExiste(!!cierre)
+      }
+
+      // Fuente para "Consumo calculado": mismo endpoint que el panel
+      // Cierre mensual. Si el mes está cerrado, viene el snapshot; si
+      // no, el cálculo en vivo. Ambos incluyen `desglose` (Fase 1) y
+      // permiten ofrecer el consumo real sin tener que firmar el cierre.
+      try {
+        const res = await apiFetch(
+          `/api/cierres-mes?restaurante_id=${restaurante.id}&mes=${periodo}`,
+          { method: 'GET' }
+        )
+        if (res.ok) {
+          const json = await res.json()
+          const src = json?.cerrado ? json?.cierre?.snapshot : json?.datos
+          setDatosCierreApi(src || null)
+        } else {
+          setDatosCierreApi(null)
+        }
+      } catch {
+        setDatosCierreApi(null)
       }
     }
     cargarPeriodo()
@@ -903,6 +933,9 @@ function ExplotacionContent() {
         <section className={styles.panel}>
           <div className={styles.panelHead}>
             <h2 className={styles.panelTitle}>Facturación y Materia Prima</h2>
+            <p className={styles.panelSub} style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+              Importes imputables a la bodega (vino).
+            </p>
           </div>
           <div className={styles.panelBody}>
             <div className={styles.formGrid}>
@@ -916,6 +949,47 @@ function ExplotacionContent() {
                 <small style={{ color: '#888', marginTop: 4, display: 'block', fontSize: 11 }}>
                   Consumo = Compras + Stock Inicial − Stock Final (no es lo mismo que las compras del mes)
                 </small>
+                {(() => {
+                  // Sugerencia de consumo CALCULADO desde el desglose del
+                  // cierre del periodo. Fuente = datosCierreApi, que
+                  // combina snapshot firmado + cálculo en vivo (ver
+                  // cargarPeriodo arriba). Nunca sobrescribe el valor
+                  // manual; sólo lo ofrece con un botón explícito.
+                  const cmp = calcularConsumoMP({ desglose: readDesglose(datosCierreApi), datos: datosCierreApi })
+                  const manual = num(consumoMp)
+                  const diff   = (cmp.estado === 'calculado' && manual > 0)
+                    ? cmp.valor - manual
+                    : null
+                  return (
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#8b8278', lineHeight: 1.5 }}>
+                      {cmp.estado === 'calculado' && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                          <span>
+                            Consumo calculado: <strong style={{ color: '#1a1a1a' }}>{eur(cmp.valor, 2)}</strong>
+                            {' '}(inventario inicial + compras − final)
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.ghost}
+                            onClick={() => setConsumoMp(String(cmp.valor))}
+                            style={{ fontSize: 11, padding: '2px 8px' }}
+                          >
+                            Usar consumo calculado
+                          </button>
+                        </div>
+                      )}
+                      {(cmp.estado === 'parcial' || cmp.estado === 'sin_datos') && cmp.motivo && (
+                        <span>Consumo calculado no disponible: {cmp.motivo}</span>
+                      )}
+                      {diff !== null && Math.abs(diff) >= 0.01 && (
+                        <div style={{ marginTop: 2, color: Math.abs(diff) > manual * 0.1 ? '#b85454' : '#8b8278' }}>
+                          Diferencia con el valor manual:{' '}
+                          <strong>{diff >= 0 ? '+' : '−'} {eur(Math.abs(diff), 2)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </label>
             </div>
             {datosVino && (
