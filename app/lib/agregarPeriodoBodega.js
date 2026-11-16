@@ -89,15 +89,19 @@ export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct =
   let consumos_uds      = 0
   let consumos_valor    = 0
 
+  // Campos .coste y los sub-campos botella_* / copa_* en canal.invitacion
+  // son aditivos al vocabulario original (ver cierreDesglose + snapshot v1).
+  // Se mantienen todos los campos preexistentes (uds, ingresos, valor) con
+  // la misma semántica para no romper cierres antiguos.
   const canal = {
-    botella:    { uds: 0, ingresos: 0 },
-    copa:       { uds: 0, copas: 0, ingresos: 0 },
-    invitacion: { uds: 0 },
-    cocina:     { uds: 0, valor: 0 },
-    evento:     { uds: 0, valor: 0 },
-    maridaje:   { uds: 0, valor: 0 },
-    rotura:     { uds: 0 },
-    cata:       { uds: 0, valor: 0 },
+    botella:    { uds: 0, ingresos: 0, coste: 0 },
+    copa:       { uds: 0, copas: 0, ingresos: 0, coste: 0 },
+    invitacion: { uds: 0, botella_uds: 0, copa_uds: 0, botella_coste: 0, copa_coste: 0 },
+    cocina:     { uds: 0, valor: 0, coste: 0 },
+    evento:     { uds: 0, valor: 0, coste: 0 },
+    maridaje:   { uds: 0, valor: 0, coste: 0 },
+    rotura:     { uds: 0, coste: 0 },
+    cata:       { uds: 0, valor: 0, coste: 0 },
   }
 
   const vinoMap    = {}
@@ -113,6 +117,19 @@ export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct =
     const esVenta  = l.tipo === 'venta_botella' || l.tipo === 'venta_copa'
     const ingreso  = esCopa ? r2(precio * copas) : r2(precio * cantidad)
 
+    // Coste a inventario para el desglose v1:
+    //   - botella entera:  cantidad × coste_medio_pmp (fallback coste_compra)
+    //   - copa:           (copas / copasVendibles) × coste_medio_pmp
+    // Nota: copasVendibles ya incorpora la merma copa (ver línea superior),
+    // así que el coste de una copa es el precio de coste dividido por copas
+    // netas que da una botella.
+    const costeU   = r4(Number(l.vino?.coste_medio_pmp) || Number(l.vino?.coste_compra) || 0)
+    const costeLinea = r2(
+      esCopa
+        ? (copasVendibles > 0 ? (copas / copasVendibles) * costeU : 0)
+        : cantidad * costeU
+    )
+
     // — Canal —
     switch (l.tipo) {
       case 'venta_botella':
@@ -120,48 +137,61 @@ export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct =
         botellas_vendidas += cantidad
         canal.botella.uds      += cantidad
         canal.botella.ingresos += ingreso
+        canal.botella.coste    += costeLinea
         break
       case 'venta_copa':
         ingresos_venta    += ingreso
         copas_total       += copas
         canal.copa.copas    += copas
         canal.copa.ingresos += ingreso
+        canal.copa.coste    += costeLinea
         break
       case 'invitacion_botella':
-        invitaciones_uds      += cantidad
-        canal.invitacion.uds  += cantidad
+        invitaciones_uds              += cantidad
+        canal.invitacion.uds          += cantidad
+        canal.invitacion.botella_uds  += cantidad
+        canal.invitacion.botella_coste += costeLinea
         break
-      case 'invitacion_copa':
-        invitaciones_uds      += copas || cantidad
-        canal.invitacion.uds  += copas || cantidad
+      case 'invitacion_copa': {
+        const udsInv = copas || cantidad
+        invitaciones_uds              += udsInv
+        canal.invitacion.uds          += udsInv
+        canal.invitacion.copa_uds     += udsInv
+        canal.invitacion.copa_coste   += costeLinea
         break
+      }
       case 'cocina':
         consumos_uds       += cantidad
         consumos_valor     += ingreso
         canal.cocina.uds   += cantidad
         canal.cocina.valor += ingreso
+        canal.cocina.coste += costeLinea
         break
       case 'grupo_evento':
         consumos_uds        += cantidad
         consumos_valor      += ingreso
         canal.evento.uds    += cantidad
         canal.evento.valor  += ingreso
+        canal.evento.coste  += costeLinea
         break
       case 'maridaje':
         consumos_uds          += cantidad
         consumos_valor        += ingreso
         canal.maridaje.uds    += cantidad
         canal.maridaje.valor  += ingreso
+        canal.maridaje.coste  += costeLinea
         break
       case 'rotura':
         consumos_uds       += cantidad
         canal.rotura.uds   += cantidad
+        canal.rotura.coste += costeLinea
         break
       case 'cata':
         consumos_uds      += cantidad
         consumos_valor    += ingreso
         canal.cata.uds    += cantidad
         canal.cata.valor  += ingreso
+        canal.cata.coste  += costeLinea
         break
     }
 
@@ -248,9 +278,16 @@ function emptyAgregacion() {
   return {
     resumen: { ingresos_venta: 0, botellas_vendidas: 0, copas_vendidas: 0,
                botellas_equivalentes: 0, invitaciones_uds: 0, consumos_uds: 0, consumos_valor: 0 },
-    por_canal:    { botella: { uds: 0, ingresos: 0 }, copa: { uds: 0, copas: 0, ingresos: 0 },
-                    invitacion: { uds: 0 }, cocina: { uds: 0, valor: 0 }, evento: { uds: 0, valor: 0 },
-                    maridaje: { uds: 0, valor: 0 }, rotura: { uds: 0 }, cata: { uds: 0, valor: 0 } },
+    por_canal:    {
+      botella:    { uds: 0, ingresos: 0, coste: 0 },
+      copa:       { uds: 0, copas: 0, ingresos: 0, coste: 0 },
+      invitacion: { uds: 0, botella_uds: 0, copa_uds: 0, botella_coste: 0, copa_coste: 0 },
+      cocina:     { uds: 0, valor: 0, coste: 0 },
+      evento:     { uds: 0, valor: 0, coste: 0 },
+      maridaje:   { uds: 0, valor: 0, coste: 0 },
+      rotura:     { uds: 0, coste: 0 },
+      cata:       { uds: 0, valor: 0, coste: 0 },
+    },
     por_vino:     [],
     por_dia_turno: [],
     top_ingresos:  [],
@@ -487,6 +524,86 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     - gastos_total
   )
 
+  // ── Desglose de cierre (v1) ─────────────────────────────────────────────
+  // Objeto aditivo al snapshot. Los consumers (UI, PDF, Excel) deben leerlo
+  // vía readDesglose() de lib/cierreDesglose.js, que admite snapshots
+  // antiguos sin este bloque.
+  //
+  // Fórmulas (todas a coste, en euros):
+  //   salidas_total        = Σ categorías de salida sin venta
+  //   ventas_total_coste   = ventas_botella.coste + ventas_copa.coste
+  //   stock_final_teorico  = stock_inicial + compras_netas − ventas_total_coste − salidas_total
+  //   ajuste_inventario    = stock_final_real − stock_final_teorico  (con signo)
+  //   consumo              = stock_inicial + compras_netas − stock_final_real
+  const c = informe.por_canal
+  const salidas = {
+    invitacion_botella: {
+      uds:       c.invitacion?.botella_uds   || 0,
+      valor_eur: r2(c.invitacion?.botella_coste || 0),
+    },
+    invitacion_copa: {
+      uds:       c.invitacion?.copa_uds      || 0,
+      valor_eur: r2(c.invitacion?.copa_coste || 0),
+    },
+    cocina:       { uds: c.cocina?.uds   || 0, valor_eur: r2(c.cocina?.coste   || 0) },
+    grupo_evento: { uds: c.evento?.uds   || 0, valor_eur: r2(c.evento?.coste   || 0) },
+    maridaje:     { uds: c.maridaje?.uds || 0, valor_eur: r2(c.maridaje?.coste || 0) },
+    rotura:       { uds: c.rotura?.uds   || 0, valor_eur: r2(c.rotura?.coste   || 0) },
+    cata:         { uds: c.cata?.uds     || 0, valor_eur: r2(c.cata?.coste     || 0) },
+  }
+  const salidas_total_valor = r2(
+    salidas.invitacion_botella.valor_eur +
+    salidas.invitacion_copa.valor_eur +
+    salidas.cocina.valor_eur +
+    salidas.grupo_evento.valor_eur +
+    salidas.maridaje.valor_eur +
+    salidas.rotura.valor_eur +
+    salidas.cata.valor_eur
+  )
+  const salidas_total_uds = (
+    salidas.invitacion_botella.uds +
+    salidas.invitacion_copa.uds +
+    salidas.cocina.uds +
+    salidas.grupo_evento.uds +
+    salidas.maridaje.uds +
+    salidas.rotura.uds +
+    salidas.cata.uds
+  )
+  const ventas_botella_coste = r2(c.botella?.coste || 0)
+  const ventas_copa_coste    = r2(c.copa?.coste    || 0)
+  const ventas_total_coste   = r2(ventas_botella_coste + ventas_copa_coste)
+
+  // stock_inicial / stock_final sólo existen si hubo conteos del mes.
+  const stockFinalTeorico = (stock_inicial != null)
+    ? r2(stock_inicial + compras_netas - ventas_total_coste - salidas_total_valor)
+    : null
+  const ajusteInventario  = (stockFinalTeorico != null && stock_final != null)
+    ? r2(stock_final - stockFinalTeorico)
+    : null
+  const consumoValor      = (stock_inicial != null && stock_final != null)
+    ? r2(stock_inicial + compras_netas - stock_final)
+    : null
+
+  const desglose = {
+    desglose_v: 1,
+    stock_inicial:        { uds: null, valor_eur: stock_inicial },
+    entradas: {
+      compras_bruto:  { uds: null, valor_eur: compras_bruto },
+      devoluciones:   { uds: null, valor_eur: devoluciones  },
+      compras_netas:  { uds: null, valor_eur: compras_netas },
+    },
+    ventas_botella:       { uds: c.botella?.uds   || 0, valor_eur: ventas_botella_coste },
+    ventas_copa:          { uds: c.copa?.copas    || 0, valor_eur: ventas_copa_coste    },
+    salidas_sin_venta: {
+      ...salidas,
+      total: { uds: salidas_total_uds, valor_eur: salidas_total_valor },
+    },
+    stock_final_teorico:  { uds: null, valor_eur: stockFinalTeorico },
+    ajuste_inventario:    { uds: null, valor_eur: ajusteInventario  },
+    stock_final_real:     { uds: null, valor_eur: stock_final       },
+    consumo:              { uds: null, valor_eur: consumoValor      },
+  }
+
   return {
     mes, desde, hasta,
     partes_incluidos:     informe.meta.partes_incluidos,
@@ -503,5 +620,6 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     cobertura: { partes_incluidos: informe.meta.partes_incluidos, sin_coste },
     rendimiento_copa,
     informe,
+    desglose,
   }
 }
