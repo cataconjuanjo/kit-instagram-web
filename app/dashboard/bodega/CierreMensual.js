@@ -14,6 +14,7 @@ import {
 import { formatoMoneda } from '../../lib/formatoEs'
 import { margenTrasMerma } from '../../lib/margenBodega'
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from '../../lib/cierreDesglose'
+import { calcularRatios } from '../../lib/ratiosCierre'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -47,6 +48,43 @@ function eurDesglose(v) {
   return new Intl.NumberFormat('es-ES', {
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(Number(v))
+}
+
+// Ratio (0..1) → "32,0 %". Null/NaN → "—".
+function pctRatio(v) {
+  if (v == null || !Number.isFinite(Number(v))) return '—'
+  const pct = Number(v) * 100
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 1, maximumFractionDigits: 1,
+  }).format(pct) + ' %'
+}
+// Número con decimales (rotación 1,28 / cobertura 28,2 d). Null → "—".
+function numDec(v, dec = 2) {
+  if (v == null || !Number.isFinite(Number(v))) return '—'
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: dec, maximumFractionDigits: dec,
+  }).format(Number(v))
+}
+
+// Motivo humano por el que un ratio es null, para el tooltip.
+function motivoRatio(faltantes, which) {
+  if (!faltantes) return ''
+  const m = []
+  if (which === 'margen_botella' || which === 'margen_copa') {
+    if (faltantes.iva_pct) m.push('Requiere iva_pct')
+    if (which === 'margen_botella' && faltantes.canal_botella_ingresos) m.push('Sin ingresos de botella')
+    if (which === 'margen_copa'    && faltantes.canal_copa_ingresos)    m.push('Sin ingresos de copa')
+    if (faltantes.desglose) m.push('Snapshot sin desglose')
+  }
+  if (which === 'coste_pct')          if (faltantes.ventas_netas)   m.push('Requiere ventas netas > 0')
+  if (which === 'consumo_vs_compras') {
+    if (faltantes.compras_netas) m.push('Requiere compras netas > 0')
+    if (faltantes.inventario)    m.push('Requiere inventario inicial y final')
+  }
+  if (which === 'rotacion' || which === 'cobertura_dias' || which === 'diferencia_inv') {
+    if (faltantes.inventario) m.push('Requiere inventario inicial y final')
+  }
+  return m.join(' · ')
 }
 
 function mesLabel(mes) {
@@ -301,6 +339,28 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
       sub(`Mes anterior: ${antSigno}${eur(Math.abs(datosAnt.resultado))}  ${vTag(datos.resultado, datosAnt.resultado)}`)
     }
   }
+
+  // Ratios del mes (F2). Se pinta ANTES del Desglose para que un lector
+  // rápido lo vea arriba y el Desglose quede como material de respaldo.
+  const ratios = calcularRatios({ datos, desglose: readDesglose(datos) })
+  const pdfPct = (v) => (v == null || !Number.isFinite(Number(v))) ? '-' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(v) * 100) + ' %'
+  const pdfNum = (v, dec = 2) => (v == null || !Number.isFinite(Number(v))) ? '-' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(Number(v))
+  if (y > 230) { doc.addPage(); y = 14 }
+  sep()
+  hdr('Ratios del mes', 10)
+  tabla(
+    ['Ratio', 'Valor', ''],
+    [
+      ['Margen botella %',   pdfPct(ratios.margen_botella_pct), ''],
+      ['Margen copa %',      pdfPct(ratios.margen_copa_pct),    ''],
+      ['Coste s/ ventas',    pdfPct(ratios.coste_pct_sobre_ventas), ''],
+      ['Consumo / compras',  pdfPct(ratios.consumo_vs_compras), ''],
+      ['Rotacion',           pdfNum(ratios.rotacion, 2),        ''],
+      ['Cobertura (dias)',   pdfNum(ratios.cobertura_dias, 1),  ''],
+      ['Dif. inventario %',  pdfPct(ratios.diferencia_inventario_pct), ''],
+    ],
+    [100, 52, 30]
+  )
 
   // Desglose del cierre (v1). Snapshots antiguos no lo tienen: se omite.
   const desg = readDesglose(datos)
@@ -867,6 +927,44 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                     </tbody>
                   </table>
                 )}
+              </div>
+            )
+          })()}
+
+          {/* Ratios del mes (F2 feat/cierre-ratios). Función pura que
+              acepta null en cualquier operando y devuelve null por
+              ratio. La UI muestra "—" + tooltip con el motivo. */}
+          {(() => {
+            const r = calcularRatios({ datos, desglose: readDesglose(datos) })
+            const f = r.meta?.faltantes || {}
+            const tarjeta = (titulo, valor, motivo) => (
+              <div
+                style={{
+                  flex: '1 1 160px', minWidth: 140,
+                  padding: '10px 12px', borderRadius: 8,
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.02)',
+                }}
+                title={valor === '—' ? motivo : ''}
+              >
+                <div style={{ fontSize: 10.5, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.55, marginBottom: 4 }}>{titulo}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, cursor: valor === '—' && motivo ? 'help' : 'default' }}>{valor}</div>
+              </div>
+            )
+            return (
+              <div style={{ marginTop: 20, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 10 }}>
+                  Ratios del mes
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {tarjeta('Margen botella %', pctRatio(r.margen_botella_pct), motivoRatio(f, 'margen_botella'))}
+                  {tarjeta('Margen copa %',    pctRatio(r.margen_copa_pct),    motivoRatio(f, 'margen_copa'))}
+                  {tarjeta('Coste s/ ventas',  pctRatio(r.coste_pct_sobre_ventas), motivoRatio(f, 'coste_pct'))}
+                  {tarjeta('Consumo / compras',pctRatio(r.consumo_vs_compras), motivoRatio(f, 'consumo_vs_compras'))}
+                  {tarjeta('Rotación',         numDec(r.rotacion, 2),           motivoRatio(f, 'rotacion'))}
+                  {tarjeta('Cobertura (días)', numDec(r.cobertura_dias, 1),     motivoRatio(f, 'cobertura_dias'))}
+                  {tarjeta('Dif. inventario %',pctRatio(r.diferencia_inventario_pct), motivoRatio(f, 'diferencia_inv'))}
+                </div>
               </div>
             )
           })()}
