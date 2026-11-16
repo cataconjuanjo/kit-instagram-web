@@ -1,4 +1,5 @@
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from './cierreDesglose.js'
+import { calcularRatios, diasDelMes } from './ratiosCierre.js'
 
 /**
  * excelSomm.js — Construye SPECS de workbook para las 3 exportaciones del
@@ -358,6 +359,14 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm 
   const sheetDesglose = construirSheetDesgloseCierre(datos)
   if (sheetDesglose) sheets.push(sheetDesglose)
 
+  // Hoja "Ratios" (F2): se añade siempre que haya desglose. Las fórmulas
+  // referencian las celdas de la hoja Desglose; si el Desglose no existe
+  // los ratios dejan de tener sentido porque los costes por canal viven
+  // allí. El layout del Desglose se congela en el commit anterior y los
+  // números de fila usados aquí dependen de él.
+  const sheetRatios = construirSheetRatios(datos, mes)
+  if (sheetRatios) sheets.push(sheetRatios)
+
   const gastos = Array.isArray(datos?.gastos) ? datos.gastos : []
   if (!esSomm && gastos.length > 0) {
     const gastosRows = gastos.map(g => ({
@@ -534,6 +543,124 @@ export function construirSheetDesgloseCierre(datos) {
       { header: 'Concepto', key: 'concepto', width: 34 },
       { header: 'uds',      key: 'uds',      width: 10, format: FMT_INT },
       { header: 'Valor',    key: 'valor',    width: 14, format: FMT_EUR },
+    ],
+    rows,
+    freezeHeader: true,
+  }
+}
+
+// ── Hoja "Ratios" del cierre mensual (F2) ──────────────────────────────────
+//
+// Layout (determinista — las fórmulas de la mitad inferior referencian
+// a estas celdas por número de fila):
+//    1  header (Concepto | Valor)
+//    2  sección "INPUTS"
+//    3  Ingresos netos botella (€)   ← valor (bruto / (1+iva))
+//    4  Ingresos netos copa (€)      ← valor
+//    5  Coste botella (€)            ← fórmula Desglose!C9
+//    6  Coste copa (€)               ← fórmula Desglose!C10
+//    7  Ventas netas (€)             ← fórmula Resumen!B4
+//    8  Coste de ventas teórico (€)  ← fórmula Resumen!B5
+//    9  Compras netas (€)            ← fórmula Desglose!C7
+//   10  Consumo (€)                  ← fórmula Desglose!C24
+//   11  Stock inicial (€)            ← fórmula Desglose!C3
+//   12  Stock final real (€)         ← fórmula Desglose!C23
+//   13  Stock final teórico (€)      ← fórmula Desglose!C21
+//   14  Ajuste inventario (€)        ← fórmula Desglose!C22
+//   15  Días del mes                 ← valor (del nombre del mes)
+//   16  sección "RATIOS"
+//   17  Margen botella %             IFERROR(IF(B3<=0,"",(B3-B5)/B3),"")
+//   18  Margen copa %                IFERROR(IF(B4<=0,"",(B4-B6)/B4),"")
+//   19  Margen botella (€)           IF(OR(B3="",B5=""),"",B3-B5)
+//   20  Margen copa (€)              IF(OR(B4="",B6=""),"",B4-B6)
+//   21  Coste s/ ventas              IFERROR(IF(B7<=0,"",B8/B7),"")
+//   22  Consumo / compras            IFERROR(IF(B9<=0,"",B10/B9),"")
+//   23  Rotación                     IFERROR(IF((B11+B12)=0,"",B8/((B11+B12)/2)),"")
+//   24  Cobertura (días)             IFERROR(IF(B8<=0,"",B12*B15/B8),"")
+//   25  Diferencia inventario %      IFERROR(IF(B13=0,"",B14/B13),"")
+//
+// Fórmulas SIN "=" inicial. Los result precalculados se dejan vacíos
+// (null) cuando el ratio es null, para que Numbers/LibreOffice no
+// muestren "0" en vez del "—" que renderiza Excel al evaluar "".
+export function construirSheetRatios(datos, mes) {
+  const d = readDesglose(datos)
+  if (!d) return null
+  const ratios = calcularRatios({ datos, desglose: d })
+  const dias = diasDelMes(mes) ?? diasDelMes(datos?.mes)
+
+  const section = (concepto) => ({ concepto, valor: null })
+  const valorPlano = (concepto, v) => ({ concepto, valor: v })
+  const valorRef = (concepto, formula, result) => ({
+    concepto, valor: { formula, result },
+  })
+  const resultOrEmpty = (v) => (v == null || Number.isNaN(Number(v))) ? '' : v
+
+  const rows = []
+  rows.push(section('INPUTS'))
+  rows.push(valorPlano('Ingresos netos botella (€)', ratios.meta.ingresos_botella_neto))
+  rows.push(valorPlano('Ingresos netos copa (€)',    ratios.meta.ingresos_copa_neto))
+  rows.push(valorRef('Coste botella (€)',          'Desglose!C9',  ratios.meta.coste_botella_eur))
+  rows.push(valorRef('Coste copa (€)',             'Desglose!C10', ratios.meta.coste_copa_eur))
+  rows.push(valorRef('Ventas netas (€)',           'Resumen!B4',   Number(datos?.ventas_neto) || 0))
+  rows.push(valorRef('Coste de ventas teórico (€)','Resumen!B5',   Number(datos?.coste_ventas_teorico) || 0))
+  rows.push(valorRef('Compras netas (€)',          'Desglose!C7',  Number(d.entradas?.compras_netas?.valor_eur) || 0))
+  rows.push(valorRef('Consumo (€)',                'Desglose!C24', d.consumo?.valor_eur))
+  rows.push(valorRef('Stock inicial (€)',          'Desglose!C3',  d.stock_inicial?.valor_eur))
+  rows.push(valorRef('Stock final real (€)',       'Desglose!C23', d.stock_final_real?.valor_eur))
+  rows.push(valorRef('Stock final teórico (€)',    'Desglose!C21', d.stock_final_teorico?.valor_eur))
+  rows.push(valorRef('Ajuste inventario (€)',      'Desglose!C22', d.ajuste_inventario?.valor_eur))
+  rows.push(valorPlano('Días del mes', dias ?? null))
+
+  rows.push(section('RATIOS'))
+  // Porcentajes: formato FMT_PCT ("0.0 %") → el result ya viene como
+  // ratio (0.32) desde calcularRatios; la fórmula también produce ratio.
+  rows.push({ concepto: 'Margen botella %', valor: {
+    formula: 'IFERROR(IF(B3<=0,"",(B3-B5)/B3),"")',
+    result: resultOrEmpty(ratios.margen_botella_pct),
+  }})
+  rows.push({ concepto: 'Margen copa %', valor: {
+    formula: 'IFERROR(IF(B4<=0,"",(B4-B6)/B4),"")',
+    result: resultOrEmpty(ratios.margen_copa_pct),
+  }})
+  rows.push({ concepto: 'Margen botella (€)', valor: {
+    formula: 'IF(OR(B3="",B5=""),"",B3-B5)',
+    result: resultOrEmpty(ratios.margen_botella_eur),
+  }})
+  rows.push({ concepto: 'Margen copa (€)', valor: {
+    formula: 'IF(OR(B4="",B6=""),"",B4-B6)',
+    result: resultOrEmpty(ratios.margen_copa_eur),
+  }})
+  rows.push({ concepto: 'Coste s/ ventas', valor: {
+    formula: 'IFERROR(IF(B7<=0,"",B8/B7),"")',
+    result: resultOrEmpty(ratios.coste_pct_sobre_ventas),
+  }})
+  rows.push({ concepto: 'Consumo / compras', valor: {
+    formula: 'IFERROR(IF(B9<=0,"",B10/B9),"")',
+    result: resultOrEmpty(ratios.consumo_vs_compras),
+  }})
+  rows.push({ concepto: 'Rotación', valor: {
+    formula: 'IFERROR(IF((B11+B12)=0,"",B8/((B11+B12)/2)),"")',
+    result: resultOrEmpty(ratios.rotacion),
+  }})
+  rows.push({ concepto: 'Cobertura (días)', valor: {
+    formula: 'IFERROR(IF(B8<=0,"",B12*B15/B8),"")',
+    result: resultOrEmpty(ratios.cobertura_dias),
+  }})
+  rows.push({ concepto: 'Diferencia inventario %', valor: {
+    formula: 'IFERROR(IF(B13=0,"",B14/B13),"")',
+    result: resultOrEmpty(ratios.diferencia_inventario_pct),
+  }})
+
+  // Formato por columna: la columna "Valor" debe mostrar € en los inputs
+  // y % en los ratios. Como ExcelJS aplica un único numFmt por columna,
+  // y mezclar € y % en una sola columna es incoherente visualmente, se
+  // deja sin formato por defecto (el usuario puede aplicar formato por
+  // rangos). Los números siguen siendo números; sólo cambia la pintura.
+  return {
+    name: 'Ratios',
+    columns: [
+      { header: 'Concepto', key: 'concepto', width: 34 },
+      { header: 'Valor',    key: 'valor',    width: 18 },
     ],
     rows,
     freezeHeader: true,
