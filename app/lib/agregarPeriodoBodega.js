@@ -299,6 +299,118 @@ function emptyAgregacion() {
 function r2(n) { return Math.round(Number(n) * 100) / 100 }
 function r4(n) { return Math.round(Number(n) * 10000) / 10000 }
 
+// ── Desglose del cierre (v1) ───────────────────────────────────────────────
+//
+// Función pura exportada para poder testearla sin tocar la BD. La única
+// semántica relevante vive aquí: el snapshot se calcula en calcularMesBodega
+// y se pasa a este constructor.
+//
+// Fórmulas (todas a coste, en euros):
+//   salidas_total       = Σ categorías de salida sin venta
+//   ventas_total_coste  = ventas_botella.coste + ventas_copa.coste
+//   stock_final_teorico = stock_inicial + compras_netas − ventas_total_coste − salidas_total
+//   ajuste_inventario   = stock_final_real − stock_final_teorico  (con signo)
+//   consumo             = stock_inicial + compras_netas − stock_final_real
+//
+// Reglas sobre nulos (todas estrictas para no mostrar "0" espurios):
+//   - stock_inicial == null (0 ó 1 conteos del mes) ⇒
+//       stock_final_teorico, consumo = null
+//   - stock_inicial == null ó stock_final == null ⇒
+//       stock_final_real.valor_eur = null  (y por tanto ajuste = null)
+//
+// uds (unidades físicas): rellenas cuando las fuentes lo permiten;
+//   stock_inicial.uds = suma stock_teorico del primer conteo del mes
+//   compras_bruto.uds = Σ (uds + uds_bonificadas) de lineas_compra
+//                     + Σ cantidad de movimientos_stock['compra'] sin cabecera
+//   devoluciones.uds  = Σ cantidad de movimientos_stock['devolucion'] sin cabecera
+//   compras_netas.uds = compras_bruto.uds − devoluciones.uds
+// Todas las demás uds (stock_final_real, stock_final_teorico, ajuste,
+// consumo) se dejan null: no hay fuente barata y comparable con las
+// anteriores para sumarlas.
+export function _construirDesglose({
+  stock_inicial = null,  stock_inicial_uds = null,
+  stock_final   = null,
+  compras_bruto = 0,     compras_bruto_uds = 0,
+  devoluciones  = 0,     devoluciones_uds  = 0,
+  compras_netas = 0,     compras_netas_uds = 0,
+  por_canal     = {},
+} = {}) {
+  const c = por_canal
+  const salidas = {
+    invitacion_botella: {
+      uds:       c.invitacion?.botella_uds   || 0,
+      valor_eur: r2(c.invitacion?.botella_coste || 0),
+    },
+    invitacion_copa: {
+      uds:       c.invitacion?.copa_uds      || 0,
+      valor_eur: r2(c.invitacion?.copa_coste || 0),
+    },
+    cocina:       { uds: c.cocina?.uds   || 0, valor_eur: r2(c.cocina?.coste   || 0) },
+    grupo_evento: { uds: c.evento?.uds   || 0, valor_eur: r2(c.evento?.coste   || 0) },
+    maridaje:     { uds: c.maridaje?.uds || 0, valor_eur: r2(c.maridaje?.coste || 0) },
+    rotura:       { uds: c.rotura?.uds   || 0, valor_eur: r2(c.rotura?.coste   || 0) },
+    cata:         { uds: c.cata?.uds     || 0, valor_eur: r2(c.cata?.coste     || 0) },
+  }
+  const salidas_total_valor = r2(
+    salidas.invitacion_botella.valor_eur +
+    salidas.invitacion_copa.valor_eur +
+    salidas.cocina.valor_eur +
+    salidas.grupo_evento.valor_eur +
+    salidas.maridaje.valor_eur +
+    salidas.rotura.valor_eur +
+    salidas.cata.valor_eur
+  )
+  const salidas_total_uds = (
+    salidas.invitacion_botella.uds +
+    salidas.invitacion_copa.uds +
+    salidas.cocina.uds +
+    salidas.grupo_evento.uds +
+    salidas.maridaje.uds +
+    salidas.rotura.uds +
+    salidas.cata.uds
+  )
+  const ventas_botella_coste = r2(c.botella?.coste || 0)
+  const ventas_copa_coste    = r2(c.copa?.coste    || 0)
+  const ventas_total_coste   = r2(ventas_botella_coste + ventas_copa_coste)
+
+  const haySaldoInicial = stock_inicial != null
+  const haySaldoFinal   = haySaldoInicial && stock_final != null
+
+  const stockFinalTeorico = haySaldoInicial
+    ? r2(stock_inicial + compras_netas - ventas_total_coste - salidas_total_valor)
+    : null
+  // stock_final_real.valor_eur: null si no hay par inicial+final, para que
+  // la trazabilidad teorico → ajuste → consumo sea coherente (si está uno
+  // está también el otro).
+  const stockFinalRealValor = haySaldoFinal ? stock_final : null
+  const ajusteInventario    = (stockFinalTeorico != null && stockFinalRealValor != null)
+    ? r2(stockFinalRealValor - stockFinalTeorico)
+    : null
+  const consumoValor        = haySaldoFinal
+    ? r2(stock_inicial + compras_netas - stock_final)
+    : null
+
+  return {
+    desglose_v: 1,
+    stock_inicial:       { uds: haySaldoInicial ? (stock_inicial_uds ?? null) : null, valor_eur: stock_inicial },
+    entradas: {
+      compras_bruto: { uds: compras_bruto_uds ?? null, valor_eur: compras_bruto },
+      devoluciones:  { uds: devoluciones_uds  ?? null, valor_eur: devoluciones  },
+      compras_netas: { uds: compras_netas_uds ?? null, valor_eur: compras_netas },
+    },
+    ventas_botella:      { uds: c.botella?.uds || 0, valor_eur: ventas_botella_coste },
+    ventas_copa:         { uds: c.copa?.copas  || 0, valor_eur: ventas_copa_coste },
+    salidas_sin_venta: {
+      ...salidas,
+      total: { uds: salidas_total_uds, valor_eur: salidas_total_valor },
+    },
+    stock_final_teorico: { uds: null, valor_eur: stockFinalTeorico   },
+    ajuste_inventario:   { uds: null, valor_eur: ajusteInventario    },
+    stock_final_real:    { uds: null, valor_eur: stockFinalRealValor },
+    consumo:             { uds: null, valor_eur: consumoValor        },
+  }
+}
+
 // ── B5: Cierre mensual P&L ────────────────────────────────────────────────────
 export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   const [y, m] = mes.split('-').map(Number)
@@ -363,20 +475,25 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   )
 
   const cabeceraIds = cabecerasMes.map(c => c.id)
-  let compras_b2 = 0
+  let compras_b2 = 0, compras_b2_uds = 0
   if (cabeceraIds.length > 0) {
     // Chunk .in() a 100 ids y paginar cada chunk: lineas_compra puede acumular
     // >1000 filas por mes aunque las cabeceras sean pocas.
-    let acc = 0
+    let acc = 0, accUds = 0
     for (const chunk of chunkArray(cabeceraIds, 100)) {
       const rows = await fetchAllPages(() =>
         supabase.from('lineas_compra')
-          .select('importe_neto')
+          .select('importe_neto, uds, uds_bonificadas')
           .in('cabecera_id', chunk)
       )
-      for (const l of rows) acc += (Number(l.importe_neto) || 0)
+      for (const l of rows) {
+        acc    += (Number(l.importe_neto) || 0)
+        // uds_totales = uds + uds_bonificadas (convención en b2_compras_pmp.sql).
+        accUds += (Number(l.uds) || 0) + (Number(l.uds_bonificadas) || 0)
+      }
     }
-    compras_b2 = r2(acc)
+    compras_b2     = r2(acc)
+    compras_b2_uds = accUds
   }
 
   // Compras históricas (sin cabecera) + devoluciones — movimientos_stock
@@ -393,16 +510,26 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
       .lt('created_at', hasta_next_ts)
   )
 
-  let compras_hist = 0, devol_acc = 0
+  let compras_hist = 0, devol_acc = 0, compras_hist_uds = 0, devol_uds = 0
   for (const mov of movsCD) {
     const c   = Number(mov.vino?.coste_medio_pmp) || Number(mov.vino?.coste_compra) || 0
-    const val = r2(Math.max(0, Number(mov.cantidad) || 0) * c)
-    if (mov.tipo === 'compra')     compras_hist += val
-    if (mov.tipo === 'devolucion') devol_acc    += val
+    const uds = Math.max(0, Number(mov.cantidad) || 0)
+    const val = r2(uds * c)
+    if (mov.tipo === 'compra')     { compras_hist += val; compras_hist_uds += uds }
+    if (mov.tipo === 'devolucion') { devol_acc    += val; devol_uds        += uds }
   }
   const compras_bruto = r2(compras_b2 + compras_hist)
   const devoluciones  = r2(devol_acc)
   const compras_netas = r2(compras_bruto - devoluciones)
+
+  // uds totales de entradas. Fuente: lineas_compra.(uds+uds_bonificadas) +
+  // movimientos_stock.cantidad para los movimientos "compra"/"devolucion"
+  // sin cabecera (misma regla que el valor). Si en el futuro se crean
+  // devoluciones como líneas con importe negativo dentro de lineas_compra,
+  // no se recogerían aquí — revisar entonces esta pareja.
+  const compras_bruto_uds = compras_b2_uds + compras_hist_uds
+  const devoluciones_uds  = devol_uds
+  const compras_netas_uds = compras_bruto_uds - devoluciones_uds
 
   // Conteos del mes para stock y diferencias de inventario.
   // Paginado + semi-abierto por timestamptz. fetchAllPages ordena por
@@ -421,6 +548,7 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   )
 
   let stock_inicial        = null
+  let stock_inicial_uds    = null
   let stock_final          = null
   let diferencias_inventario = null
   let aviso_stock          = null
@@ -455,6 +583,10 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
       )
       stock_inicial = r2(lineasIni.reduce((s, l) =>
         s + (Number(l.stock_teorico) || 0) * (Number(l.coste_unitario_snapshot) || 0), 0))
+      // uds del stock inicial: suma del stock_teorico del primer conteo.
+      // No se puede calcular sin ese conteo, por eso queda null cuando sólo
+      // hay 1 conteo del mes (abajo).
+      stock_inicial_uds = lineasIni.reduce((s, l) => s + (Number(l.stock_teorico) || 0), 0)
     } else {
       aviso_stock = 'Solo un conteo en el mes — stock inicial no disponible'
     }
@@ -524,85 +656,15 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     - gastos_total
   )
 
-  // ── Desglose de cierre (v1) ─────────────────────────────────────────────
-  // Objeto aditivo al snapshot. Los consumers (UI, PDF, Excel) deben leerlo
-  // vía readDesglose() de lib/cierreDesglose.js, que admite snapshots
-  // antiguos sin este bloque.
-  //
-  // Fórmulas (todas a coste, en euros):
-  //   salidas_total        = Σ categorías de salida sin venta
-  //   ventas_total_coste   = ventas_botella.coste + ventas_copa.coste
-  //   stock_final_teorico  = stock_inicial + compras_netas − ventas_total_coste − salidas_total
-  //   ajuste_inventario    = stock_final_real − stock_final_teorico  (con signo)
-  //   consumo              = stock_inicial + compras_netas − stock_final_real
-  const c = informe.por_canal
-  const salidas = {
-    invitacion_botella: {
-      uds:       c.invitacion?.botella_uds   || 0,
-      valor_eur: r2(c.invitacion?.botella_coste || 0),
-    },
-    invitacion_copa: {
-      uds:       c.invitacion?.copa_uds      || 0,
-      valor_eur: r2(c.invitacion?.copa_coste || 0),
-    },
-    cocina:       { uds: c.cocina?.uds   || 0, valor_eur: r2(c.cocina?.coste   || 0) },
-    grupo_evento: { uds: c.evento?.uds   || 0, valor_eur: r2(c.evento?.coste   || 0) },
-    maridaje:     { uds: c.maridaje?.uds || 0, valor_eur: r2(c.maridaje?.coste || 0) },
-    rotura:       { uds: c.rotura?.uds   || 0, valor_eur: r2(c.rotura?.coste   || 0) },
-    cata:         { uds: c.cata?.uds     || 0, valor_eur: r2(c.cata?.coste     || 0) },
-  }
-  const salidas_total_valor = r2(
-    salidas.invitacion_botella.valor_eur +
-    salidas.invitacion_copa.valor_eur +
-    salidas.cocina.valor_eur +
-    salidas.grupo_evento.valor_eur +
-    salidas.maridaje.valor_eur +
-    salidas.rotura.valor_eur +
-    salidas.cata.valor_eur
-  )
-  const salidas_total_uds = (
-    salidas.invitacion_botella.uds +
-    salidas.invitacion_copa.uds +
-    salidas.cocina.uds +
-    salidas.grupo_evento.uds +
-    salidas.maridaje.uds +
-    salidas.rotura.uds +
-    salidas.cata.uds
-  )
-  const ventas_botella_coste = r2(c.botella?.coste || 0)
-  const ventas_copa_coste    = r2(c.copa?.coste    || 0)
-  const ventas_total_coste   = r2(ventas_botella_coste + ventas_copa_coste)
-
-  // stock_inicial / stock_final sólo existen si hubo conteos del mes.
-  const stockFinalTeorico = (stock_inicial != null)
-    ? r2(stock_inicial + compras_netas - ventas_total_coste - salidas_total_valor)
-    : null
-  const ajusteInventario  = (stockFinalTeorico != null && stock_final != null)
-    ? r2(stock_final - stockFinalTeorico)
-    : null
-  const consumoValor      = (stock_inicial != null && stock_final != null)
-    ? r2(stock_inicial + compras_netas - stock_final)
-    : null
-
-  const desglose = {
-    desglose_v: 1,
-    stock_inicial:        { uds: null, valor_eur: stock_inicial },
-    entradas: {
-      compras_bruto:  { uds: null, valor_eur: compras_bruto },
-      devoluciones:   { uds: null, valor_eur: devoluciones  },
-      compras_netas:  { uds: null, valor_eur: compras_netas },
-    },
-    ventas_botella:       { uds: c.botella?.uds   || 0, valor_eur: ventas_botella_coste },
-    ventas_copa:          { uds: c.copa?.copas    || 0, valor_eur: ventas_copa_coste    },
-    salidas_sin_venta: {
-      ...salidas,
-      total: { uds: salidas_total_uds, valor_eur: salidas_total_valor },
-    },
-    stock_final_teorico:  { uds: null, valor_eur: stockFinalTeorico },
-    ajuste_inventario:    { uds: null, valor_eur: ajusteInventario  },
-    stock_final_real:     { uds: null, valor_eur: stock_final       },
-    consumo:              { uds: null, valor_eur: consumoValor      },
-  }
+  // Desglose: construcción delegada a función pura exportada (testeable).
+  const desglose = _construirDesglose({
+    stock_inicial, stock_inicial_uds,
+    stock_final,
+    compras_bruto, compras_bruto_uds,
+    devoluciones,  devoluciones_uds,
+    compras_netas, compras_netas_uds,
+    por_canal: informe.por_canal,
+  })
 
   return {
     mes, desde, hasta,
