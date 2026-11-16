@@ -137,11 +137,25 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
   const PW = 210, ML = 14, MR = 14, CW = PW - ML - MR
   let y = 14
 
+  // jsPDF con helvetica estándar sólo soporta WinAnsi-1252: caracteres como
+  // "−" (U+2212), en/em dashes, comillas tipográficas o espacios finos
+  // acaban causando que ExcelJS/jsPDF cambien la codificación de la línea y
+  // aparezcan separaciones raras o bytes raros (U+0000, U+0012) en los
+  // streams. ascii() sanea todos los strings antes de pintarlos.
+  function ascii(txt) {
+    if (txt == null) return ''
+    return String(txt)
+      .replace(/[−‐‑–—]/g, '-')
+      .replace(/[‘’‚′]/g, "'")
+      .replace(/[“”„″]/g, '"')
+      .replace(/[    ]/g, ' ')
+  }
+
   function hdr(txt, size = 11, bold = true) {
     doc.setFont('helvetica', bold ? 'bold' : 'normal')
     doc.setFontSize(size)
     doc.setTextColor(40, 40, 40)
-    doc.text(txt, ML, y)
+    doc.text(ascii(txt), ML, y)
     y += size * 0.5 + 2
   }
 
@@ -149,7 +163,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
     doc.setTextColor(100, 100, 100)
-    doc.text(txt, ML, y)
+    doc.text(ascii(txt), ML, y)
     y += 5
   }
 
@@ -168,7 +182,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
     doc.setTextColor(60, 60, 60)
     let x = ML + 2
     headers.forEach((h, i) => {
-      doc.text(String(h), x, y + 4.5, { align: i > 0 ? 'right' : 'left', maxWidth: colWidths[i] - 2 })
+      doc.text(ascii(String(h)), x, y + 4.5, { align: i > 0 ? 'right' : 'left', maxWidth: colWidths[i] - 2 })
       x += colWidths[i]
     })
     y += HEADER_H
@@ -183,7 +197,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
       doc.setTextColor(40, 40, 40)
       let cx = ML + 2
       row.forEach((cell, ci) => {
-        doc.text(String(cell ?? ''), cx, y + 4, { align: ci > 0 ? 'right' : 'left', maxWidth: colWidths[ci] - 2 })
+        doc.text(ascii(String(cell ?? '')), cx, y + 4, { align: ci > 0 ? 'right' : 'left', maxWidth: colWidths[ci] - 2 })
         cx += colWidths[ci]
       })
       y += ROW_H
@@ -205,10 +219,10 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
   doc.setTextColor(255, 255, 255)
-  doc.text(restaurante?.nombre || 'Restaurante', ML, 10)
+  doc.text(ascii(restaurante?.nombre || 'Restaurante'), ML, 10)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Cierre mensual de bodega · ${mesLabel(mes)}`, ML, 17)
+  doc.text(ascii(`Cierre mensual de bodega · ${mesLabel(mes)}`), ML, 17)
   y = 28
 
   sub(`${datos.partes_incluidos} partes · ${datos.desde} → ${datos.hasta}${datos.borradores_excluidos > 0 ? ` · ${datos.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
@@ -272,20 +286,51 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
     const mtm    = margenTrasMerma(datos)
     const mtmAnt = datosAnt ? margenTrasMerma(datosAnt) : null
     if (mtm != null) {
-      const signo = mtm >= 0 ? '' : '− '
+      const signo = mtm >= 0 ? '' : '- '
       hdr(`Margen tras merma: ${signo}${eur(Math.abs(mtm))}`, 12)
       if (mtmAnt != null) {
-        const antSigno = mtmAnt >= 0 ? '' : '− '
+        const antSigno = mtmAnt >= 0 ? '' : '- '
         sub(`Mes anterior: ${antSigno}${eur(Math.abs(mtmAnt))}  ${vTag(mtm, mtmAnt)}`)
       }
     }
   } else {
-    const signo = datos.resultado >= 0 ? '' : '− '
+    const signo = datos.resultado >= 0 ? '' : '- '
     hdr(`Resultado neto bodega: ${signo}${eur(Math.abs(datos.resultado))}`, 12)
     if (datosAnt?.resultado != null) {
-      const antSigno = datosAnt.resultado >= 0 ? '' : '− '
+      const antSigno = datosAnt.resultado >= 0 ? '' : '- '
       sub(`Mes anterior: ${antSigno}${eur(Math.abs(datosAnt.resultado))}  ${vTag(datos.resultado, datosAnt.resultado)}`)
     }
+  }
+
+  // Desglose del cierre (v1). Snapshots antiguos no lo tienen: se omite.
+  const desg = readDesglose(datos)
+  if (desg) {
+    if (y > 220) { doc.addPage(); y = 14 }
+    sep()
+    hdr('Desglose del cierre', 10)
+
+    const pdfUds = (v) => (v == null || !Number.isFinite(Number(v))) ? '-' : new Intl.NumberFormat('es-ES').format(Number(v))
+    const pdfEur = (v) => (v == null || !Number.isFinite(Number(v))) ? '-' : eur(v)
+    const sinv = desg.salidas_sin_venta || {}
+
+    const filas = [
+      ['Stock inicial (valorado)',       pdfUds(desg.stock_inicial?.uds),            pdfEur(desg.stock_inicial?.valor_eur)],
+      ['Compras brutas',                 pdfUds(desg.entradas?.compras_bruto?.uds),  pdfEur(desg.entradas?.compras_bruto?.valor_eur)],
+      ['Devoluciones',                   pdfUds(desg.entradas?.devoluciones?.uds),   pdfEur(desg.entradas?.devoluciones?.valor_eur)],
+      ['Compras netas',                  pdfUds(desg.entradas?.compras_netas?.uds),  pdfEur(desg.entradas?.compras_netas?.valor_eur)],
+      ['Ventas - Botella',               pdfUds(desg.ventas_botella?.uds),           pdfEur(desg.ventas_botella?.valor_eur)],
+      ['Ventas - Copa (copas servidas)', pdfUds(desg.ventas_copa?.uds),              pdfEur(desg.ventas_copa?.valor_eur)],
+      ...CATEGORIAS_SALIDA_SIN_VENTA.map(cat => {
+        const r = sinv[cat.key] || {}
+        return [`Salidas - ${cat.label}`, pdfUds(r.uds), pdfEur(r.valor_eur)]
+      }),
+      ['Total salidas sin venta',        pdfUds(sinv.total?.uds),                    pdfEur(sinv.total?.valor_eur)],
+      ['Stock final teorico',            pdfUds(desg.stock_final_teorico?.uds),      pdfEur(desg.stock_final_teorico?.valor_eur)],
+      ['Ajuste de inventario',           pdfUds(desg.ajuste_inventario?.uds),        pdfEur(desg.ajuste_inventario?.valor_eur)],
+      ['Stock final real',               pdfUds(desg.stock_final_real?.uds),         pdfEur(desg.stock_final_real?.valor_eur)],
+      ['Consumo (identidad de inventario)', pdfUds(desg.consumo?.uds),               pdfEur(desg.consumo?.valor_eur)],
+    ]
+    tabla(['Concepto', 'uds', 'Valor (EUR)'], filas, [100, 30, 52])
   }
 
   const totalPags = doc.getNumberOfPages()
@@ -294,7 +339,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(160, 160, 160)
-    doc.text(`Carta Viva · ${new Date().toLocaleDateString('es-ES')} · Pág. ${p}/${totalPags}`, PW / 2, 292, { align: 'center' })
+    doc.text(ascii(`Carta Viva · ${new Date().toLocaleDateString('es-ES')} · Pag. ${p}/${totalPags}`), PW / 2, 292, { align: 'center' })
   }
 
   doc.save(`cierre-mensual-${mes}.pdf`)
