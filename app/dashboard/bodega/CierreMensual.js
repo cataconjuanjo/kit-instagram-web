@@ -444,15 +444,17 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [])
 
 // ── Excel ──────────────────────────────────────────────────────────────────────
 
-async function generarExcel(datos, mes, restaurante) {
+async function generarExcel(datos, mes, restaurante, facturasLibro = []) {
   // Delegamos en la spec pura de app/lib/excelSomm.js, que ya incluye
   // la hoja Vinos (informe.por_vino con TOTAL en fórmulas SUM) y el
   // Resumen económico. ExcelJS vía dynamic import.
   // esSomm omite "Total gastos" y "Resultado neto bodega" del resumen
   // y añade "Margen tras merma"; también omite la hoja Gastos.
+  // facturasLibro (F3): se añade la hoja "Conciliacion" en el workbook.
   const spec = construirCierreWorkbook({
     datos, mes, restauranteNombre: restaurante?.nombre,
     esSomm: esPerfilSomm(restaurante),
+    facturasLibro,
   })
   await descargarWorkbook(spec)
 }
@@ -717,7 +719,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   async function exportarExcel() {
     if (!datos) return
     setExportandoXLS(true)
-    try { await generarExcel(datos, mes, restaurante) }
+    try { await generarExcel(datos, mes, restaurante, facturasLibro || []) }
     catch (e) { setError(e.message) }
     finally { setExportandoXLS(false) }
   }
