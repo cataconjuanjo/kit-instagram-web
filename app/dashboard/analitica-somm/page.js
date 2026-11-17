@@ -442,6 +442,7 @@ function TabPresupuesto({ restauranteId, historico }) {
   const [realActual, setRealActual] = useState({})
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [guardadoError, setGuardadoError] = useState(null)
 
   // Datos del año base (año anterior)
   const historialBase = useMemo(() => {
@@ -508,10 +509,18 @@ function TabPresupuesto({ restauranteId, historico }) {
         factor_crecimiento_pct: modoYoY ? num(factorCrecimiento) : null,
       }
     })
+    let firstError = null
     for (const fila of filas) {
-      await supabase.from('presupuesto_mensual').upsert(fila, { onConflict: 'restaurante_id,anio,mes' })
+      const { error } = await supabase.from('presupuesto_mensual').upsert(fila, { onConflict: 'restaurante_id,anio,mes' })
+      if (error && !firstError) firstError = error
     }
     setGuardando(false)
+    if (firstError) {
+      const permisos = (firstError.code === '42501') || (firstError.status === 403)
+      const motivo = permisos ? 'No tienes permiso para guardar en este restaurante' : (firstError.message || 'error desconocido')
+      setGuardadoError(`No se pudo guardar: ${motivo}`)
+      return
+    }
     setGuardado(true)
     setTimeout(() => setGuardado(false), 2000)
   }
@@ -647,11 +656,16 @@ function TabPresupuesto({ restauranteId, historico }) {
           <strong>Estado:</strong> ✅ supera el objetivo · ❌ por debajo · · sin dato suficiente (mes futuro o sin objetivo).
         </p>
 
-        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className={styles.primary} onClick={guardar} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Guardar presupuesto'}
           </button>
           {guardado && <span style={{ color: '#27ae60', fontSize: 13 }}>Guardado ✓</span>}
+          {guardadoError && (
+            <span style={{ fontSize: 12, color: '#b85454', background: 'rgba(184,84,84,0.08)', border: '1px solid rgba(184,84,84,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+              {guardadoError}
+            </span>
+          )}
         </div>
       </div>
     </section>
@@ -726,9 +740,12 @@ function TabBonus({ restauranteId, historico }) {
   const mesesConBonus = filasMeses.filter(f => f.bonus > 0)
   const mesesCerrados = filasMeses.filter(f => f.facturado > 0)
 
+  const [guardadoError, setGuardadoError] = useState(null)
+
   async function guardar() {
     setGuardando(true)
-    await supabase.from('configuracion_bonus').upsert({
+    setGuardadoError(null)
+    const { error } = await supabase.from('configuracion_bonus').upsert({
       restaurante_id: restauranteId,
       anio,
       umbral_crecimiento_pct: num(umbral),
@@ -736,6 +753,12 @@ function TabBonus({ restauranteId, historico }) {
       activo,
     }, { onConflict: 'restaurante_id,anio' })
     setGuardando(false)
+    if (error) {
+      const permisos = (error.code === '42501') || (error.status === 403)
+      const motivo = permisos ? 'No tienes permiso para guardar en este restaurante' : (error.message || 'error desconocido')
+      setGuardadoError(`No se pudo guardar: ${motivo}`)
+      return
+    }
     setGuardado(true)
     setTimeout(() => setGuardado(false), 2000)
   }
@@ -835,11 +858,16 @@ function TabBonus({ restauranteId, historico }) {
           </table>
         </div>
 
-        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className={styles.primary} onClick={guardar} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Guardar configuración'}
           </button>
           {guardado && <span style={{ color: '#27ae60', fontSize: 13 }}>Guardado ✓</span>}
+          {guardadoError && (
+            <span style={{ fontSize: 12, color: '#b85454', background: 'rgba(184,84,84,0.08)', border: '1px solid rgba(184,84,84,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+              {guardadoError}
+            </span>
+          )}
         </div>
       </div>
     </section>

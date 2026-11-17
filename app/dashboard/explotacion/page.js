@@ -595,6 +595,9 @@ function ExplotacionContent() {
   })
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  // Mensaje visible cuando el upsert falla (RLS, red, columna inexistente…).
+  // Null = sin error. Se oculta al iniciar un guardado nuevo.
+  const [guardadoError, setGuardadoError] = useState(null)
   const [pdfCargando, setPdfCargando] = useState(false)
   const [pdfError, setPdfError] = useState('')
   const [excelCargando, setExcelCargando] = useState(false)
@@ -912,9 +915,24 @@ function ExplotacionContent() {
 
   const alertaBreakEven = totales.facturacion > 0 && totales.breakEven && totales.facturacion < totales.breakEven
 
+  // Convierte un error de Supabase/PostgREST en un motivo humano corto.
+  // 42501 (RLS insufficient_privilege) o HTTP 403 → mensaje específico
+  // de permisos. 42703 (columna inexistente) sólo puede ocurrir si se
+  // despliega la rama con la columna imputacion_pct y la BD la pierde
+  // más tarde. El resto cae en el message de Supabase recortado.
+  function describirErrorGuardado(err) {
+    if (!err) return 'error desconocido'
+    if (err.code === '42501' || err.status === 403) {
+      return 'No tienes permiso para guardar en este restaurante'
+    }
+    const msg = (err.message || '').trim()
+    return msg.length > 160 ? msg.slice(0, 160) + '…' : (msg || 'error desconocido')
+  }
+
   async function guardar() {
     if (!restaurante) return
     setGuardando(true)
+    setGuardadoError(null)
 
     // Campos que la vista Somm no renderiza. Para evitar pisarlos con
     // null/0 si algún día otro plan cargó datos, en perfil Somm se
@@ -976,7 +994,12 @@ function ExplotacionContent() {
       payload.imputacion_pct = imputacionPct
     }
 
-    await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
+    const r1 = await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
+    if (r1.error) {
+      setGuardadoError(`No se pudo guardar: ${describirErrorGuardado(r1.error)}`)
+      setGuardando(false)
+      return
+    }
 
     // Refrescar paramsRaw con lo que acabamos de escribir, para que un
     // segundo guardado seguido no pierda los campos ocultos.
@@ -999,7 +1022,12 @@ function ExplotacionContent() {
       historicoPayload.gastos_fijos =
         totales.totalPersonal + totales.totalGastos + totales.totalAlquiler + totales.totalBancarios
     }
-    await supabase.from('historico_mensual').upsert(historicoPayload, { onConflict: 'restaurante_id,anio,mes' })
+    const r2 = await supabase.from('historico_mensual').upsert(historicoPayload, { onConflict: 'restaurante_id,anio,mes' })
+    if (r2.error) {
+      setGuardadoError(`No se pudo guardar: ${describirErrorGuardado(r2.error)}`)
+      setGuardando(false)
+      return
+    }
 
     // Refrescar histórico
     const { data: hist } = await supabase
@@ -1101,6 +1129,11 @@ function ExplotacionContent() {
             {pdfError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{pdfError}</span>}
             {excelError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{excelError}</span>}
             {guardado && <span style={{ fontSize: 13, color: '#27ae60' }}>Guardado ✓</span>}
+            {guardadoError && (
+              <span style={{ fontSize: 12, color: '#b85454', background: 'rgba(184,84,84,0.08)', border: '1px solid rgba(184,84,84,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+                {guardadoError}
+              </span>
+            )}
           </div>
         }
         help={esSomm ? {

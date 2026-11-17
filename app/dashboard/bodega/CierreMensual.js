@@ -989,7 +989,16 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           {(() => {
             const r = calcularRatios({ datos, desglose: readDesglose(datos) })
             const f = r.meta?.faltantes || {}
-            const tarjeta = (titulo, valor, motivo) => (
+            // ¿El mes seleccionado es el actual o futuro? Comparamos
+            // como strings YYYY-MM (orden lexicográfico == cronológico).
+            // En ese caso la cobertura usa el consumo del mes incompleto,
+            // así que es un dato parcial: lo marcamos en la tarjeta.
+            const mesActualYM = (() => {
+              const now = new Date()
+              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+            })()
+            const esParcialCobertura = typeof mes === 'string' && mes >= mesActualYM
+            const tarjeta = (titulo, valor, motivo, extra) => (
               <div
                 style={{
                   flex: '1 1 160px', minWidth: 140,
@@ -1001,6 +1010,9 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               >
                 <div style={{ fontSize: 10.5, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.55, marginBottom: 4 }}>{titulo}</div>
                 <div style={{ fontSize: 17, fontWeight: 700, cursor: valor === '—' && motivo ? 'help' : 'default' }}>{valor}</div>
+                {extra && (
+                  <div style={{ fontSize: 10.5, opacity: 0.55, marginTop: 4 }}>{extra}</div>
+                )}
               </div>
             )
             return (
@@ -1014,7 +1026,12 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                   {tarjeta('Coste s/ ventas',  pctRatio(r.coste_pct_sobre_ventas), motivoRatio(f, 'coste_pct'))}
                   {tarjeta('Consumo / compras',pctRatio(r.consumo_vs_compras), motivoRatio(f, 'consumo_vs_compras'))}
                   {tarjeta('Rotación',         numDec(r.rotacion, 2),           motivoRatio(f, 'rotacion'))}
-                  {tarjeta('Cobertura (días)', numDec(r.cobertura_dias, 1),     motivoRatio(f, 'cobertura_dias'))}
+                  {tarjeta(
+                    esParcialCobertura ? 'Cobertura (días) · mes en curso' : 'Cobertura (días)',
+                    numDec(r.cobertura_dias, 1),
+                    motivoRatio(f, 'cobertura_dias'),
+                    esParcialCobertura ? 'Dato parcial' : null,
+                  )}
                   {tarjeta('Dif. inventario %',pctRatio(r.diferencia_inventario_pct), motivoRatio(f, 'diferencia_inv'))}
                 </div>
               </div>
