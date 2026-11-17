@@ -115,6 +115,10 @@ function FormFactura({ proveedores, onGuardar }) {
           required
           style={inputS}
         />
+        <div style={{ fontSize: 11, color: '#8b8278', marginTop: 4, lineHeight: 1.4 }}>
+          Introduce la base imponible, sin IVA. Se compara con las compras
+          de la app en la conciliación del cierre mensual.
+        </div>
       </div>
       <div>
         <div style={labelS}>Albarán / Referencia</div>
