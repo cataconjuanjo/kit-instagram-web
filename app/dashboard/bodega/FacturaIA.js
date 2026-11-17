@@ -183,13 +183,20 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
       form.append('file', file)
       form.append('restaurante_id', restauranteId)
       const res = await apiFetch('/api/facturas/extraer', { method: 'POST', body: form })
-      // La cuota diaria de lecturas con IA es compartida con otras funciones
-      // (Sumiller, etc.). El servidor devuelve 429 cuando se agota; mostramos
-      // el texto literal acordado en lugar del error genérico.
-      if (res.status === 429) {
-        throw new Error('Has alcanzado el límite diario de lecturas con IA. Inténtalo mañana o registra la factura a mano.')
-      }
       const json = await res.json().catch(() => ({ error: 'Respuesta no válida' }))
+      // En 429 el servidor puede devolver dos mensajes:
+      //  - límite diario PROPIO de facturas (scope=facturas_dia): "Has alcanzado
+      //    el límite diario de facturas leídas con IA. Vuelve mañana o
+      //    regístrala a mano."
+      //  - límite general compartido con otras funciones (Sumiller, etc.).
+      // Preferimos siempre el `json.error` del servidor; si llega vacío,
+      // caemos a un texto por defecto compatible con el previo.
+      if (res.status === 429) {
+        throw new Error(
+          json?.error ||
+          'Has alcanzado el límite diario de lecturas con IA. Inténtalo mañana o registra la factura a mano.'
+        )
+      }
       if (!res.ok) throw new Error(json.error || `Error ${res.status}`)
 
       const d = json.datos || {}
@@ -399,7 +406,7 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
         <input
           ref={fileRef}
           type="file"
-          accept="application/pdf,image/png,image/jpeg"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
           capture="environment"
           style={{ display: 'none' }}
           onChange={onSeleccionarArchivo}
