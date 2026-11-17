@@ -44,13 +44,42 @@ export function diasDelMes(mesYYYYMM) {
 }
 
 /**
+ * Días efectivos a usar como DENOMINADOR en la cobertura.
+ *
+ * - Mes pasado o futuro (cuando `hoy` no es del mismo mes que `mesYYYYMM`):
+ *   devolvemos los días totales del mes → consumo diario = coste / días_mes.
+ * - Mes en curso (mismo YYYY-MM que `hoy`): devolvemos los días
+ *   transcurridos hasta `hoy` incluido → consumo diario = coste / días_hoy,
+ *   que refleja mejor el ritmo real cuando el mes aún no ha terminado.
+ *
+ * `hoy` opcional para poder testarlo sin tocar el reloj del sistema.
+ * Devuelve `{ dias, parcial }` o null si `mesYYYYMM` no es válido.
+ */
+export function diasEfectivosCobertura(mesYYYYMM, hoy) {
+  const total = diasDelMes(mesYYYYMM)
+  if (total == null) return null
+  const ref = hoy instanceof Date ? hoy : new Date()
+  const yRef = ref.getFullYear()
+  const mRef = ref.getMonth() + 1
+  const [yMes, mMes] = mesYYYYMM.split('-').map(Number)
+  if (yRef === yMes && mRef === mMes) {
+    const diaHoy = ref.getDate()
+    // Cota: al menos 1 día (si acabamos de empezar el mes) y no más
+    // que los días totales por si llamadores pasan fechas raras.
+    const dias = Math.max(1, Math.min(diaHoy, total))
+    return { dias, parcial: true }
+  }
+  return { dias: total, parcial: false }
+}
+
+/**
  * @param {{ datos: object, desglose?: object|null }} input
  * @returns {{ margen_botella_pct, margen_botella_eur, margen_copa_pct,
  *             margen_copa_eur, coste_pct_sobre_ventas, consumo_vs_compras,
  *             rotacion, cobertura_dias, diferencia_inventario_pct,
  *             meta: { ... } }}
  */
-export function calcularRatios({ datos, desglose } = {}) {
+export function calcularRatios({ datos, desglose, hoy } = {}) {
   const d  = datos || {}
   const dg = desglose || null
 
@@ -131,13 +160,21 @@ export function calcularRatios({ datos, desglose } = {}) {
 
   // ── Cobertura (días) ───────────────────────────────────────────────
   // stock_final / (coste_ventas / días) = stock_final * días / coste_ventas
+  //
+  // Para un mes en curso, el consumo diario medio se calcula sobre los
+  // días transcurridos (no los días totales), porque el coste del mes
+  // aún está incompleto. Así "cobertura = stock / consumo_diario" no
+  // queda inflada artificialmente los primeros días del mes.
   const dias = diasDelMes(d.mes)
+  const efectivos = diasEfectivosCobertura(d.mes, hoy)
+  const diasCobertura = efectivos ? efectivos.dias : null
+  const cobertura_parcial = !!(efectivos && efectivos.parcial)
   const cobertura_dias =
     (typeof stockFin === 'number') &&
     (typeof costeTot === 'number') &&
-    (typeof dias === 'number') &&
+    (typeof diasCobertura === 'number') &&
     costeTot > 0
-      ? (stockFin * dias) / costeTot
+      ? (stockFin * diasCobertura) / costeTot
       : null
 
   // ── Diferencia de inventario (%) ───────────────────────────────────
@@ -157,10 +194,12 @@ export function calcularRatios({ datos, desglose } = {}) {
     consumo_vs_compras,
     rotacion,
     cobertura_dias,
+    cobertura_parcial,
     diferencia_inventario_pct,
     meta: {
       iva_pct: iva,
       dias_mes: dias,
+      dias_cobertura: diasCobertura,
       ingresos_botella_neto: ingrBotNeto,
       ingresos_copa_neto: ingrCopNeto,
       coste_botella_eur: costeBot,

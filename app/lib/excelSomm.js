@@ -655,10 +655,17 @@ export function construirSheetRatios(datos, mes) {
     formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B11)),NOT(ISNUMBER(B12)),(B11+B12)=0),"",B8/((B11+B12)/2)),"")',
     result: resultOrEmpty(ratios.rotacion),
   }})
-  rows.push({ concepto: 'Cobertura (días)', valor: {
-    formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B12)),NOT(ISNUMBER(B8)),B8<=0),"",B12*B15/B8),"")',
-    result: resultOrEmpty(ratios.cobertura_dias),
-  }})
+  rows.push({
+    concepto: 'Cobertura (días)',
+    valor: {
+      formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B12)),NOT(ISNUMBER(B8)),B8<=0),"",B12*B15/B8),"")',
+      result: resultOrEmpty(ratios.cobertura_dias),
+    },
+    // Texto plano (no fórmula) en columna adyacente cuando el dato es
+    // parcial por mes en curso. ExcelJS guarda el string tal cual; al no
+    // empezar por "=" no se interpreta como fórmula.
+    nota: ratios.cobertura_parcial ? 'Dato parcial · mes en curso' : '',
+  })
   rows.push({ concepto: 'Diferencia inventario %', valor: {
     formula: 'IFERROR(IF(OR(NOT(ISNUMBER(B13)),NOT(ISNUMBER(B14)),B13=0),"",B14/B13),"")',
     result: resultOrEmpty(ratios.diferencia_inventario_pct),
@@ -674,6 +681,10 @@ export function construirSheetRatios(datos, mes) {
     columns: [
       { header: 'Concepto', key: 'concepto', width: 34 },
       { header: 'Valor',    key: 'valor',    width: 18 },
+      // Nota: texto plano opcional (nunca fórmula). Hoy la usa la fila
+      // "Cobertura (días)" para avisar "Dato parcial · mes en curso"
+      // cuando `cobertura_parcial` es true.
+      { header: 'Nota',     key: 'nota',     width: 28 },
     ],
     rows,
     freezeHeader: true,
