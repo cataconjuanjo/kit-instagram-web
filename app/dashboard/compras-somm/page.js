@@ -193,7 +193,7 @@ function ExportarExcelCompras({ registros, periodoFiltro, restauranteNombre }) {
 
 // ── Tabla de facturas del periodo ─────────────────────────────────────────────
 
-function TablaFacturas({ registros, periodoFiltro, onEliminarFactura, adjuntosPorCabecera = {} }) {
+function TablaFacturas({ registros, periodoFiltro, onEliminarFactura, adjuntosPorCabecera = {}, onVerAdjunto }) {
   const filtrados = registros.filter(r => r.periodo === periodoFiltro)
   if (filtrados.length === 0) return (
     <div style={{ padding: '32px 0', textAlign: 'center', color: '#aaa', fontSize: 13 }}>
@@ -225,7 +225,16 @@ function TablaFacturas({ registros, periodoFiltro, onEliminarFactura, adjuntosPo
                 <td style={{ ...tdS, fontWeight: 600 }}>{formatEur(f.importe)}</td>
                 <td style={{ ...tdS, color: '#888' }}>{f.albaran || '—'}</td>
                 <td style={{ ...tdS, color: nAdj > 0 ? '#385f4f' : '#ccc', fontWeight: nAdj > 0 ? 600 : 400 }}>
-                  {nAdj > 0 ? `📎 ${nAdj}` : '—'}
+                  {nAdj > 0 && f.cabecera_compra_id && onVerAdjunto ? (
+                    <button
+                      type="button"
+                      onClick={() => onVerAdjunto(f.cabecera_compra_id)}
+                      title="Abrir la factura en una pestaña nueva (enlace temporal)"
+                      style={{ background: 'transparent', border: 'none', color: '#385f4f', cursor: 'pointer', fontWeight: 600, padding: 0, fontSize: 13 }}
+                    >
+                      📎 Ver factura{nAdj > 1 ? ` (${nAdj})` : ''}
+                    </button>
+                  ) : nAdj > 0 ? `📎 ${nAdj}` : '—'}
                 </td>
                 <td style={{ ...tdS, textAlign: 'right' }}>
                   <button
@@ -403,6 +412,31 @@ export default function ComprasSomm() {
     await cargarRegistros(restaurante.id)
   }
 
+  // Abre el primer adjunto de una cabecera_compra en una pestaña nueva
+  // con una signed URL temporal (1 h). Nunca devuelve una URL pública.
+  // Si hay varios adjuntos abre el más antiguo (criterio del endpoint).
+  async function handleVerAdjunto(cabeceraCompraId) {
+    if (!restaurante?.id || !cabeceraCompraId) return
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token || ''
+      const res = await fetch(
+        `/api/facturas-adjuntos?cabecera_compra_id=${encodeURIComponent(cabeceraCompraId)}&restaurante_id=${encodeURIComponent(restaurante.id)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(json?.error || 'No se pudo abrir la factura.')
+        return
+      }
+      const url = (json.adjuntos || []).find(a => a?.url)?.url
+      if (!url) { alert('El adjunto no está disponible.'); return }
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      alert('Error al abrir la factura: ' + (err?.message || ''))
+    }
+  }
+
   // A4.3: en vez de borrar al primer clic, se abre un modal con resumen de la
   // factura (proveedor, importe, albaran). La confirmacion efectiva vive en
   // confirmarBorradoFactura.
@@ -527,6 +561,7 @@ export default function ComprasSomm() {
               periodoFiltro={periodoFiltro}
               onEliminarFactura={handleEliminarFactura}
               adjuntosPorCabecera={adjuntosPorCabecera}
+              onVerAdjunto={handleVerAdjunto}
             />
           </div>
         )}

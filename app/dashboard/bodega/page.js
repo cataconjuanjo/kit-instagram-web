@@ -31,6 +31,7 @@ import PreciosPanel from './PreciosPanel'
 import ConteoInventario from './ConteoInventario'
 import CierreMensual from './CierreMensual'
 import FormularioCompra from './FormularioCompra'
+import FacturaIA from './FacturaIA'
 import LibroBodegaTable from './LibroBodegaTable'
 import { formatoMoneda } from '../../lib/formatoEs'
 
@@ -1198,6 +1199,11 @@ export default function ControlBodega() {
               <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
             </div>
             <div className={styles.panelBody}>
+              <FacturaIA
+                restauranteId={restaurante?.id}
+                vinosActivos={datos.activos}
+                onCompraRegistrada={() => setRefreshKey(k => k + 1)}
+              />
               <FormularioCompra
                 restauranteId={restaurante?.id}
                 vinosActivos={datos.activos}
