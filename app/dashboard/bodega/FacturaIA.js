@@ -22,12 +22,25 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../supabase'
 import {
   emparejarLineasConVinos,
   preseleccionarProveedor,
   componerNotasFacturaIA,
 } from '../../lib/facturaIA'
+
+// pdfjs-dist es pesado (~1 MB). Lo cargamos SOLO cuando el usuario
+// abre una vista previa de PDF: next/dynamic con ssr:false lo saca a
+// su propio chunk y no se descarga en el bundle inicial del dashboard.
+const PdfPreview = dynamic(() => import('./PdfPreview'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ padding: 16, fontSize: 12, color: '#8b8278', border: '1px solid #e8e3d8', borderRadius: 4 }}>
+      Cargando vista previa…
+    </div>
+  ),
+})
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -552,7 +565,7 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
             <img src={previewUrl} alt="factura" style={{ width: '100%', maxHeight: 520, objectFit: 'contain', border: '1px solid #e8e3d8', borderRadius: 4 }} />
           )}
           {previewUrl && previewMime === 'application/pdf' && (
-            <iframe src={previewUrl} title="factura" style={{ width: '100%', height: 520, border: '1px solid #e8e3d8', borderRadius: 4 }} />
+            <PdfPreview url={previewUrl} />
           )}
           {!previewUrl && (
             <p style={{ fontSize: 12, color: '#8b8278' }}>Sin vista previa.</p>

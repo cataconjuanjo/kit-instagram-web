@@ -41,19 +41,10 @@ const CSP = [
   `connect-src ${CONNECT_SOURCES}`,
   `media-src 'self'`,
   `worker-src 'self' blob:`,
-  // `blob:` permite previsualizar en <iframe> los PDF subidos por el usuario
-  // (FacturaIA), que se sirven como ObjectURL local, sin abrir `object-src`
-  // ni exponer el visor a contenido remoto.
-  `frame-src https://js.stripe.com https://hooks.stripe.com blob:`,
+  `frame-src https://js.stripe.com https://hooks.stripe.com`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
-  // `object-src blob:`: el visor de PDF de Chrome dentro de un <iframe>
-  // con URL blob: se comporta como un plugin/object y hereda la CSP de
-  // la página. Con `object-src 'none'` se bloqueaba y salía el icono
-  // de página rota. Permitimos únicamente blob: (ObjectURL local del
-  // propio usuario); ni 'self' ni dominios externos ni comodines, para
-  // mantener la protección contra <object>/<embed> remotos.
-  `object-src blob:`,
+  `object-src 'none'`,
   `form-action 'self'`,
   `upgrade-insecure-requests`,
 ].join('; ')
