@@ -122,6 +122,29 @@ export function normalizarRespuestaIA(raw) {
 
 const TOL_EUR = 1
 const TOL_PCT = 0.01
+// Porcentajes típicos de retención de IRPF en facturas españolas:
+//   15 % (profesionales), 7 % (nuevos profesionales/inicio),
+//   19 % (rendimientos de capital), 1 % (módulos).
+// Si el hueco entre base+IVA y total coincide con alguno dentro de ±0,02 €,
+// el descuadre es por retención, no por error de lectura.
+const RETENCIONES_IRPF_PCT = [15, 7, 19, 1]
+const TOL_RETENCION_EUR = 0.02
+
+/**
+ * Si `diferencia` (en €) coincide con una retención estándar de IRPF
+ * sobre `base`, devuelve { pct, importe }; si no, null.
+ */
+export function detectarRetencion(base, diferencia) {
+  if (typeof base !== 'number' || !Number.isFinite(base) || base <= 0) return null
+  if (typeof diferencia !== 'number' || !Number.isFinite(diferencia) || diferencia <= 0) return null
+  for (const pct of RETENCIONES_IRPF_PCT) {
+    const esperado = base * (pct / 100)
+    if (Math.abs(esperado - diferencia) <= TOL_RETENCION_EUR) {
+      return { pct, importe: diferencia }
+    }
+  }
+  return null
+}
 
 /**
  * Devuelve una lista de avisos (strings) sobre incoherencias de los
@@ -175,7 +198,18 @@ export function validarFactura(datos) {
     const dentroEuro = diff <= TOL_EUR
     const dentroPct  = relDiff != null && relDiff <= TOL_PCT
     if (!dentroEuro && !dentroPct) {
-      avisos.push(`Base (${d.base_imponible.toFixed(2)}) + IVA (${d.iva_importe.toFixed(2)}) = ${esperado.toFixed(2)} ≠ total ${d.total.toFixed(2)}.`)
+      // Antes de marcar como descuadre, comprobamos si el hueco es una
+      // retención de IRPF (típicos 1 %, 7 %, 15 %, 19 % sobre la base).
+      // Solo aplica si el total es MENOR que base+IVA (retención resta).
+      const retencion = d.total < esperado ? detectarRetencion(d.base_imponible, esperado - d.total) : null
+      if (retencion) {
+        avisos.push(
+          `Parece haber una retención de IRPF de ${retencion.importe.toFixed(2)} € (${retencion.pct} %). ` +
+          `La compra se registra por base + IVA; revisa el total.`
+        )
+      } else {
+        avisos.push(`Base (${d.base_imponible.toFixed(2)}) + IVA (${d.iva_importe.toFixed(2)}) = ${esperado.toFixed(2)} ≠ total ${d.total.toFixed(2)}.`)
+      }
     }
   }
 

@@ -41,7 +41,10 @@ const CSP = [
   `connect-src ${CONNECT_SOURCES}`,
   `media-src 'self'`,
   `worker-src 'self' blob:`,
-  `frame-src https://js.stripe.com https://hooks.stripe.com`,
+  // `blob:` permite previsualizar en <iframe> los PDF subidos por el usuario
+  // (FacturaIA), que se sirven como ObjectURL local, sin abrir `object-src`
+  // ni exponer el visor a contenido remoto.
+  `frame-src https://js.stripe.com https://hooks.stripe.com blob:`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `object-src 'none'`,
