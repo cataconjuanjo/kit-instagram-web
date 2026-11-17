@@ -14,75 +14,45 @@
 --   consulta inicial pasaba el USING, pero el upsert fallaba con
 --   42501/403 porque el WITH CHECK no autorizaba la fila propuesta.
 --
---   Se iguala el WITH CHECK con el USING (mismo OR de permisos), de
---   modo que el administrador puede guardar en la vista de Explotación
---   para cualquier restaurante.
+--   Se iguala la expresión del WITH CHECK con la del USING para que el
+--   administrador pueda guardar en Explotación para cualquier
+--   restaurante. El USING no se tocó: ya cubría ambos casos.
 --
 -- Qué NO cambia
+--   - El USING de ambas políticas (se mantiene intacto).
 --   - El resto de políticas (SELECT, INSERT por el bridge, etc.).
 --   - El modelo de permisos del dueño del restaurante (sigue
 --     funcionando por r.email = auth.jwt() ->> 'email').
 --
--- Comprobación tras aplicar (ver abajo en UP) — ya ejecutada el
+-- Comprobación tras aplicar (ver abajo) — ya ejecutada el
 -- 2026-11-16, resultado OK.
 --
 -- ─────────────────────────────────────────────────────────────────────────
 -- UP (para registro — NO reaplicar; ya está aplicado en BD)
+--
+-- Son exactamente los dos comandos ALTER POLICY que se ejecutaron el
+-- 2026-11-16. Sólo tocan el WITH CHECK, dejando el USING tal cual.
 -- ─────────────────────────────────────────────────────────────────────────
 
--- parametros_explotacion
-DROP POLICY IF EXISTS "parametros_explotacion_all" ON public.parametros_explotacion;
-CREATE POLICY "parametros_explotacion_all" ON public.parametros_explotacion
-  FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.restaurantes r
-      WHERE r.id = parametros_explotacion.restaurante_id
-        AND (
-          r.email = (auth.jwt() ->> 'email')
-          OR (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
-        )
-    )
-  )
+ALTER POLICY parametros_explotacion_all ON public.parametros_explotacion
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.restaurantes r
-      WHERE r.id = parametros_explotacion.restaurante_id
-        AND (
-          r.email = (auth.jwt() ->> 'email')
-          OR (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
-        )
-    )
+    ((auth.jwt() ->> 'email'::text) = 'cataconjuanjo@gmail.com'::text)
+    OR EXISTS (SELECT 1 FROM restaurantes r
+               WHERE r.id = parametros_explotacion.restaurante_id
+                 AND r.email = (auth.jwt() ->> 'email'::text))
   );
 
--- historico_mensual
-DROP POLICY IF EXISTS "historico_mensual_all" ON public.historico_mensual;
-CREATE POLICY "historico_mensual_all" ON public.historico_mensual
-  FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.restaurantes r
-      WHERE r.id = historico_mensual.restaurante_id
-        AND (
-          r.email = (auth.jwt() ->> 'email')
-          OR (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
-        )
-    )
-  )
+ALTER POLICY historico_mensual_all ON public.historico_mensual
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.restaurantes r
-      WHERE r.id = historico_mensual.restaurante_id
-        AND (
-          r.email = (auth.jwt() ->> 'email')
-          OR (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
-        )
-    )
+    ((auth.jwt() ->> 'email'::text) = 'cataconjuanjo@gmail.com'::text)
+    OR EXISTS (SELECT 1 FROM restaurantes r
+               WHERE r.id = historico_mensual.restaurante_id
+                 AND r.email = (auth.jwt() ->> 'email'::text))
   );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- COMPROBACIÓN (debe devolver 2 filas; una por tabla; USING y WITH CHECK
--- deben contener la expresión 'cataconjuanjo@gmail.com'):
+-- COMPROBACIÓN (debe devolver 2 filas; una por tabla; las dos expresiones
+-- with_check_expr deben contener 'cataconjuanjo@gmail.com'):
 -- ─────────────────────────────────────────────────────────────────────────
 --
 --   SELECT tablename, policyname, cmd,
@@ -94,54 +64,25 @@ CREATE POLICY "historico_mensual_all" ON public.historico_mensual
 --    ORDER BY tablename, policyname;
 --
 -- ─────────────────────────────────────────────────────────────────────────
--- DOWN (sólo si se quiere revertir: deja el WITH CHECK con el
---      permiso restringido original, es decir, SÓLO propietario)
+-- DOWN (sólo si se quiere revertir: deja el WITH CHECK con el permiso
+--      restringido original, es decir, SÓLO propietario del restaurante.
+--      El USING no se toca.)
 -- ─────────────────────────────────────────────────────────────────────────
 
--- parametros_explotacion — WITH CHECK anterior (solo propietario)
--- DROP POLICY IF EXISTS "parametros_explotacion_all" ON public.parametros_explotacion;
--- CREATE POLICY "parametros_explotacion_all" ON public.parametros_explotacion
---   FOR ALL
---   USING (
---     EXISTS (
---       SELECT 1 FROM public.restaurantes r
---       WHERE r.id = parametros_explotacion.restaurante_id
---         AND (
---           r.email = (auth.jwt() ->> 'email')
---           OR (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
---         )
---     )
---   )
+-- ALTER POLICY parametros_explotacion_all ON public.parametros_explotacion
 --   WITH CHECK (
---     EXISTS (
---       SELECT 1 FROM public.restaurantes r
---       WHERE r.id = parametros_explotacion.restaurante_id
---         AND r.email = (auth.jwt() ->> 'email')
---     )
+--     EXISTS (SELECT 1 FROM restaurantes r
+--             WHERE r.id = parametros_explotacion.restaurante_id
+--               AND r.email = (auth.jwt() ->> 'email'::text))
 --   );
 
--- historico_mensual — WITH CHECK anterior (solo propietario)
--- DROP POLICY IF EXISTS "historico_mensual_all" ON public.historico_mensual;
--- CREATE POLICY "historico_mensual_all" ON public.historico_mensual
---   FOR ALL
---   USING (
---     EXISTS (
---       SELECT 1 FROM public.restaurantes r
---       WHERE r.id = historico_mensual.restaurante_id
---         AND (
---           r.email = (auth.jwt() ->> 'email')
---           OR (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
---         )
---     )
---   )
+-- ALTER POLICY historico_mensual_all ON public.historico_mensual
 --   WITH CHECK (
---     EXISTS (
---       SELECT 1 FROM public.restaurantes r
---       WHERE r.id = historico_mensual.restaurante_id
---         AND r.email = (auth.jwt() ->> 'email')
---     )
+--     EXISTS (SELECT 1 FROM restaurantes r
+--             WHERE r.id = historico_mensual.restaurante_id
+--               AND r.email = (auth.jwt() ->> 'email'::text))
 --   );
 
 -- El DOWN está comentado por seguridad (no se quiere revertir sin
--- quererlo explícitamente). Si se necesita, descomentar las dos
--- políticas y ejecutar.
+-- quererlo explícitamente). Si se necesita, descomentar los dos
+-- ALTER POLICY y ejecutar.

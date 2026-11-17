@@ -307,6 +307,7 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
 function TramosMultiplicador({ restauranteId, tramos, onTramosChange }) {
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [guardadoError, setGuardadoError] = useState(null)
   const [editables, setEditables] = useState(tramos)
 
   useEffect(() => { setEditables(tramos) }, [tramos])
@@ -334,20 +335,57 @@ function TramosMultiplicador({ restauranteId, tramos, onTramosChange }) {
 
   async function guardar() {
     setGuardando(true)
-    await supabase.from('tramos_multiplicador').delete().eq('restaurante_id', restauranteId)
-    const filas = editables.map((t, i) => ({
-      restaurante_id: restauranteId,
-      coste_min: num(t.coste_min),
-      coste_max: t.coste_max !== '' && t.coste_max != null ? num(t.coste_max) : null,
-      factor: num(t.factor),
-      pvp_minimo_carta: t.pvp_minimo_carta !== '' ? num(t.pvp_minimo_carta) : null,
-      orden: i + 1,
-    }))
-    await supabase.from('tramos_multiplicador').insert(filas)
-    onTramosChange(filas)
-    setGuardando(false)
-    setGuardado(true)
-    setTimeout(() => setGuardado(false), 2000)
+    setGuardadoError(null)
+    try {
+      const filas = editables.map((t, i) => ({
+        restaurante_id: restauranteId,
+        coste_min: num(t.coste_min),
+        coste_max: t.coste_max !== '' && t.coste_max != null ? num(t.coste_max) : null,
+        factor: num(t.factor),
+        pvp_minimo_carta: t.pvp_minimo_carta !== '' ? num(t.pvp_minimo_carta) : null,
+        orden: i + 1,
+      }))
+      // Ids actuales en BD (cargados por el padre). Los nuevos tramos
+      // no tienen `id` → los inserta Postgres con default gen_random_uuid().
+      const idsAntiguos = (tramos || []).map(t => t.id).filter(Boolean)
+
+      // Paso 1: INSERT con ids nuevos. Si falla, no se ha borrado nada
+      // → cero pérdida de datos. tramos_multiplicador no tiene UNIQUE
+      // sobre (restaurante_id, orden), así que conviven temporalmente.
+      const { error: insertErr } = await supabase
+        .from('tramos_multiplicador')
+        .insert(filas)
+      if (insertErr) {
+        const permisos = (insertErr.code === '42501') || (insertErr.status === 403)
+        const motivo = permisos
+          ? 'No tienes permiso para guardar en este restaurante'
+          : (insertErr.message || 'error desconocido')
+        setGuardadoError(`No se pudo guardar: ${motivo}`)
+        return
+      }
+
+      // Paso 2: DELETE de las filas antiguas por id. Si falla aquí (ya
+      // tras el INSERT exitoso), el usuario tiene las filas nuevas en
+      // BD y verá duplicados hasta corrección manual. NO se pierden
+      // datos; es ruido visual recuperable.
+      if (idsAntiguos.length > 0) {
+        const { error: delErr } = await supabase
+          .from('tramos_multiplicador')
+          .delete()
+          .in('id', idsAntiguos)
+        if (delErr) {
+          setGuardadoError('Guardado, pero no se pudieron borrar los tramos anteriores. Verás duplicados hasta que se limpien manualmente.')
+          onTramosChange(filas)
+          return
+        }
+      }
+
+      onTramosChange(filas)
+      setGuardado(true)
+      setTimeout(() => setGuardado(false), 2000)
+    } finally {
+      setGuardando(false)
+    }
   }
 
   function aplicarPlantilla(key) {
@@ -424,6 +462,11 @@ function TramosMultiplicador({ restauranteId, tramos, onTramosChange }) {
             {guardando ? 'Guardando…' : 'Guardar tramos'}
           </button>
           {guardado && <span style={{ color: '#27ae60', fontSize: 13 }}>Guardado ✓</span>}
+          {guardadoError && (
+            <span style={{ fontSize: 12, color: '#b85454', background: 'rgba(184,84,84,0.08)', border: '1px solid rgba(184,84,84,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+              {guardadoError}
+            </span>
+          )}
         </div>
       </div>
     </section>
