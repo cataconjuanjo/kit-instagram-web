@@ -242,6 +242,30 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
     setLineas(prev => [...prev, { descripcion: '', uds: 1, uds_bonificadas: 0, precio_unitario: null, importe_neto: null, vino_id: '' }])
   }
 
+  // Pide una URL firmada corta (10 min) y abre el adjunto en una pestaña
+  // nueva. No usamos el ObjectURL local (`previewUrl`) para evitar que el
+  // visor del navegador herede CSP y bloquee el plugin de PDF.
+  const [abriendoAdjunto, setAbriendoAdjunto] = useState(false)
+  const [errorAdjunto, setErrorAdjunto] = useState(null)
+  async function abrirAdjuntoEnPestana() {
+    if (!archivo?.path || !restauranteId) return
+    setErrorAdjunto(null)
+    setAbriendoAdjunto(true)
+    try {
+      const res = await apiFetch(
+        `/api/facturas/signed-url?path=${encodeURIComponent(archivo.path)}&restaurante_id=${encodeURIComponent(restauranteId)}`,
+      )
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.url) throw new Error(j?.error || `Error ${res.status}`)
+      window.open(j.url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      console.error('[FacturaIA] abrir adjunto:', err?.message || err?.name)
+      setErrorAdjunto('No se pudo abrir el archivo. Inténtalo de nuevo en unos segundos.')
+    } finally {
+      setAbriendoAdjunto(false)
+    }
+  }
+
   async function descartar() {
     if (!archivo?.path) { resetTodo(); return }
     try {
@@ -566,7 +590,24 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
         </div>
 
         <div style={{ borderLeft: '1px solid rgba(26,26,26,0.08)', paddingLeft: 12 }}>
-          <p style={{ fontSize: 11, color: '#8b8278', marginBottom: 4 }}>Vista del documento</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+            <p style={{ fontSize: 11, color: '#8b8278', margin: 0 }}>Vista del documento</p>
+            {archivo?.path && (
+              <button
+                type="button"
+                onClick={abrirAdjuntoEnPestana}
+                disabled={abriendoAdjunto}
+                style={{ fontSize: 11, padding: '3px 10px', border: '1px solid #d8d3c8', borderRadius: 4, background: '#fff', cursor: abriendoAdjunto ? 'wait' : 'pointer', color: '#444' }}
+              >
+                {abriendoAdjunto
+                  ? 'Abriendo…'
+                  : (previewMime === 'application/pdf' ? 'Abrir PDF' : 'Abrir archivo')}
+              </button>
+            )}
+          </div>
+          {errorAdjunto && (
+            <p style={{ fontSize: 11, color: '#b85454', marginTop: 0, marginBottom: 6 }}>{errorAdjunto}</p>
+          )}
           {previewUrl && previewMime?.startsWith('image/') && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="factura" style={{ width: '100%', maxHeight: 520, objectFit: 'contain', border: '1px solid #e8e3d8', borderRadius: 4 }} />

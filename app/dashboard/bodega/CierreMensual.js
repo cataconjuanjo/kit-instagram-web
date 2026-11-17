@@ -357,7 +357,13 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [])
       ['Coste s/ ventas',    pdfPct(ratios.coste_pct_sobre_ventas), ''],
       ['Consumo / compras',  pdfPct(ratios.consumo_vs_compras), ''],
       ['Rotacion',           pdfNum(ratios.rotacion, 2),        ''],
-      ['Cobertura (dias)',   pdfNum(ratios.cobertura_dias, 1),  ''],
+      [
+        'Cobertura (dias)',
+        pdfNum(ratios.cobertura_dias, 1),
+        // Cuando el mes está en curso, pdfjs no admite caracteres no ASCII
+        // sin reencode; usamos ascii() para dejar claro que es parcial.
+        ratios.cobertura_parcial ? ascii('Dato parcial · mes en curso') : '',
+      ],
       ['Dif. inventario %',  pdfPct(ratios.diferencia_inventario_pct), ''],
     ],
     [100, 52, 30]
@@ -987,17 +993,13 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               acepta null en cualquier operando y devuelve null por
               ratio. La UI muestra "—" + tooltip con el motivo. */}
           {(() => {
+            // Cuando el mes del snapshot coincide con el mes en curso,
+            // `calcularRatios` usa días transcurridos (no días totales)
+            // como denominador del consumo diario, y marca
+            // `cobertura_parcial = true` para que la tarjeta y los
+            // informes (PDF/Excel) avisen de que el dato es parcial.
             const r = calcularRatios({ datos, desglose: readDesglose(datos) })
             const f = r.meta?.faltantes || {}
-            // ¿El mes seleccionado es el actual o futuro? Comparamos
-            // como strings YYYY-MM (orden lexicográfico == cronológico).
-            // En ese caso la cobertura usa el consumo del mes incompleto,
-            // así que es un dato parcial: lo marcamos en la tarjeta.
-            const mesActualYM = (() => {
-              const now = new Date()
-              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-            })()
-            const esParcialCobertura = typeof mes === 'string' && mes >= mesActualYM
             const tarjeta = (titulo, valor, motivo, extra) => (
               <div
                 style={{
@@ -1027,10 +1029,10 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                   {tarjeta('Consumo / compras',pctRatio(r.consumo_vs_compras), motivoRatio(f, 'consumo_vs_compras'))}
                   {tarjeta('Rotación',         numDec(r.rotacion, 2),           motivoRatio(f, 'rotacion'))}
                   {tarjeta(
-                    esParcialCobertura ? 'Cobertura (días) · mes en curso' : 'Cobertura (días)',
+                    r.cobertura_parcial ? 'Cobertura (días) · dato parcial' : 'Cobertura (días)',
                     numDec(r.cobertura_dias, 1),
                     motivoRatio(f, 'cobertura_dias'),
-                    esParcialCobertura ? 'Dato parcial' : null,
+                    r.cobertura_parcial ? `Mes en curso · ${r.meta?.dias_cobertura ?? '?'} días transcurridos` : null,
                   )}
                   {tarjeta('Dif. inventario %',pctRatio(r.diferencia_inventario_pct), motivoRatio(f, 'diferencia_inv'))}
                 </div>
