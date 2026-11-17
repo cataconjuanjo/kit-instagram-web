@@ -1,16 +1,23 @@
 'use client'
 
 /**
- * PdfPreview — renderiza un PDF (ObjectURL local) sobre un <canvas>
- * usando pdfjs-dist empaquetado (sin CDN). Se usa SOLO desde FacturaIA
- * y se carga por import dinámico (`next/dynamic`) para no engordar el
+ * PdfPreview — renderiza un PDF local sobre un <canvas> usando
+ * pdfjs-dist empaquetado (sin CDN). Se usa SOLO desde FacturaIA y
+ * se carga por import dinámico (`next/dynamic`) para no engordar el
  * bundle del dashboard; pdfjs-dist cae en su propio chunk.
+ *
+ * Importante: recibimos el `File` original y lo pasamos a pdfjs como
+ * `data: Uint8Array`, NO como `url: blob:…`. pdfjs internamente haría
+ * fetch() de esa URL blob:, y nuestra CSP (`connect-src 'self'
+ * https://*.supabase.co …` sin `blob:`) lo bloquea. Con `data`, pdfjs
+ * trabaja contra el buffer en memoria y no dispara peticiones.
  *
  * Seguridad:
  *   - isEvalSupported: false  → no se permite eval en el documento PDF.
- *   - disableAutoFetch: true  → no se precargan rangos del PDF.
- *   - El origen de las fuentes/CMaps queda sin configurar: pdf.js usa
- *     las fuentes estándar embebidas; si el PDF trae tipografías raras
+ *   - disableAutoFetch: true  → no se precargan rangos.
+ *   - disableStream: true     → no se abren streams de red.
+ *   - No se configuran CMaps/StandardFonts remotos; pdf.js usa las
+ *     fuentes estándar embebidas; si el PDF trae tipografías raras
  *     saldrán sustitutas, pero nunca se hacen peticiones a terceros.
  *   - No se evalúa el JS embebido del PDF (pdf.sandbox no se carga).
  *
@@ -20,7 +27,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-export default function PdfPreview({ url }) {
+export default function PdfPreview({ file }) {
   const canvasRef = useRef(null)
   const docRef = useRef(null)
   const renderTaskRef = useRef(null)
@@ -30,7 +37,7 @@ export default function PdfPreview({ url }) {
 
   // Carga/limpieza del documento.
   useEffect(() => {
-    if (!url) return
+    if (!file) return
     let cancelado = false
     setEstado('cargando')
     setNumPaginas(0)
@@ -38,7 +45,10 @@ export default function PdfPreview({ url }) {
 
     ;(async () => {
       try {
-        const pdfjs = await import('pdfjs-dist/build/pdf.mjs')
+        const [pdfjs, buffer] = await Promise.all([
+          import('pdfjs-dist/build/pdf.mjs'),
+          file.arrayBuffer(),
+        ])
         // Webpack 5 (Next) procesa este new URL(...) y genera un chunk
         // estático para el worker en nuestro propio origen. Nada de CDN.
         pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -46,10 +56,12 @@ export default function PdfPreview({ url }) {
           import.meta.url,
         ).href
 
+        if (cancelado) return
         const loadingTask = pdfjs.getDocument({
-          url,
+          data: new Uint8Array(buffer),
           isEvalSupported: false,
           disableAutoFetch: true,
+          disableStream: true,
         })
         const pdf = await loadingTask.promise
         if (cancelado) { try { pdf.destroy() } catch { /* ignored */ } return }
@@ -57,8 +69,16 @@ export default function PdfPreview({ url }) {
         docRef.current = pdf
         setNumPaginas(pdf.numPages || 0)
         setEstado('listo')
-      } catch {
-        if (!cancelado) setEstado('error')
+      } catch (err) {
+        if (!cancelado) {
+          // Log sin exponer datos del usuario (nombre del fichero,
+          // contenido, etc.); sólo tipo y mensaje de pdfjs para
+          // diagnosticar en consola.
+          const nombre = err && (err.name || err.constructor?.name) || 'Error'
+          const mensaje = (err && typeof err.message === 'string') ? err.message : ''
+          console.error('[PdfPreview] No se pudo cargar el PDF:', nombre, mensaje)
+          setEstado('error')
+        }
       }
     })()
 
@@ -69,7 +89,7 @@ export default function PdfPreview({ url }) {
       try { docRef.current?.destroy() } catch { /* ignored */ }
       docRef.current = null
     }
-  }, [url])
+  }, [file])
 
   // Render de la página seleccionada cada vez que cambie `pagina`
   // o cuando el documento esté listo.

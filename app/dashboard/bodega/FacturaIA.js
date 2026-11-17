@@ -104,7 +104,8 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
   const [avisos, setAvisos] = useState([])
   const [posibleDuplicado, setPosibleDuplicado] = useState(null)
   const [archivo, setArchivo] = useState(null)             // { path, mime_type, tamano_bytes, nombre_archivo }
-  const [previewUrl, setPreviewUrl] = useState(null)       // objectURL local
+  const [previewUrl, setPreviewUrl] = useState(null)       // objectURL local (sólo para <img>)
+  const [previewFile, setPreviewFile] = useState(null)     // File original (para pdfjs: evita fetch(blob:) que la CSP bloquea)
   const [previewMime, setPreviewMime] = useState(null)
   const fileRef = useRef(null)
 
@@ -157,6 +158,7 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
     setPosibleDuplicado(null)
     setArchivo(null)
     setPreviewUrl(null)
+    setPreviewFile(null)
     setPreviewMime(null)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -166,10 +168,13 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
     if (!file) return
     setError(null)
 
-    // Preview local (objectURL para evitar signed URL round-trip).
+    // Preview local. Para imágenes usamos un ObjectURL con <img>. Para PDF
+    // guardamos el File y pdfjs-dist lo carga por `data: Uint8Array`
+    // (hacer fetch(blob:) desde pdf.js lo bloquearía connect-src de la CSP).
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
+    setPreviewFile(file)
     setPreviewMime(file.type || '')
 
     setPaso('leyendo')
@@ -222,6 +227,7 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
       setError(err.message || 'No se pudo leer la factura.')
       setPaso('inicial')
       if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
+      setPreviewFile(null)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -249,6 +255,7 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
         setPaso('inicial')
         // Dejamos la caja de error visible; el objectURL se limpia.
         if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
+        setPreviewFile(null)
         setArchivo(null); setLineas([]); setAvisos([]); setPosibleDuplicado(null)
         if (fileRef.current) fileRef.current.value = ''
         return
@@ -564,8 +571,8 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="factura" style={{ width: '100%', maxHeight: 520, objectFit: 'contain', border: '1px solid #e8e3d8', borderRadius: 4 }} />
           )}
-          {previewUrl && previewMime === 'application/pdf' && (
-            <PdfPreview url={previewUrl} />
+          {previewFile && previewMime === 'application/pdf' && (
+            <PdfPreview file={previewFile} />
           )}
           {!previewUrl && (
             <p style={{ fontSize: 12, color: '#8b8278' }}>Sin vista previa.</p>
