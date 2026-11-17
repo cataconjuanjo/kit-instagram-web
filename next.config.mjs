@@ -47,7 +47,13 @@ const CSP = [
   `frame-src https://js.stripe.com https://hooks.stripe.com blob:`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
-  `object-src 'none'`,
+  // `object-src blob:`: el visor de PDF de Chrome dentro de un <iframe>
+  // con URL blob: se comporta como un plugin/object y hereda la CSP de
+  // la página. Con `object-src 'none'` se bloqueaba y salía el icono
+  // de página rota. Permitimos únicamente blob: (ObjectURL local del
+  // propio usuario); ni 'self' ni dominios externos ni comodines, para
+  // mantener la protección contra <object>/<embed> remotos.
+  `object-src blob:`,
   `form-action 'self'`,
   `upgrade-insecure-requests`,
 ].join('; ')
