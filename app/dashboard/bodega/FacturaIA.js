@@ -21,9 +21,13 @@
  * Nunca se crea compra sin que el usuario pulse Confirmar.
  */
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
-import { emparejarLineasConVinos } from '../../lib/facturaIA'
+import {
+  emparejarLineasConVinos,
+  preseleccionarProveedor,
+  componerNotasFacturaIA,
+} from '../../lib/facturaIA'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -73,7 +77,16 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
   const [cabecera, setCabecera] = useState({
     proveedor: '', nif: '', numero_factura: '', fecha: '',
     base_imponible: null, iva_pct: 21, iva_importe: null, total: null,
+    notas: '',
   })
+  // Proveedor SELECCIONADO del catálogo. El RPC `registrar_compra_con_pmp`
+  // acepta cualquier texto, pero la convención del restaurante es usar
+  // nombres canónicos del catálogo. Si no hay match, el botón de confirmar
+  // queda bloqueado y se muestra un mensaje pidiendo crearlo en el
+  // catálogo de proveedores.
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState('')
+  const [proveedoresDisponibles, setProveedoresDisponibles] = useState([])
+  const [prov, setProv] = useState({ origen: null, candidatos: [] })  // info de preselección
   const [lineas, setLineas] = useState([])                 // [{ descripcion, uds, uds_bonificadas, precio_unitario, importe_neto, vino_id }]
   const [avisos, setAvisos] = useState([])
   const [posibleDuplicado, setPosibleDuplicado] = useState(null)
@@ -81,6 +94,34 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
   const [previewUrl, setPreviewUrl] = useState(null)       // objectURL local
   const [previewMime, setPreviewMime] = useState(null)
   const fileRef = useRef(null)
+
+  // Carga perezosa de la lista de proveedores del restaurante (misma
+  // fuente que usa /dashboard/bodega y /dashboard/vinos:
+  // /api/proveedores-visibles, basado en proveedores_vino con
+  // visible_restaurantes = true). No se crean proveedores desde aquí.
+  useEffect(() => {
+    let cancelado = false
+    async function cargar() {
+      if (!restauranteId) return
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData?.session?.access_token || ''
+        const res = await fetch(
+          `/api/proveedores-visibles?restaurante_id=${encodeURIComponent(restauranteId)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        )
+        if (!res.ok) return
+        const json = await res.json().catch(() => ({}))
+        const nombres = Array.isArray(json?.proveedores) ? json.proveedores : []
+        if (!cancelado) setProveedoresDisponibles(nombres)
+      } catch {
+        // Silencioso: si no hay lista, el <select> quedará vacío y el
+        // mensaje "no está dado de alta" guiará al usuario.
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [restauranteId])
 
   // Sugerencias de emparejado (cliente, puras).
   const sugerencias = useMemo(() => {
@@ -95,7 +136,9 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPaso('inicial')
     setError(null)
-    setCabecera({ proveedor: '', nif: '', numero_factura: '', fecha: '', base_imponible: null, iva_pct: 21, iva_importe: null, total: null })
+    setCabecera({ proveedor: '', nif: '', numero_factura: '', fecha: '', base_imponible: null, iva_pct: 21, iva_importe: null, total: null, notas: '' })
+    setProveedorSeleccionado('')
+    setProv({ origen: null, candidatos: [] })
     setLineas([])
     setAvisos([])
     setPosibleDuplicado(null)
@@ -122,6 +165,12 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
       form.append('file', file)
       form.append('restaurante_id', restauranteId)
       const res = await apiFetch('/api/facturas/extraer', { method: 'POST', body: form })
+      // La cuota diaria de lecturas con IA es compartida con otras funciones
+      // (Sumiller, etc.). El servidor devuelve 429 cuando se agota; mostramos
+      // el texto literal acordado en lugar del error genérico.
+      if (res.status === 429) {
+        throw new Error('Has alcanzado el límite diario de lecturas con IA. Inténtalo mañana o registra la factura a mano.')
+      }
       const json = await res.json().catch(() => ({ error: 'Respuesta no válida' }))
       if (!res.ok) throw new Error(json.error || `Error ${res.status}`)
 
@@ -135,7 +184,15 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
         iva_pct: d.iva_pct ?? 21,
         iva_importe: d.iva_importe ?? null,
         total: d.total ?? null,
+        notas: '',
       })
+      // Preselección del proveedor del catálogo. Si hay match (por NIF o por
+      // nombre normalizado), ya queda elegido; si no, el <select> queda
+      // vacío y el botón de Confirmar queda deshabilitado hasta que el
+      // usuario elija uno. No se crean proveedores desde aquí.
+      const pre = preseleccionarProveedor(d, proveedoresDisponibles)
+      setProveedorSeleccionado(pre.nombre || '')
+      setProv({ origen: pre.origen, candidatos: pre.candidatos || [] })
       setLineas((d.lineas || []).map(l => ({
         descripcion: l.descripcion ?? '',
         uds: l.uds ?? 1,
@@ -195,24 +252,29 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
     setPaso('confirmando')
     try {
       // Validación mínima client-side
-      if (!cabecera.proveedor?.trim()) throw new Error('Falta el proveedor.')
+      if (!proveedorSeleccionado?.trim()) {
+        throw new Error('Este proveedor no está dado de alta. Créalo en el catálogo de proveedores y vuelve a intentarlo.')
+      }
       if (!cabecera.fecha) throw new Error('Falta la fecha de la factura.')
       const lineasValidas = lineas.filter(l => l.vino_id && Number(l.uds) > 0 && (l.precio_unitario != null || l.importe_neto != null))
       if (lineasValidas.length === 0) throw new Error('No hay líneas con vino asignado y cantidad > 0.')
 
       // Construye payload de /api/compras. precio_tarifa se deriva de
       // precio_unitario si está; si no, de importe_neto / uds.
+      // origen = 'manual' porque cabecera_compras tiene CHECK
+      // (origen IN ('manual','importacion')). La traza de IA se guarda en
+      // `notas` con el prefijo canónico.
       const payload = {
         restaurante_id: restauranteId,
         cabecera: {
-          proveedor: cabecera.proveedor.trim(),
+          proveedor: proveedorSeleccionado.trim(),
           fecha: cabecera.fecha,
           numero_documento: cabecera.numero_factura || '',
           referencia_externa: '',
           descuento_global: 0,
           iva_pct: Number(cabecera.iva_pct) || 21,
-          notas: '',
-          origen: 'ia',
+          notas: componerNotasFacturaIA(cabecera.notas),
+          origen: 'manual',
         },
         lineas: lineasValidas.map(l => {
           const uds = Math.max(1, Number(l.uds) || 1)
@@ -340,8 +402,38 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 11, color: '#8b8278', marginBottom: 2 }}>Proveedor</div>
-              <InputTxt value={cabecera.proveedor} onChange={v => setCabecera(c => ({ ...c, proveedor: v }))} />
+              <div style={{ fontSize: 11, color: '#8b8278', marginBottom: 2 }}>
+                Proveedor del catálogo
+                {cabecera.proveedor && (
+                  <span style={{ marginLeft: 6, fontStyle: 'italic', color: '#a39889' }}>
+                    IA leyó: &ldquo;{cabecera.proveedor}&rdquo;
+                  </span>
+                )}
+              </div>
+              <select
+                value={proveedorSeleccionado}
+                onChange={e => setProveedorSeleccionado(e.target.value)}
+                style={{ width: '100%', padding: '4px 8px', fontSize: 13, border: '1px solid #d8d3c8', borderRadius: 4, background: '#fff' }}
+              >
+                <option value="">— elegir proveedor —</option>
+                {proveedoresDisponibles.map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              {proveedorSeleccionado && prov.origen && (
+                <div style={{ fontSize: 10, color: '#8b8278', marginTop: 2 }}>
+                  {prov.origen === 'nif' && 'Coincidencia por NIF ✓'}
+                  {prov.origen === 'nombre_exacto' && 'Coincidencia por nombre ✓'}
+                  {prov.origen === 'nombre_parcial' && 'Coincidencia parcial — revisa que sea el correcto'}
+                </div>
+              )}
+              {!proveedorSeleccionado && (
+                <div style={{ fontSize: 10, color: '#b85454', marginTop: 2 }}>
+                  {prov.candidatos && prov.candidatos.length > 0
+                    ? `Elige el proveedor. Posibles: ${prov.candidatos.join(', ')}`
+                    : 'Este proveedor no está dado de alta. Créalo en el catálogo de proveedores y vuelve a intentarlo.'}
+                </div>
+              )}
             </div>
             <div>
               <div style={{ fontSize: 11, color: '#8b8278', marginBottom: 2 }}>NIF/CIF</div>
@@ -370,6 +462,16 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
             <div>
               <div style={{ fontSize: 11, color: '#8b8278', marginBottom: 2 }}>Total (€)</div>
               <InputNum value={cabecera.total} onChange={v => setCabecera(c => ({ ...c, total: v }))} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: 11, color: '#8b8278', marginBottom: 2 }}>
+                Notas (opcional — la traza de IA se añade sola al guardar)
+              </div>
+              <InputTxt
+                value={cabecera.notas}
+                onChange={v => setCabecera(c => ({ ...c, notas: v }))}
+                placeholder="Observaciones de esta compra"
+              />
             </div>
           </div>
 
@@ -468,8 +570,14 @@ export default function FacturaIA({ restauranteId, vinosActivos = [], onCompraRe
         <button
           type="button"
           onClick={confirmar}
-          disabled={paso === 'confirmando'}
-          style={{ padding: '8px 16px', background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: paso === 'confirmando' ? 'wait' : 'pointer' }}
+          disabled={paso === 'confirmando' || !proveedorSeleccionado}
+          title={!proveedorSeleccionado ? 'Elige un proveedor del catálogo para poder registrar la compra.' : ''}
+          style={{
+            padding: '8px 16px',
+            background: (paso === 'confirmando' || !proveedorSeleccionado) ? '#8b8278' : '#1a1a1a',
+            color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+            cursor: paso === 'confirmando' ? 'wait' : (!proveedorSeleccionado ? 'not-allowed' : 'pointer'),
+          }}
         >
           {paso === 'confirmando' ? 'Registrando…' : 'Confirmar y registrar compra'}
         </button>

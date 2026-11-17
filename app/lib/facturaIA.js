@@ -261,6 +261,111 @@ export function emparejarLineasConVinos(lineas, vinos) {
   })
 }
 
+// ── Preselección de proveedor del catálogo ──────────────────────────────
+//
+// El RPC registrar_compra_con_pmp y la UI de "Nueva compra" trabajan con
+// un `cabecera.proveedor` texto. Para no inventar proveedores nuevos ni
+// crear texto libre a partir de la IA, la pantalla de revisión obliga a
+// elegir un proveedor existente del catálogo del restaurante (lista
+// servida por /api/proveedores-visibles). Esta función preselecciona
+// la mejor coincidencia por NIF (si existe en ambos lados) o por nombre
+// normalizado (sin tildes, minúsculas, sin ruido tipográfico).
+//
+// `datos` es el resultado de normalizarRespuestaIA: { proveedor: {nombre, nif}, ... }
+// `proveedoresDisponibles` acepta dos formas:
+//   - Array<string>                      → se trata como nombre, nif undefined.
+//   - Array<{nombre, nif?}>              → match por NIF si procede.
+//
+// Devuelve:
+//   { nombre, origen: 'nif'|'nombre_exacto'|'nombre_parcial'|null,
+//     candidatos: Array<string> }
+//   - `nombre` = proveedor preseleccionado (siempre en la grafía del
+//     catálogo si hay match), o null si no hay match.
+//   - `candidatos` = lista de nombres canónicos sugeridos (hasta 3)
+//     cuando el match sólo es parcial; útil para un helper visual.
+
+function normalizarNif(v) {
+  if (typeof v !== 'string') return null
+  const s = v.replace(/[\s.-]+/g, '').toUpperCase()
+  return s.length ? s : null
+}
+
+export function preseleccionarProveedor(datos, proveedoresDisponibles) {
+  const lista = Array.isArray(proveedoresDisponibles) ? proveedoresDisponibles : []
+  const prov = (datos && datos.proveedor) ? datos.proveedor : {}
+  const nifIa = normalizarNif(prov.nif)
+  const nombreIa = (typeof prov.nombre === 'string') ? prov.nombre : ''
+  const nombreIaNorm = normalizarTextoVino(nombreIa)
+
+  // Normaliza el array de disponibles a objetos { nombre, nifNorm }.
+  const disp = lista.map(p => {
+    if (typeof p === 'string') return { nombre: p, nifNorm: null }
+    return { nombre: (p?.nombre || ''), nifNorm: normalizarNif(p?.nif) }
+  }).filter(p => p.nombre)
+
+  // 1) Match por NIF si ambos lo tienen.
+  if (nifIa) {
+    const porNif = disp.find(p => p.nifNorm && p.nifNorm === nifIa)
+    if (porNif) return { nombre: porNif.nombre, origen: 'nif', candidatos: [] }
+  }
+
+  // 2) Match por nombre normalizado (exacto).
+  if (nombreIaNorm) {
+    const exacto = disp.find(p => normalizarTextoVino(p.nombre) === nombreIaNorm)
+    if (exacto) return { nombre: exacto.nombre, origen: 'nombre_exacto', candidatos: [] }
+  }
+
+  // 3) Parcial: todas las palabras de la IA aparecen en el candidato o
+  //    viceversa (containment en una dirección). Devolvemos top 3 por
+  //    score para que la UI pueda sugerirlos.
+  if (nombreIaNorm) {
+    const tokensIa = new Set(nombreIaNorm.split(' ').filter(Boolean))
+    if (tokensIa.size > 0) {
+      const puntuado = disp.map(p => {
+        const n = normalizarTextoVino(p.nombre)
+        const tokensDisp = new Set(n.split(' ').filter(Boolean))
+        if (tokensDisp.size === 0) return { p, score: 0 }
+        let interAtoB = 0
+        for (const t of tokensIa) if (tokensDisp.has(t)) interAtoB++
+        const scoreIaEnDisp = interAtoB / tokensIa.size
+        const scoreDispEnIa = interAtoB / tokensDisp.size
+        return { p, score: Math.max(scoreIaEnDisp, scoreDispEnIa) }
+      }).filter(x => x.score > 0.4)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+      if (puntuado.length > 0 && puntuado[0].score >= 0.75) {
+        return {
+          nombre: puntuado[0].p.nombre,
+          origen: 'nombre_parcial',
+          candidatos: puntuado.map(x => x.p.nombre),
+        }
+      }
+      if (puntuado.length > 0) {
+        return { nombre: null, origen: null, candidatos: puntuado.map(x => x.p.nombre) }
+      }
+    }
+  }
+
+  return { nombre: null, origen: null, candidatos: [] }
+}
+
+// ── Nota de trazabilidad para cabecera.notas ────────────────────────────
+//
+// /api/compras sanea `origen` a 'manual' si viene cualquier otra cosa,
+// y el CHECK de cabecera_compras no permite 'ia'. Para dejar constancia
+// de que la factura se leyó con IA, se añade un prefijo a `cabecera.notas`
+// conservando cualquier nota que el usuario hubiera escrito. El resultado
+// se trunca al límite real de servidor (500 caracteres) para no
+// romper la inserción.
+
+export const NOTA_IA = 'Leída con IA desde factura adjunta (revisada por el usuario)'
+
+export function componerNotasFacturaIA(notasPrevias) {
+  const previas = (typeof notasPrevias === 'string') ? notasPrevias.trim() : ''
+  const combinada = previas.length > 0 ? `${NOTA_IA}. ${previas}` : NOTA_IA
+  return combinada.slice(0, 500)
+}
+
 // ── Detección de duplicados ──────────────────────────────────────────────
 
 /**
