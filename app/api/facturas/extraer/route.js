@@ -12,6 +12,18 @@ import {
   validarFactura,
   detectarDuplicado,
 } from '../../../lib/facturaIA'
+import {
+  ALLOWED_MIME_FACTURA_IA,
+  extensionPorMime,
+  esErrorMimeStorage,
+} from '../../../lib/facturasIaMime'
+import {
+  FACTURAS_ENDPOINT,
+  limiteDiarioFacturas,
+  inicioDiaMadridISO,
+  superaLimiteDiarioFacturas,
+  MENSAJE_LIMITE_FACTURAS,
+} from '../../../lib/facturasCuotaDiaria'
 
 export const maxDuration = 60
 
@@ -19,7 +31,6 @@ export const maxDuration = 60
 
 const BUCKET = 'facturas-bodega'
 const MAX_BYTES = 10 * 1024 * 1024                          // 10 MB
-const ALLOWED_MIME = new Set(['application/pdf', 'image/png', 'image/jpeg'])
 const MAX_PDF_PAGES = 5
 const MODELO_DEFAULT = 'claude-sonnet-4-6'
 
@@ -58,13 +69,6 @@ function paginasPdfAprox(buf) {
 
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex')
-}
-
-function extensionPorMime(mime) {
-  if (mime === 'application/pdf') return 'pdf'
-  if (mime === 'image/png')       return 'png'
-  if (mime === 'image/jpeg')      return 'jpg'
-  return 'bin'
 }
 
 // ── Prompt a la IA ──────────────────────────────────────────────────────
@@ -162,9 +166,9 @@ export async function POST(req) {
 
     // Límites de formato/tamaño
     const mime = (file.type || '').toLowerCase()
-    if (!ALLOWED_MIME.has(mime)) {
+    if (!ALLOWED_MIME_FACTURA_IA.has(mime)) {
       return Response.json({
-        error: 'Formato no soportado. Admitidos: PDF, PNG y JPEG. (WebP requiere actualizar la configuración del almacén.)',
+        error: 'Formato no soportado. Admitidos: PDF, PNG, JPEG y WebP.',
       }, { status: 415 })
     }
     const arrayBuf = await file.arrayBuffer()
@@ -184,10 +188,40 @@ export async function POST(req) {
       }
     }
 
-    // Cuota IA (reutiliza el sistema existente del repo, tabla consumos_ia).
+    // Cuota diaria PROPIA de facturas (independiente de la ventana
+    // deslizante de 24 h que usa la cuota general). Cuenta filas de
+    // consumos_ia con endpoint = '/api/facturas/extraer' creadas desde
+    // las 00:00 de Madrid. No necesita SQL: usa la columna `endpoint`
+    // que ya existe.
+    const limiteDia = limiteDiarioFacturas()
+    const desdeDia = inicioDiaMadridISO()
+    try {
+      const { count: usadasHoy, error: errCountHoy } = await supabaseAdmin
+        .from('consumos_ia')
+        .select('id', { count: 'exact', head: true })
+        .eq('restaurante_id', restauranteId)
+        .eq('endpoint', FACTURAS_ENDPOINT)
+        .gte('created_at', desdeDia)
+      if (errCountHoy) {
+        // Degradación: si la lectura falla por cualquier motivo
+        // (p. ej. la tabla no existe en un entorno aislado), seguimos
+        // y dejamos que la cuota general haga el trabajo. No se filtra
+        // nada al cliente.
+        console.warn('[facturas/extraer] cuota_diaria_degradada', errCountHoy.message)
+      } else if (superaLimiteDiarioFacturas(usadasHoy || 0, limiteDia)) {
+        return Response.json(
+          { error: MENSAJE_LIMITE_FACTURAS, quota_exceeded: true, scope: 'facturas_dia' },
+          { status: 429 },
+        )
+      }
+    } catch (err) {
+      console.warn('[facturas/extraer] cuota_diaria_excepcion', err?.message || err?.name)
+    }
+
+    // Cuota IA general (ventana de 24 h, compartida con otras funciones).
     const cuota = await comprobarCuotaIaRestaurante({
       restauranteId,
-      endpoint: '/api/facturas/extraer',
+      endpoint: FACTURAS_ENDPOINT,
       solicitudesEstimadas: 1,
     })
     if (!cuota.ok) return responderCuotaIaAgotada(cuota)
@@ -208,6 +242,14 @@ export async function POST(req) {
       })
     if (uploadErr) {
       console.error('[facturas/extraer] upload', uploadErr.message)
+      // Si el bucket aún no permite este MIME (p. ej. webp antes de
+      // aplicar la migración), devolvemos 415 amistoso en vez de 500.
+      if (esErrorMimeStorage(uploadErr)) {
+        return Response.json(
+          { error: 'Formato no admitido todavía. Actualiza el almacén o prueba con PDF, PNG o JPEG.' },
+          { status: 415 },
+        )
+      }
       return Response.json({ error: 'No se pudo guardar el archivo.' }, { status: 500 })
     }
 
@@ -249,7 +291,7 @@ export async function POST(req) {
     try {
       await registrarConsumoAnthropic({
         restauranteId,
-        endpoint: '/api/facturas/extraer',
+        endpoint: FACTURAS_ENDPOINT,
         modelo,
         usage: iaUsage,
         metadata: { storage_path: storagePath, hash, mime },

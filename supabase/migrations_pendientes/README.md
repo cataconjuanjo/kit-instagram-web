@@ -25,3 +25,10 @@ Cada migración consta de tres archivos:
 - `add_imputacion_pct.up.sql` — añade la columna `imputacion_pct jsonb`
   a `parametros_explotacion` (Fase 4, imputación a la bodega por
   concepto). El código funciona con y sin la columna aplicada.
+
+- `add_facturas_bucket_webp.up.sql` — añade `image/webp` al array
+  `allowed_mime_types` del bucket `facturas-bodega` (Fase 5). El
+  código del cliente y de `/api/facturas/extraer` ya aceptan WebP;
+  si el bucket aún no permite ese MIME, la API responde 415 amistoso
+  "Formato no admitido todavía" en lugar de 500. Sin la migración,
+  PDF/PNG/JPEG siguen funcionando con normalidad.
