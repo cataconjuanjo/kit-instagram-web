@@ -34,6 +34,7 @@ import EventosSection from './EventosSection'
 import FormularioCompra from './FormularioCompra'
 import FacturaIA from './FacturaIA'
 import LibroBodegaTable from './LibroBodegaTable'
+import SimuladorMargenBodega from './SimuladorMargenBodega'
 import { formatoMoneda } from '../../lib/formatoEs'
 
 // A1: delegan en formatoMoneda (es-ES: 4 cifras sin miles, 5+ con, '—' si null).
@@ -1193,6 +1194,15 @@ export default function ControlBodega() {
             >
               Eventos
             </button>
+            {puedeUsar(restaurante, 'somm_simulador_margen_bodega') && (
+              <button
+                type="button"
+                className={panelAbierto === 'simulador_margen' ? styles.secondary : styles.ghost}
+                onClick={() => setPanelAbierto(panelAbierto === 'simulador_margen' ? null : 'simulador_margen')}
+              >
+                Simulador margen
+              </button>
+            )}
           </div>
         )}
 
@@ -1296,6 +1306,21 @@ export default function ControlBodega() {
         {panelAbierto === 'cierre_mensual' && (
           <section className={styles.panel} id="cierre_mensual">
             <CierreMensual restauranteId={restaurante.id} restaurante={restaurante} />
+          </section>
+        )}
+
+        {/* ── Panel: Simulador de margen mínimo de bodega (Fase C) ── */}
+        {panelAbierto === 'simulador_margen' && puedeUsar(restaurante, 'somm_simulador_margen_bodega') && (
+          <section className={styles.panel} id="simulador_margen">
+            <div className={styles.panelBody}>
+              <SimuladorMargenBodega
+                restauranteId={restaurante.id}
+                snapshotMes={null}
+                parametros={null}
+                periodoReferencia={null}
+                catalogo={null}
+              />
+            </div>
           </section>
         )}
 

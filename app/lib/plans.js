@@ -69,6 +69,7 @@ export const PLANES = {
       'somm_copa_formato',
       'somm_rentabilidad_coste',
       'somm_what_if',
+      'somm_simulador_margen_bodega',
     ],
   },
   premium: {
@@ -89,7 +90,7 @@ export const PLANES = {
       'catalogo_consultor',
       // Acceso económico del dueño (vista completa):
       'somm_simulador_mult', 'somm_explotacion', 'somm_historico',
-      'somm_libro_compras',
+      'somm_libro_compras', 'somm_simulador_margen_bodega',
     ],
   },
 }
