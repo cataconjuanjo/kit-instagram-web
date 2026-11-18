@@ -597,5 +597,14 @@ export function construirInformeEconomicoWorkbook({
   const sheetCierre = construirSheetCierre({ datosVino })
   if (sheetCierre) sheets.push(sheetCierre)
 
-  return { filename, sheets }
+  // Metadata a nivel raíz consumida por excelSommDownload.js para
+  // pintar el header/footer de impresión con identidad Carta Viva.
+  // Si no se pasa restauranteNombre/periodo quedan vacíos → el header
+  // simplemente no muestra esos campos (degradación limpia).
+  return {
+    filename,
+    sheets,
+    restauranteNombre: restauranteNombre || '',
+    periodo:           periodo           || '',
+  }
 }
