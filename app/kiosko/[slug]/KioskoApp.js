@@ -4078,6 +4078,11 @@ export default function KioskoPage() {
       if (mobileSelectionRef.current) return false
       if (wineFoodVinoRef.current) return false
       if (Date.now() - lastInteractionRef.current < inactivityMs) return false
+      // Si el kiosko está en pantalla completa (Síbaris y otros puestos fijos),
+      // NO recargar: una recarga crea un documento nuevo y la Fullscreen API
+      // obliga a abandonar el modo. Mantener pendingReload=true: se aplicará
+      // la próxima vez que el navegador ya no esté en fullscreen.
+      if (document.fullscreenElement || document.webkitFullscreenElement) return false
       return true
     }
 
@@ -4155,44 +4160,95 @@ export default function KioskoPage() {
 
   useEffect(() => {
     let keyboardCausedExit = false
+    let gestureRearmed = false
+
+    // Lee/escribe el flag de "pantalla completa deseada" en sessionStorage.
+    // sessionStorage sobrevive a recargas en la misma pestaña, no a cierres de
+    // navegador. Si el navegador bloquea el storage, los helpers no rompen.
+    const FS_INTENT_KEY = 'kiosko:fullscreenDeseado'
+    const readFsIntent = () => {
+      try { return sessionStorage.getItem(FS_INTENT_KEY) === '1' } catch { return false }
+    }
+    const writeFsIntent = (v) => {
+      try { sessionStorage.setItem(FS_INTENT_KEY, v ? '1' : '0') } catch {}
+    }
+
+    function tryEnterFs() {
+      const el = document.documentElement
+      try {
+        if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}) }
+        else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen() }
+      } catch {}
+    }
+
+    function armGestureRetry() {
+      if (gestureRearmed) return
+      gestureRearmed = true
+      const onceGesture = () => {
+        gestureRearmed = false
+        // Un INPUT/TEXTAREA focado al tocar significa que el usuario quiere
+        // escribir: no robamos el gesto para re-pedir fullscreen.
+        const active = document.activeElement
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
+        if (!readFsIntent()) return
+        // Si ya volvió a fullscreen por su cuenta, no hacer nada.
+        if (document.fullscreenElement || document.webkitFullscreenElement) return
+        tryEnterFs()
+      }
+      // listeners "once" sobre cualquier gesto en cualquier pantalla (incluida
+      // SHOWCASE/destacados). Son "once": tras el primer gesto se eliminan y
+      // se re-arman desde el siguiente fullscreenchange que detecte salida.
+      document.addEventListener('pointerdown', onceGesture, { once: true, passive: true })
+      document.addEventListener('touchstart', onceGesture, { once: true, passive: true })
+      document.addEventListener('keydown', onceGesture, { once: true })
+    }
 
     function onFsChange() {
       const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement)
       setIsFullscreen(inFs)
-      if (!inFs) {
+      if (inFs) {
+        // Entró en fullscreen: registramos intención y reseteamos flags.
+        writeFsIntent(true)
+        keyboardCausedExit = false
+        gestureRearmed = false
+      } else {
+        // Salió: si fue por un INPUT/TEXTAREA, mantenemos el comportamiento
+        // histórico (lo re-armábamos tras el primer touchstart). Además,
+        // si la intención sigue activa (usuario había ampliado), armamos el
+        // retry para el primer gesto en CUALQUIER pantalla.
         const active = document.activeElement
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
           keyboardCausedExit = true
         }
-      } else {
-        keyboardCausedExit = false
+        if (readFsIntent()) armGestureRetry()
       }
-    }
-
-    function onTouchStart() {
-      if (!keyboardCausedExit) return
-      const active = document.activeElement
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
-      keyboardCausedExit = false
-      const el = document.documentElement
-      if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
     }
 
     document.addEventListener('fullscreenchange', onFsChange)
     document.addEventListener('webkitfullscreenchange', onFsChange)
-    document.addEventListener('touchstart', onTouchStart, { passive: true })
+
+    // Si al montar el componente ya veníamos de una sesión con intent=1
+    // (típico tras un reload heredado), armamos el retry también.
+    if (readFsIntent() && !(document.fullscreenElement || document.webkitFullscreenElement)) {
+      armGestureRetry()
+    }
+
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange)
       document.removeEventListener('webkitfullscreenchange', onFsChange)
-      document.removeEventListener('touchstart', onTouchStart)
     }
   }, [])
 
   function entrarPantallaCompleta() {
+    // Registra la intención antes de pedir fullscreen: aunque el navegador
+    // rechace la petición, la red de seguridad re-intentará en el próximo
+    // gesto del usuario.
+    try { sessionStorage.setItem('kiosko:fullscreenDeseado', '1') } catch {}
     const el = document.documentElement
-    if (el.requestFullscreen) el.requestFullscreen()
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+    try {
+      if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}) }
+      else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen() }
+    } catch {}
   }
 
   function abrirDetalle(vino) { setVinoDetalle(vino) }
