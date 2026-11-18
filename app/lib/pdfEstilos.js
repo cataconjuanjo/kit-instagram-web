@@ -89,17 +89,23 @@ export function formatPeriodoPdfEs(periodo) {
 export function cargarLogoPdf() {
   try {
     const buffer = getIsotipoBuffer()
-    if (!buffer || buffer.length === 0) return null
-    // Dimensiones: se podrían leer con leerDimensionesPng, pero
-    // el módulo ya exporta ancho y alto exactos del PNG; usamos
-    // esos valores para evitar reparseo del header.
+    if (!buffer || buffer.length === 0) {
+      console.error('[cargarLogoPdf] isotipo buffer vacío o nulo')
+      return null
+    }
     const width  = ISOTIPO_PNG_WIDTH
     const height = ISOTIPO_PNG_HEIGHT
-    // Defensivo: si por cualquier motivo el buffer no es un PNG
-    // (corrupción), seguimos devolviendo null.
-    if (!leerDimensionesPng(buffer)) return null
+    // Defensivo: verifica que el buffer sea un PNG válido (firma IHDR).
+    // Nunca silenciamos esta rama: si falla en runtime (p. ej. porque
+    // leerDimensionesPng ha quedado al otro lado de un boundary
+    // 'use client'), se loguea para Vercel Runtime Logs.
+    if (!leerDimensionesPng(buffer)) {
+      console.error('[cargarLogoPdf] leerDimensionesPng devolvió null — buffer PNG inválido')
+      return null
+    }
     return { buffer, width, height }
-  } catch {
+  } catch (e) {
+    console.error('[cargarLogoPdf] excepción al cargar isotipo:', e?.message, e?.stack)
     return null
   }
 }
@@ -140,8 +146,10 @@ export function pintarCabecera(doc, {
     try {
       doc.addImage(logo.buffer, 'PNG', margin, 5, W_logo, H, undefined, 'FAST')
       textoX = margin + W_logo + 4
-    } catch {
-      // Degradación: si addImage falla, seguimos con el texto.
+    } catch (e) {
+      // Degradamos a sólo texto, pero loguea el motivo real para que
+      // sea visible en Vercel Runtime Logs — nada de catch silencioso.
+      console.error('[pintarCabecera] addImage falló:', e?.message, e?.stack)
     }
   }
 
