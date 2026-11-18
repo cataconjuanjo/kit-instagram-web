@@ -4,7 +4,15 @@
  * Convierte una spec de excelSomm.js en un .xlsx real usando ExcelJS
  * (dynamic import para no inflar el bundle de las pantallas que no
  * exportan). Dispara la descarga en el navegador.
+ *
+ * El workbook recibe identidad Carta Viva via `app/lib/excelEstilos.js`:
+ * logo flotante, cabecera coloreada, bandas alternas, totales en
+ * dorado, pestañas, print header/footer con nombre + periodo. La
+ * spec en sí NO se modifica (filas, fórmulas, totales conservan
+ * referencias originales).
  */
+
+import { aplicarEstilosHoja, aplicarHeaderFooter, cargarLogoBuffer } from './excelEstilos.js'
 
 export async function descargarWorkbook(spec) {
   if (!spec || !spec.sheets || spec.sheets.length === 0) return
@@ -13,6 +21,14 @@ export async function descargarWorkbook(spec) {
   const wb = new ExcelJS.Workbook()
   wb.creator  = 'Carta Viva'
   wb.created  = new Date()
+
+  // Logo diferido: 1 fetch por descarga, se reutiliza en cada hoja
+  // via `addImage` (ExcelJS deduplica por imageId). Si falla la carga
+  // (fuera de línea, test sin DOM, 404…), seguimos sin logo.
+  const logoBuffer = await cargarLogoBuffer()
+  const logoImageId = (logoBuffer && typeof wb.addImage === 'function')
+    ? wb.addImage({ buffer: logoBuffer, extension: 'png' })
+    : null
 
   for (const sheet of spec.sheets) {
     const ws = wb.addWorksheet(sheet.name)
@@ -34,21 +50,38 @@ export async function descargarWorkbook(spec) {
           cell.value = val
         }
       }
+      // El fondo/borde definitivos se aplican en aplicarEstilosHoja;
+      // aquí dejamos sólo el bold de compatibilidad por si fallara el
+      // módulo de estilos (degradación segura).
       tr.font = { bold: true }
-      tr.eachCell(c => { c.border = { top: { style: 'thin' } } })
     }
 
-    // Formatos numéricos por columna
+    // Formatos numéricos por columna (antes de los estilos, para que
+    // las alineaciones del módulo detecten el numFmt).
     for (const c of sheet.columns) {
       if (c.format) ws.getColumn(c.key).numFmt = c.format
     }
 
-    // Header bold + congelado
-    ws.getRow(1).font = { bold: true }
-    if (sheet.freezeHeader) {
-      ws.views = [{ state: 'frozen', ySplit: 1 }]
+    // Branding Carta Viva (burdeos + dorado + crema, pestañas, logo
+    // flotante, bandas, totales, freeze, hide gridlines, pageSetup).
+    try {
+      aplicarEstilosHoja(ws, sheet, { logoImageId })
+    } catch (err) {
+      // Si el motor ExcelJS del entorno fallara con addImage o
+      // alguna propiedad, el workbook se entrega sin branding pero
+      // con datos intactos.
+      console.warn('[excelSommDownload] estilos no aplicados:', err?.message || err?.name)
     }
   }
+
+  // Print header + footer con nombre del restaurante y periodo (si
+  // la spec los expone a nivel raíz — opcional).
+  try {
+    aplicarHeaderFooter(wb, {
+      restauranteNombre: spec.restauranteNombre || '',
+      periodo:           spec.periodo           || '',
+    })
+  } catch { /* seguir sin header/footer */ }
 
   const buf  = await wb.xlsx.writeBuffer()
   const blob = new Blob([buf], {

@@ -459,7 +459,12 @@ export function construirCierreWorkbook({
     })
   }
 
-  return { filename, sheets }
+  return {
+    filename,
+    sheets,
+    restauranteNombre: restauranteNombre || '',
+    periodo:           mes               || '',
+  }
 }
 
 function totalesCierreVinos(rows) {
