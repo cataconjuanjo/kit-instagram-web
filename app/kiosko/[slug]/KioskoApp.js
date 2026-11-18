@@ -3877,6 +3877,13 @@ export default function KioskoPage() {
   const [wineFoodVino, setWineFoodVino] = useState(null)
   const [wineFoodResultados, setWineFoodResultados] = useState(null)
   const [wineFoodError, setWineFoodError] = useState('')
+  // F7 · Panel de diagnóstico de fullscreen activable in situ (sin cambiar URL)
+  // con una pulsación larga de 5 s sobre el logo. Persiste solo en sessionStorage,
+  // se pierde al cerrar la pestaña. Otra pulsación larga lo oculta.
+  const [fsDebugPanel, setFsDebugPanel] = useState(() => {
+    try { return typeof window !== 'undefined' && sessionStorage.getItem('kiosko:fsDebugPanel') === '1' } catch { return false }
+  })
+  const [fsEvents, setFsEvents] = useState([])
   const [reposoActivo, setReposoActivo] = useState(false)
   const reposoTimer  = useRef(null)
   const reposoResetTimer = useRef(null)
@@ -4258,22 +4265,47 @@ export default function KioskoPage() {
     }
   }, [tienda?.font_family])
 
-  // F7 · Instrumentación opcional de fullscreen (?debugfs=1).
+  // F7 · Instrumentación opcional de fullscreen.
   //
   // Objetivo: diagnosticar la salida del fullscreen que reporta el puesto
-  // de Síbaris cada vez que salta a destacados. Sin este flag el kiosko
-  // se comporta exactamente como antes (cero cambios de runtime). Con el
-  // flag activo:
+  // de Síbaris cada vez que salta a destacados. Se activa por DOS vías:
+  //   · `?debugfs=1` en la URL (sala/dev): loguea en consola con stack.
+  //   · Pulsación larga de 5 s sobre el logo del kiosko (puesto): muestra
+  //     un panel overlay con los últimos 10 eventos, sin cambiar la URL.
+  // Sin ninguna de las dos vías, el kiosko se comporta exactamente como
+  // antes (cero cambios de runtime: ni listeners, ni parcheos, ni panel).
+  //
+  // Con cualquiera de las vías activas:
   //   · Se parchea `Element.prototype.requestFullscreen` y
-  //     `document.exitFullscreen` para `console.trace` cada llamada
-  //     ANTES de delegar en la implementación nativa. Así vemos QUIÉN
-  //     (y desde qué stack) provoca entrar/salir.
-  //   · Se loguea cada `fullscreenchange` / `webkitfullscreenchange` con
-  //     la vista actual, el elemento fullscreen y la visibilidad.
-  //   · Al desmontar restauramos los originales. Todo va entre try/catch
-  //     para no romper el kiosko si algo del navegador cambia.
+  //     `document.exitFullscreen` para registrar quién llama y desde qué
+  //     stack. Al desmontar restauramos los originales.
+  //   · Se recogen `fullscreenchange` / `webkitfullscreenchange` con la
+  //     vista actual, el elemento y la visibilidad.
+  //   · Los eventos van a consola (si `?debugfs=1`) y/o al buffer del
+  //     panel (si `fsDebugPanel`). Todo con try/catch para no romper
+  //     nada si el navegador cambia APIs.
   useEffect(() => {
-    if (searchParams.get('debugfs') !== '1') return
+    const debugfs = searchParams.get('debugfs') === '1'
+    if (!debugfs && !fsDebugPanel) return
+    const toConsole = debugfs
+    const toPanel = fsDebugPanel
+    const pushEvent = (ev) => {
+      if (!toPanel) return
+      setFsEvents(prev => {
+        const next = prev.length >= 10 ? prev.slice(-9) : prev.slice()
+        next.push(ev)
+        return next
+      })
+    }
+    // `new Error().stack` nos da el callsite sin molestar al runtime real.
+    // Sacamos la primera línea útil (saltando las frames del proxy).
+    const captureCaller = () => {
+      try {
+        const lines = (new Error().stack || '').split('\n').map(s => s.trim()).filter(Boolean)
+        // Primera línea que no sea del propio proxy. Heurística: la que no contiene "patched".
+        return lines.find(l => !/patched/i.test(l) && !/^Error$/i.test(l)) || ''
+      } catch { return '' }
+    }
     let restoreReq = null
     let restoreExit = null
     let restoreWkReq = null
@@ -4285,7 +4317,9 @@ export default function KioskoPage() {
             const tag = this?.tagName || '?'
             const id = this?.id ? `#${this.id}` : ''
             const cls = this?.className ? `.${String(this.className).split(' ').join('.')}` : ''
-            console.trace('[fs] requestFullscreen called on', `${tag}${id}${cls}`, 'view=', viewRef.current)
+            const caller = captureCaller()
+            if (toConsole) console.trace('[fs] requestFullscreen called on', `${tag}${id}${cls}`, 'view=', viewRef.current)
+            pushEvent({ t: Date.now(), type: 'requestFullscreen', view: viewRef.current, el: `${tag}${id}${cls}`, caller })
           } catch {}
           return origReq.apply(this, args)
         }
@@ -4296,7 +4330,9 @@ export default function KioskoPage() {
         Element.prototype.webkitRequestFullscreen = function patchedWebkitRequestFullscreen(...args) {
           try {
             const tag = this?.tagName || '?'
-            console.trace('[fs] webkitRequestFullscreen called on', tag, 'view=', viewRef.current)
+            const caller = captureCaller()
+            if (toConsole) console.trace('[fs] webkitRequestFullscreen called on', tag, 'view=', viewRef.current)
+            pushEvent({ t: Date.now(), type: 'webkitRequestFullscreen', view: viewRef.current, el: tag, caller })
           } catch {}
           return origWkReq.apply(this, args)
         }
@@ -4306,14 +4342,16 @@ export default function KioskoPage() {
       if (typeof origExit === 'function') {
         document.exitFullscreen = function patchedExitFullscreen(...args) {
           try {
-            console.trace('[fs] exitFullscreen called', 'view=', viewRef.current)
+            const caller = captureCaller()
+            if (toConsole) console.trace('[fs] exitFullscreen called', 'view=', viewRef.current)
+            pushEvent({ t: Date.now(), type: 'exitFullscreen', view: viewRef.current, el: null, caller })
           } catch {}
           return origExit.apply(document, args)
         }
         restoreExit = () => { document.exitFullscreen = origExit }
       }
     } catch (err) {
-      console.warn('[fs] instrumentación fallida:', err?.message || err)
+      if (toConsole) console.warn('[fs] instrumentación fallida:', err?.message || err)
     }
 
     const logFsChange = (ev) => {
@@ -4322,18 +4360,27 @@ export default function KioskoPage() {
         const tag = el?.tagName || null
         const id = el?.id || null
         const cls = el?.className || null
-        console.log('[fs]', ev.type, {
+        if (toConsole) {
+          console.log('[fs]', ev.type, {
+            t: Date.now(),
+            view: viewRef.current,
+            fullscreenElement: el ? { tag, id, cls } : null,
+            visibilityState: document.visibilityState,
+          })
+        }
+        pushEvent({
           t: Date.now(),
+          type: ev.type,
           view: viewRef.current,
-          fullscreenElement: el ? { tag, id, cls } : null,
-          visibilityState: document.visibilityState,
+          el: el ? `${tag}${id ? '#' + id : ''}` : '∅',
+          caller: '',
         })
       } catch {}
     }
     document.addEventListener('fullscreenchange', logFsChange)
     document.addEventListener('webkitfullscreenchange', logFsChange)
 
-    console.log('[fs] debug activado. Observa pointerdown/click para gesto de rescate.')
+    if (toConsole) console.log('[fs] debug activado. Observa pointerdown/click para gesto de rescate.')
 
     return () => {
       try { restoreReq && restoreReq() } catch {}
@@ -4342,7 +4389,7 @@ export default function KioskoPage() {
       document.removeEventListener('fullscreenchange', logFsChange)
       document.removeEventListener('webkitfullscreenchange', logFsChange)
     }
-  }, [searchParams])
+  }, [searchParams, fsDebugPanel])
 
   // F7 · Rescate pasivo: cuando la vista cambia a SHOWCASE y teníamos
   // intención de fullscreen pero NO estamos en fullscreen, intentamos
@@ -4565,6 +4612,32 @@ export default function KioskoPage() {
   }
   function onLogoRelease() { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null) } }
 
+  // Long press de 5 s sobre el logo → activa/desactiva el panel de
+  // diagnóstico de fullscreen in situ (sin cambiar la URL). Timer separado
+  // del de "modo mostrador" para no alterar su comportamiento.
+  const fsPanelPressTimer = useRef(null)
+  function toggleFsDebugPanel() {
+    setFsDebugPanel(v => {
+      const next = !v
+      try { sessionStorage.setItem('kiosko:fsDebugPanel', next ? '1' : '0') } catch {}
+      if (next) setFsEvents([])
+      return next
+    })
+  }
+  function onLogoPressFs() {
+    if (fsPanelPressTimer.current) clearTimeout(fsPanelPressTimer.current)
+    fsPanelPressTimer.current = setTimeout(() => {
+      fsPanelPressTimer.current = null
+      toggleFsDebugPanel()
+    }, 5000)
+  }
+  function onLogoReleaseFs() {
+    if (fsPanelPressTimer.current) {
+      clearTimeout(fsPanelPressTimer.current)
+      fsPanelPressTimer.current = null
+    }
+  }
+
   const wineFoodEnabled = tienda?.features?.wine_to_food === true
 
   async function buscarWineFood(vino) {
@@ -4664,6 +4737,49 @@ export default function KioskoPage() {
       {tienda?.features?.is_demo && (
         <div className={styles.demoBadge}>Prototipo · no oficial</div>
       )}
+      {/* F7 · Panel de diagnóstico de fullscreen. Oculto por defecto; se
+          muestra tras pulsación larga de 5 s sobre el logo. pointerEvents
+          none para no bloquear toques del cliente. */}
+      {fsDebugPanel && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            bottom: 8,
+            right: 8,
+            maxWidth: 440,
+            maxHeight: 300,
+            overflow: 'hidden',
+            zIndex: 99999,
+            pointerEvents: 'none',
+            background: 'rgba(0,0,0,0.82)',
+            color: '#9fe',
+            font: '10px/1.35 ui-monospace, monospace',
+            padding: '6px 8px',
+            borderRadius: 4,
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          <div style={{ color: '#ff8', marginBottom: 4 }}>
+            [fs panel] {fsEvents.length}/10 evts · pulsa logo 5 s para ocultar
+          </div>
+          {fsEvents.length === 0 && (
+            <div style={{ opacity: 0.6 }}>sin eventos aún…</div>
+          )}
+          {fsEvents.slice().reverse().map((e, i) => {
+            const d = new Date(e.t)
+            const hh = String(d.getHours()).padStart(2, '0')
+            const mm = String(d.getMinutes()).padStart(2, '0')
+            const ss = String(d.getSeconds()).padStart(2, '0')
+            const ms = String(d.getMilliseconds()).padStart(3, '0')
+            return (
+              <div key={`${e.t}-${i}`}>
+                {hh}:{mm}:{ss}.{ms} {e.type} v={e.view || '?'} {e.el || ''}{e.caller ? '  ← ' + e.caller.slice(0, 60) : ''}
+              </div>
+            )
+          })}
+        </div>
+      )}
       {reposoActivo && (
         <div className={styles.reposoOverlay} onClick={resetIdle} role="button" tabIndex={0} aria-label="Toca para continuar">
           <p className={styles.reposoLabel}>Toca para continuar</p>
@@ -4700,21 +4816,36 @@ export default function KioskoPage() {
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
             {tienda?.logo_url ? (
-              // F5c · Welcome idéntico a hoy con cualquier flag: sin atributos extra.
-              <SafeImage
-                src={tienda.logo_url}
-                alt={tienda?.nombre}
-                className={styles.welcomeLogoHero}
-                fallback={<LogoFallback nombre={tienda?.nombre} />}
-              />
+              // F5c · Welcome idéntico a hoy con cualquier flag: la SafeImage no cambia.
+              // F7 · El wrapper añade SOLO el gesto de 5 s para activar el panel de
+              // diagnóstico. Si no se mantiene 5 s, no pasa nada (comportamiento
+              // idéntico al anterior).
+              <button
+                type="button"
+                aria-label={tienda?.nombre || 'Logo'}
+                onMouseDown={onLogoPressFs}
+                onMouseUp={onLogoReleaseFs}
+                onMouseLeave={onLogoReleaseFs}
+                onTouchStart={onLogoPressFs}
+                onTouchEnd={onLogoReleaseFs}
+                onTouchCancel={onLogoReleaseFs}
+                style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'default', display: 'inline-block' }}
+              >
+                <SafeImage
+                  src={tienda.logo_url}
+                  alt={tienda?.nombre}
+                  className={styles.welcomeLogoHero}
+                  fallback={<LogoFallback nombre={tienda?.nombre} />}
+                />
+              </button>
             ) : (
               <h1
                 className={styles.welcomeNombre}
                 style={{ color: colorAcento }}
-                onMouseDown={onLogoPress}
-                onMouseUp={onLogoRelease}
-                onTouchStart={onLogoPress}
-                onTouchEnd={onLogoRelease}
+                onMouseDown={(e) => { onLogoPress(e); onLogoPressFs(e) }}
+                onMouseUp={(e) => { onLogoRelease(e); onLogoReleaseFs(e) }}
+                onTouchStart={(e) => { onLogoPress(e); onLogoPressFs(e) }}
+                onTouchEnd={(e) => { onLogoRelease(e); onLogoReleaseFs(e) }}
               >
                 {tienda?.nombre || 'Nuestra Selección de Vinos'}
               </h1>
