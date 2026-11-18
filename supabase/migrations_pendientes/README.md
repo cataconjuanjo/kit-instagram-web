@@ -41,3 +41,11 @@ Cada migración consta de tres archivos:
   El código ya trata `null` y `todos-a-0` como "Sin dato" con la
   misma regla, por lo que funciona antes y después de aplicar la
   migración.
+
+- `add_resto_ingresos.up.sql` — añade la columna
+  `resto_ingresos numeric NOT NULL DEFAULT 0` a
+  `parametros_explotacion`. Sin esta columna, la Explotación sigue
+  funcionando exactamente igual que antes (TOTAL INGRESOS = Ventas
+  Netas). Con la columna, la UI muestra la nueva línea y los
+  cálculos usan TOTAL INGRESOS como denominador. El código degrada
+  en runtime si la columna no existe (igual que `imputacion_pct`).

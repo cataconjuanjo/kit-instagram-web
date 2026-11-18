@@ -41,74 +41,97 @@ function r4(n) { return Math.round(n * 10000) / 10000 }
 // tener que multiplicar por 100 en la fórmula.
 
 function construirSheetResumen({
-  facturacion, consumoMp, totalPersonal, totalGastos, totalAlquiler,
+  facturacion, restoIngresos = 0,
+  consumoMp, totalPersonal, totalGastos, totalAlquiler,
   totalBancarios, breakEven, esSomm,
 }) {
-  const margenBruto = r2(facturacion - consumoMp)
-  const resultadoNum = r2(facturacion - consumoMp - totalPersonal - totalGastos - totalAlquiler - totalBancarios)
-  const ratio = (n) => facturacion > 0 ? r4(n / facturacion) : 0
+  // Layout V2: dos líneas de ingresos y un TOTAL INGRESOS que es el
+  // denominador de todos los ratios y la base del resultado.
+  //   row 2  Ventas netas
+  //   row 3  + Resto de ingresos
+  //   row 4  = TOTAL INGRESOS          (B4 = B2 + B3)
+  //   row 5  − Consumo MP
+  //   row 6  = Margen bruto            (B6 = B4 − B5)
+  //   Acompañado:
+  //     row 7  − Personal
+  //     row 8  − Gastos operacionales
+  //     row 9  − Alquileres
+  //     row 10 − Gastos bancarios
+  //     row 11 = Resultado de explotación (B11 = B6 − B7 − B8 − B9 − B10)
+  //   Separador + Punto de equilibrio (sólo Acompañado con breakEven).
+  //
+  // Fórmulas sin "=" inicial (convención del repo). Los `result`
+  // precalculados mantienen el PDF/preview coherente en Numbers y
+  // LibreOffice que no recalculan al abrir.
+  const resto = Number(restoIngresos) || 0
+  const totalIngresos = r2(Number(facturacion) + resto)
+  const margenBruto   = r2(totalIngresos - consumoMp)
+  const resultadoNum  = r2(totalIngresos - consumoMp - totalPersonal - totalGastos - totalAlquiler - totalBancarios)
+  const ratio = (n) => totalIngresos > 0 ? r4(n / totalIngresos) : 0
 
-  // Filas; la fila 1 de Excel es el header, así que las data rows empiezan en 2.
-  // Los índices que uso en las fórmulas son los de la columna "valor" = B.
-  // Convención del dominio (ver excelSomm.js): las fórmulas se pasan a
-  // ExcelJS SIN "=" inicial. El "=" lo añade Excel al mostrarlas; si lo
-  // incluimos acaba literal en <f>=...</f> y rompe el recálculo.
   const rowsPL = []
-  // Fila 2: Facturación (siempre 100%)
+  // row 2 — Ventas netas
   rowsPL.push({
-    concepto: 'Facturación',
-    valor: facturacion,
-    pct: { formula: 'B2/B2', result: facturacion > 0 ? 1 : 0 },
+    concepto: 'Ventas netas',
+    valor: Number(facturacion) || 0,
+    pct: { formula: 'B2/B4', result: ratio(Number(facturacion) || 0) },
   })
-  // Fila 3: Consumo MP
+  // row 3 — Resto de ingresos
+  rowsPL.push({
+    concepto: '+ Resto de ingresos de explotación',
+    valor: resto,
+    pct: { formula: 'B3/B4', result: ratio(resto) },
+  })
+  // row 4 — TOTAL INGRESOS (fórmula)
+  rowsPL.push({
+    concepto: '= TOTAL INGRESOS',
+    valor: { formula: 'B2+B3', result: totalIngresos },
+    pct: { formula: 'B4/B4', result: totalIngresos > 0 ? 1 : 0 },
+  })
+  // row 5 — Consumo MP
   rowsPL.push({
     concepto: '- Consumo de materia prima',
     valor: consumoMp,
-    pct: { formula: 'B3/B2', result: ratio(consumoMp) },
+    pct: { formula: 'B5/B4', result: ratio(consumoMp) },
   })
-  // Fila 4: Margen Bruto (fórmula)
+  // row 6 — Margen Bruto
   rowsPL.push({
     concepto: '= Margen bruto',
-    valor: { formula: 'B2-B3', result: margenBruto },
-    pct: { formula: 'B4/B2', result: ratio(margenBruto) },
+    valor: { formula: 'B4-B5', result: margenBruto },
+    pct: { formula: 'B6/B4', result: ratio(margenBruto) },
   })
 
   const rowsExtra = []
   if (!esSomm) {
-    // Filas 5–8: Personal, Gastos, Alquileres, Bancarios
     rowsExtra.push({
       concepto: '- Personal',
       valor: totalPersonal,
-      pct: { formula: 'B5/B2', result: ratio(totalPersonal) },
+      pct: { formula: 'B7/B4', result: ratio(totalPersonal) },
     })
     rowsExtra.push({
       concepto: '- Gastos operacionales',
       valor: totalGastos,
-      pct: { formula: 'B6/B2', result: ratio(totalGastos) },
+      pct: { formula: 'B8/B4', result: ratio(totalGastos) },
     })
     rowsExtra.push({
       concepto: '- Alquileres',
       valor: totalAlquiler,
-      pct: { formula: 'B7/B2', result: ratio(totalAlquiler) },
+      pct: { formula: 'B9/B4', result: ratio(totalAlquiler) },
     })
     rowsExtra.push({
       concepto: '- Gastos bancarios',
       valor: totalBancarios,
-      pct: { formula: 'B8/B2', result: ratio(totalBancarios) },
+      pct: { formula: 'B10/B4', result: ratio(totalBancarios) },
     })
-    // Fila 9: Resultado de explotación
     rowsExtra.push({
       concepto: '= Resultado de explotación',
-      valor: { formula: 'B4-B5-B6-B7-B8', result: resultadoNum },
-      pct: { formula: 'B9/B2', result: ratio(resultadoNum) },
+      valor: { formula: 'B6-B7-B8-B9-B10', result: resultadoNum },
+      pct: { formula: 'B11/B4', result: ratio(resultadoNum) },
     })
   }
 
   const rows = [...rowsPL, ...rowsExtra]
-  // Fila final: Punto de equilibrio (sólo si tiene sentido, es decir, si hay
-  // gastos fijos; en Somm reducido no se muestra porque no cargamos costes).
   if (!esSomm && Number.isFinite(breakEven) && breakEven > 0) {
-    // separador visual: una fila vacía
     rows.push({ concepto: '', valor: null, pct: null })
     rows.push({
       concepto: 'Punto de equilibrio',
@@ -120,9 +143,11 @@ function construirSheetResumen({
   return {
     name: 'Resumen',
     columns: [
-      { header: 'Concepto',    key: 'concepto', width: 34 },
-      { header: 'Valor',       key: 'valor',    width: 16, format: FMT_EUR },
-      { header: '% s/fact.',   key: 'pct',      width: 12, format: FMT_PCT },
+      { header: 'Concepto',        key: 'concepto', width: 38 },
+      { header: 'Valor',           key: 'valor',    width: 16, format: FMT_EUR },
+      // El denominador pasa de "Facturación" a "Total ingresos"; se
+      // refleja en el header para no inducir a error al lector.
+      { header: '% s/total ingresos', key: 'pct',  width: 16, format: FMT_PCT },
     ],
     rows,
     freezeHeader: true,
@@ -390,7 +415,8 @@ export function construirInformeEconomicoWorkbook({
   periodo,
   esSomm = false,
   // datos del P&L (ya calculados en la pantalla de Explotación)
-  facturacion,
+  facturacion,           // ventas netas
+  restoIngresos = 0,     // resto de ingresos de explotación (nueva columna)
   consumoMp,
   totalPersonal,
   totalGastos,
@@ -424,7 +450,7 @@ export function construirInformeEconomicoWorkbook({
 
   const sheets = []
   sheets.push(construirSheetResumen({
-    facturacion: fact, consumoMp: cmp,
+    facturacion: fact, restoIngresos: num(restoIngresos), consumoMp: cmp,
     totalPersonal: tp, totalGastos: tg, totalAlquiler: ta, totalBancarios: tb,
     breakEven, esSomm,
   }))
