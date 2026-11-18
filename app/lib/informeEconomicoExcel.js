@@ -383,14 +383,13 @@ function construirSheetCanales({ canales }) {
 function construirSheetCanalesVenta({ datosVino }) {
   const porCanal = datosVino?.informe?.por_canal
   if (!porCanal) return null
-  const filas = listarCanalesVenta(porCanal)
+  const ivaPct = Number.isFinite(Number(datosVino?.iva_pct)) ? Number(datosVino.iva_pct) : null
+  const filas = listarCanalesVenta(porCanal, { iva_pct: ivaPct })
   if (filas.length === 0) return null
 
   const CANAL_LABEL = {
-    botella:  'Botella (mesa)',
-    copa:     'Copa',
-    maridaje: 'Maridaje',
-    evento:   'Grupos / Eventos',
+    botella: 'Botella (mesa)',
+    copa:    'Copa',
   }
   const nFilas   = filas.length
   const rowTotal = nFilas + 2  // header=1, filas 2..nFilas+1, total nFilas+2
@@ -401,39 +400,43 @@ function construirSheetCanalesVenta({ datosVino }) {
       canal: CANAL_LABEL[f.canal] || f.canal,
       uds: f.uds,
       copas: f.copas ?? '',
-      ingresos: f.ingresos_bruto,
+      ingresos_bruto: f.ingresos_bruto,
+      ingresos_neto:  f.ingresos_neto,
       coste: f.coste,
-      // Beneficio como fórmula D-E para que al editar los números en
-      // Excel el beneficio se recalcule. Result precalculado por si
-      // Numbers/preview no evalúa la fórmula al abrir.
+      // Beneficio como fórmula E-F (ingresos_neto − coste) para que
+      // Excel lo recalcule si el usuario edita. Sin IVA.
       beneficio: {
-        formula: `D${rowNum}-E${rowNum}`,
+        formula: `E${rowNum}-F${rowNum}`,
         result: f.beneficio,
       },
     }
   })
 
+  const r2 = (n) => Math.round(Number(n) * 100) / 100
+  const sum = (key) => r2(filas.reduce((s, f) => s + Number(f[key] || 0), 0))
   const totals = {
     canal: 'TOTAL',
-    uds:      { formula: `SUM(B2:B${nFilas + 1})`, result: filas.reduce((s, f) => s + f.uds, 0) },
-    copas:    '',
-    ingresos: { formula: `SUM(D2:D${nFilas + 1})`, result: filas.reduce((s, f) => s + f.ingresos_bruto, 0) },
-    coste:    { formula: `SUM(E2:E${nFilas + 1})`, result: filas.reduce((s, f) => s + f.coste, 0) },
+    uds:            { formula: `SUM(B2:B${nFilas + 1})`, result: filas.reduce((s, f) => s + f.uds, 0) },
+    copas:          '',
+    ingresos_bruto: { formula: `SUM(D2:D${nFilas + 1})`, result: sum('ingresos_bruto') },
+    ingresos_neto:  { formula: `SUM(E2:E${nFilas + 1})`, result: sum('ingresos_neto') },
+    coste:          { formula: `SUM(F2:F${nFilas + 1})`, result: sum('coste') },
     beneficio: {
-      formula: `D${rowTotal}-E${rowTotal}`,
-      result: filas.reduce((s, f) => s + f.beneficio, 0),
+      formula: `E${rowTotal}-F${rowTotal}`,
+      result: sum('beneficio'),
     },
   }
 
   return {
     name: 'Canales venta',
     columns: [
-      { header: 'Canal',         key: 'canal',     width: 22 },
-      { header: 'uds',           key: 'uds',       width: 10 },
-      { header: 'copas',         key: 'copas',     width: 10 },
-      { header: 'Facturado (€)', key: 'ingresos',  width: 16, format: FMT_EUR },
-      { header: 'Coste (€)',     key: 'coste',     width: 14, format: FMT_EUR },
-      { header: 'Beneficio (€)', key: 'beneficio', width: 16, format: FMT_EUR },
+      { header: 'Canal',               key: 'canal',          width: 22 },
+      { header: 'uds',                 key: 'uds',            width: 10 },
+      { header: 'copas',               key: 'copas',          width: 10 },
+      { header: `Facturado bruto c/IVA ${ivaPct ?? ''}% (€)`.trim(), key: 'ingresos_bruto', width: 22, format: FMT_EUR },
+      { header: 'Facturado NETO (€)',  key: 'ingresos_neto',  width: 20, format: FMT_EUR },
+      { header: 'Coste (€)',           key: 'coste',          width: 14, format: FMT_EUR },
+      { header: 'Beneficio (€)',       key: 'beneficio',      width: 16, format: FMT_EUR },
     ],
     rows,
     totals,

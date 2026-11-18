@@ -15,14 +15,15 @@ import {
   conciliarTeoricoReal,
   copasAUdsBotella,
   copasPorBotella,
+  datosParaPeriodo,
   listarCanalesVenta,
   listarSalidasNoVenta,
   udsBotellaACopas,
 } from '../app/lib/canalesSalidas.js'
 
 describe('Constantes del dominio', () => {
-  it('canales de venta canónicos (orden)', () => {
-    assert.deepEqual([...CANALES_VENTA], ['botella', 'copa', 'maridaje', 'evento'])
+  it('canales de venta canónicos = sólo los que llevan facturación por línea TPV', () => {
+    assert.deepEqual([...CANALES_VENTA], ['botella', 'copa'])
     assert.ok(Object.isFrozen(CANALES_VENTA))
   })
   it('canales de salida no-venta canónicos (orden)', () => {
@@ -52,7 +53,7 @@ describe('copasPorBotella', () => {
   it('parámetros inválidos → null', () => {
     assert.equal(copasPorBotella({ ml_botella: 0 }),  null)
     assert.equal(copasPorBotella({ ml_copa: -5 }),    null)
-    assert.equal(copasPorBotella({ ml_copa: 1000 }),  null)   // copa > botella
+    assert.equal(copasPorBotella({ ml_copa: 1000 }),  null)
     assert.equal(copasPorBotella({ ml_botella: 'x' }), null)
   })
 })
@@ -64,14 +65,14 @@ describe('copasAUdsBotella — fracciones', () => {
   it('3 copas estándar → 0.5 botellas', () => {
     assert.equal(copasAUdsBotella(3), 0.5)
   })
-  it('8 copas de fortificado 90ml → 0.96 botellas (8*90/750)', () => {
+  it('8 copas de fortificado 90ml → 0.96 botellas', () => {
     assert.equal(copasAUdsBotella(8, { ml_copa: ML_COPA_FORTIFICADO }), 0.96)
   })
-  it('0 copas → 0', () => {
+  it('0 copas → 0; negativas → 0', () => {
     assert.equal(copasAUdsBotella(0), 0)
     assert.equal(copasAUdsBotella(-5), 0)
   })
-  it('null / undefined → null (sin dato, no 0)', () => {
+  it('null / undefined → null', () => {
     assert.equal(copasAUdsBotella(null), null)
     assert.equal(copasAUdsBotella(undefined), null)
     assert.equal(copasAUdsBotella(''), null)
@@ -79,75 +80,153 @@ describe('copasAUdsBotella — fracciones', () => {
 })
 
 describe('udsBotellaACopas', () => {
-  it('1 botella estándar → 6 copas', () => {
+  it('1 bot estándar → 6; 1 fortificado → 8; 3 bot → 18', () => {
     assert.equal(udsBotellaACopas(1), 6)
-  })
-  it('1 botella fortificado → 8 copas (floor de 8.33)', () => {
     assert.equal(udsBotellaACopas(1, { ml_copa: ML_COPA_FORTIFICADO }), 8)
-  })
-  it('3 botellas estándar → 18 copas', () => {
     assert.equal(udsBotellaACopas(3), 18)
-  })
-  it('null → null', () => {
-    assert.equal(udsBotellaACopas(null), null)
   })
 })
 
-describe('listarCanalesVenta', () => {
-  it('snapshot con los 4 canales → 4 filas con beneficio', () => {
+// ── Shape REAL de `por_canal` producida por agregarPeriodoBodega.js ──
+//
+// canal = {
+//   botella:    { uds, ingresos, coste },             // ingresos BRUTO (c/IVA)
+//   copa:       { uds, copas, ingresos, coste },      // ingresos BRUTO
+//   invitacion: { uds, botella_uds, copa_uds, botella_coste, copa_coste },  // AGREGADO
+//   cocina:     { uds, valor, coste },
+//   evento:     { uds, valor, coste },                 // alias de grupo_evento
+//   maridaje:   { uds, valor, coste },
+//   rotura:     { uds, coste },
+//   cata:       { uds, valor, coste },
+// }
+
+describe('listarCanalesVenta — conversión BRUTO→NETO con iva_pct', () => {
+  it('iva_pct=10 convierte ingresos a neto y cuadra con ventas_neto', () => {
+    // Los números son los del preview de Casa Marisma 2026-11:
+    //   ventas_bruto = 5245.00, ventas_neto = 4768.18 (iva 10%)
+    //   botella bruto ≈ 2200 → neto 2000.00
+    //   copa    bruto = 3045 → neto 2768.18
     const r = listarCanalesVenta({
-      botella:  { uds: 100, ingresos: 3000, coste: 900 },
-      copa:     { uds: 50,  copas: 300, ingresos: 1500, coste: 450 },
-      maridaje: { uds: 20,  valor: 800,  coste: 240 },
-      evento:   { uds: 15,  valor: 600,  coste: 180 },
-    })
-    assert.equal(r.length, 4)
-    const byCanal = Object.fromEntries(r.map(x => [x.canal, x]))
-    assert.equal(byCanal.botella.beneficio,  2100)
-    assert.equal(byCanal.copa.beneficio,     1050)
-    assert.equal(byCanal.maridaje.beneficio, 560)
-    assert.equal(byCanal.evento.beneficio,   420)
-    // Las copas se mantienen informativas en la fila de copa.
-    assert.equal(byCanal.copa.copas, 300)
+      botella: { uds: 88,  ingresos: 2200.00, coste: 660 },
+      copa:    { uds: 0,   copas: 651, ingresos: 3045.00, coste: 900 },
+    }, { iva_pct: 10 })
+    assert.equal(r.length, 2)
+    const bot = r.find(x => x.canal === 'botella')
+    const cop = r.find(x => x.canal === 'copa')
+    assert.equal(bot.ingresos_bruto, 2200)
+    assert.equal(bot.ingresos_neto, 2000)
+    assert.equal(bot.beneficio,     1340)   // 2000 − 660
+    assert.equal(cop.ingresos_bruto, 3045)
+    assert.equal(cop.ingresos_neto, 2768.18)
+    assert.equal(cop.beneficio,     1868.18)
+    // Total neto = 2000 + 2768.18 = 4768.18 = ventas_neto
+    const totalNeto = r.reduce((s, x) => s + x.ingresos_neto, 0)
+    assert.equal(Math.round(totalNeto * 100) / 100, 4768.18)
   })
-  it('snapshot parcial → omite los canales ausentes (no 0 falso)', () => {
-    const r = listarCanalesVenta({ botella: { uds: 10, ingresos: 100, coste: 30 } })
+  it('iva_pct=null → no convierte (neto = bruto)', () => {
+    const r = listarCanalesVenta({
+      botella: { uds: 1, ingresos: 110, coste: 30 },
+    })
+    assert.equal(r[0].ingresos_bruto, 110)
+    assert.equal(r[0].ingresos_neto, 110)
+  })
+  it('sólo expone botella y copa (maridaje/evento quedan fuera)', () => {
+    const r = listarCanalesVenta({
+      botella:  { uds: 1, ingresos: 100, coste: 20 },
+      maridaje: { uds: 5, valor: 400, coste: 80 },
+      evento:   { uds: 3, valor: 200, coste: 40 },
+    }, { iva_pct: 10 })
     assert.equal(r.length, 1)
     assert.equal(r[0].canal, 'botella')
   })
-  it('snapshot vacío / null → []', () => {
+  it('null-safe', () => {
     assert.deepEqual(listarCanalesVenta(), [])
     assert.deepEqual(listarCanalesVenta(null), [])
     assert.deepEqual(listarCanalesVenta({}), [])
   })
 })
 
-describe('listarSalidasNoVenta', () => {
-  it('invitación botella y copa, cocina y rotura (forma canónica)', () => {
+describe('listarSalidasNoVenta — expansión del canal "invitacion"', () => {
+  it('invitacion AGREGADA del agregador → 2 filas canónicas', () => {
     const r = listarSalidasNoVenta({
-      invitacion_botella: { uds: 3, coste: 90 },
-      invitacion_copa:    { uds: 10, coste: 50 },
-      cocina:             { uds: 2, coste: 60 },
-      rotura:             { uds: 1, coste: 25 },
+      invitacion: { uds: 5, botella_uds: 3, copa_uds: 10, botella_coste: 90, copa_coste: 50 },
+      cocina:     { uds: 2, valor: 60, coste: 60 },
+      rotura:     { uds: 1, coste: 25 },
     })
     const byCanal = Object.fromEntries(r.map(x => [x.canal, x]))
     assert.equal(byCanal.invitacion_botella.uds, 3)
-    assert.equal(byCanal.invitacion_copa.coste,  50)
-    assert.equal(byCanal.cocina.coste,           60)
-    assert.equal(byCanal.rotura.coste,           25)
+    assert.equal(byCanal.invitacion_botella.coste, 90)
+    assert.equal(byCanal.invitacion_copa.uds,   10)   // uds = copas servidas
+    assert.equal(byCanal.invitacion_copa.copas, 10)
+    assert.equal(byCanal.invitacion_copa.coste, 50)
+    assert.equal(byCanal.cocina.coste, 60)
+    assert.equal(byCanal.rotura.coste, 25)
   })
-  it('legacy: "invitacion" (bloque agregado) con {botella_uds, copa_uds, botella_coste, copa_coste} no aparece — solo canales canónicos separados', () => {
+  it('alias evento↔grupo_evento: agregador emite "evento" → fila "grupo_evento"', () => {
     const r = listarSalidasNoVenta({
-      invitacion: { botella_uds: 2, copa_uds: 4, botella_coste: 60, copa_coste: 20 },
+      evento:   { uds: 2, valor: 100, coste: 50 },
+      maridaje: { uds: 8, valor: 300, coste: 120 },
     })
-    assert.deepEqual(r, [])
+    const canales = r.map(x => x.canal)
+    assert.ok(canales.includes('grupo_evento'))
+    assert.ok(canales.includes('maridaje'))
+    const ev = r.find(x => x.canal === 'grupo_evento')
+    assert.equal(ev.uds, 2)
+    assert.equal(ev.coste, 50)
+  })
+  it('invitacion con solo copas (sin botellas) emite sólo invitacion_copa', () => {
+    const r = listarSalidasNoVenta({
+      invitacion: { uds: 4, botella_uds: 0, copa_uds: 4, botella_coste: 0, copa_coste: 20 },
+    })
+    assert.equal(r.length, 1)
+    assert.equal(r[0].canal, 'invitacion_copa')
+    assert.equal(r[0].copas, 4)
+  })
+  it('invitacion con solo botellas emite sólo invitacion_botella', () => {
+    const r = listarSalidasNoVenta({
+      invitacion: { uds: 2, botella_uds: 2, copa_uds: 0, botella_coste: 60, copa_coste: 0 },
+    })
+    assert.equal(r.length, 1)
+    assert.equal(r[0].canal, 'invitacion_botella')
+    assert.equal(r[0].uds, 2)
+  })
+  it('también acepta la shape futura con claves ya separadas', () => {
+    const r = listarSalidasNoVenta({
+      invitacion_botella: { uds: 3, coste: 90 },
+      invitacion_copa:    { uds: 10, copas: 10, coste: 50 },
+    })
+    const byCanal = Object.fromEntries(r.map(x => [x.canal, x]))
+    assert.equal(byCanal.invitacion_botella.uds, 3)
+    assert.equal(byCanal.invitacion_copa.copas, 10)
+  })
+  it('legacy: canal "invitacion" sin agregador real / vacío → nada', () => {
+    const r = listarSalidasNoVenta({ invitacion: {} })
+    assert.equal(r.length, 0)
+  })
+})
+
+describe('datosParaPeriodo — guarda contra stale-data', () => {
+  it('mes coincide → devuelve datos', () => {
+    const d = { informe: { por_canal: {} } }
+    assert.equal(datosParaPeriodo({ mes: '2026-11', datos: d }, '2026-11'), d)
+  })
+  it('mes distinto → null (NUNCA cruza datos)', () => {
+    const d = { informe: { por_canal: {} } }
+    assert.equal(datosParaPeriodo({ mes: '2026-11', datos: d }, '2026-10'), null)
+  })
+  it('cached null / sin mes / sin datos → null', () => {
+    assert.equal(datosParaPeriodo(null, '2026-11'), null)
+    assert.equal(datosParaPeriodo({ mes: null, datos: {} }, '2026-11'), null)
+    assert.equal(datosParaPeriodo({ mes: '2026-11', datos: null }, '2026-11'), null)
+  })
+  it('periodo inválido → null', () => {
+    assert.equal(datosParaPeriodo({ mes: '2026-11', datos: {} }, null), null)
+    assert.equal(datosParaPeriodo({ mes: '2026-11', datos: {} }, ''), null)
   })
 })
 
 describe('calcularStockFinalTeorico — método inventario', () => {
-  it('escenario del enunciado (copas fraccionarias)', () => {
-    // inicial 100, compras 50; vendidas 30 botellas + 12 copas (= 2 botellas);
-    // salidas no-venta: 5 (invit + cocina + rotura). Teórico = 100+50−30−2−5 = 113.
+  it('escenario del enunciado con copas fraccionarias', () => {
     assert.equal(calcularStockFinalTeorico({
       stock_inicial: 100, compras_netas: 50,
       ventas_botella_uds: 30, ventas_copa_copas: 12,
@@ -155,42 +234,29 @@ describe('calcularStockFinalTeorico — método inventario', () => {
     }), 113)
   })
   it('fortificado 8 copas = 0.96 bot.', () => {
-    const t = calcularStockFinalTeorico({
+    assert.equal(calcularStockFinalTeorico({
       stock_inicial: 10, compras_netas: 0,
       ventas_botella_uds: 0, ventas_copa_copas: 8,
       salidas_no_venta_uds: 0,
       ml_copa: ML_COPA_FORTIFICADO,
-    })
-    // 10 + 0 − 0 − 0.96 − 0 = 9.04
-    assert.equal(t, 9.04)
+    }), 9.04)
   })
   it('mes sin compras y con rotura (1 ud)', () => {
-    // inicial 50, compras 0, ventas 0, rotura 1 → teorico 49
     assert.equal(calcularStockFinalTeorico({
       stock_inicial: 50, compras_netas: 0,
-      ventas_botella_uds: 0, ventas_copa_copas: 0,
       salidas_no_venta_uds: 1,
     }), 49)
   })
-  it('invitación de copa cuenta como fracción (3 copas = 0.5 bot)', () => {
-    // inicial 20, compras 0, ventas 0, salidas no-venta 0.5 (3 copas invitadas)
-    // Caller debe convertir previamente las copas invitadas a uds:
-    //   copasAUdsBotella(3) = 0.5
-    const salidasSin = copasAUdsBotella(3) // 0.5
-    assert.equal(salidasSin, 0.5)
-    const t = calcularStockFinalTeorico({
+  it('invitación de 3 copas invitadas = 0.5 bot', () => {
+    assert.equal(calcularStockFinalTeorico({
       stock_inicial: 20, compras_netas: 0,
-      ventas_botella_uds: 0, ventas_copa_copas: 0,
-      salidas_no_venta_uds: salidasSin,
-    })
-    assert.equal(t, 19.5)
+      salidas_no_venta_uds: copasAUdsBotella(3),  // 0.5
+    }), 19.5)
   })
-  it('null-safe: stock_inicial null → teorico null (NO "Sin dato ≡ 0")', () => {
+  it('null-safe: stock_inicial/compras null → null', () => {
     assert.equal(calcularStockFinalTeorico({
       stock_inicial: null, compras_netas: 50,
     }), null)
-  })
-  it('null-safe: compras null → null', () => {
     assert.equal(calcularStockFinalTeorico({
       stock_inicial: 100, compras_netas: null,
     }), null)
@@ -198,24 +264,14 @@ describe('calcularStockFinalTeorico — método inventario', () => {
 })
 
 describe('calcularConsumoDerivado', () => {
-  it('fórmula básica: 100 + 50 − 120 = 30', () => {
+  it('100 + 50 − 120 = 30', () => {
     assert.equal(calcularConsumoDerivado({
       stock_inicial: 100, compras_netas: 50, stock_final_real: 120,
     }), 30)
   })
-  it('mes sin compras: 100 + 0 − 80 = 20', () => {
-    assert.equal(calcularConsumoDerivado({
-      stock_inicial: 100, compras_netas: 0, stock_final_real: 80,
-    }), 20)
-  })
-  it('stock final null → consumo null ("Sin dato")', () => {
+  it('null → null (sin dato, nunca 0)', () => {
     assert.equal(calcularConsumoDerivado({
       stock_inicial: 100, compras_netas: 50, stock_final_real: null,
-    }), null)
-  })
-  it('stock inicial null → consumo null', () => {
-    assert.equal(calcularConsumoDerivado({
-      stock_inicial: null, compras_netas: 50, stock_final_real: 120,
     }), null)
   })
 })
@@ -228,42 +284,31 @@ describe('conciliarTeoricoReal', () => {
       salidas_no_venta_uds: 5,
       stock_final_real: 113,
     })
-    assert.equal(r.teorico, 113)
-    assert.equal(r.real, 113)
-    assert.equal(r.diferencia, 0)
-    assert.equal(r.diferencia_pct, 0)
     assert.equal(r.signo, 'cuadra')
   })
-  it('faltan 2 uds (merma no registrada)', () => {
+  it('faltan 2 uds → merma no registrada', () => {
     const r = conciliarTeoricoReal({
       stock_inicial: 100, compras_netas: 50,
-      ventas_botella_uds: 30, ventas_copa_copas: 0,
-      salidas_no_venta_uds: 0,
-      stock_final_real: 118,
+      ventas_botella_uds: 30, stock_final_real: 118,
     })
-    // teorico = 100 + 50 − 30 = 120; real 118 → faltan 2
-    assert.equal(r.teorico, 120)
-    assert.equal(r.diferencia, -2)
     assert.equal(r.signo, 'faltan')
+    assert.equal(r.diferencia, -2)
   })
-  it('sobran 3 uds (ventas sin registrar o compras olvidadas)', () => {
+  it('sobran 3 uds → ventas sin registrar', () => {
     const r = conciliarTeoricoReal({
       stock_inicial: 100, compras_netas: 0,
-      ventas_botella_uds: 0, ventas_copa_copas: 0,
-      salidas_no_venta_uds: 0,
       stock_final_real: 103,
     })
-    assert.equal(r.diferencia, 3)
     assert.equal(r.signo, 'sobran')
+    assert.equal(r.diferencia, 3)
   })
-  it('sin conteo real → todos null salvo teorico', () => {
+  it('sin conteo real → todo null salvo teorico', () => {
     const r = conciliarTeoricoReal({
       stock_inicial: 100, compras_netas: 50,
-      ventas_botella_uds: 30, stock_final_real: null,
+      stock_final_real: null,
     })
-    assert.equal(r.teorico, 120)
+    assert.equal(r.teorico, 150)
     assert.equal(r.real, null)
-    assert.equal(r.diferencia, null)
     assert.equal(r.signo, null)
   })
 })

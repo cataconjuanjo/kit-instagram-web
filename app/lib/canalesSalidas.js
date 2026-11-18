@@ -45,6 +45,9 @@ function toNum(v) {
 function r4(n) {
   return Math.round((Number(n) || 0) * 10000) / 10000
 }
+function r2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100
+}
 
 // ── Conversión copa ↔ botella ─────────────────────────────────────────
 
@@ -97,16 +100,30 @@ export function udsBotellaACopas(uds, { ml_botella = ML_BOTELLA_ESTANDAR, ml_cop
 // ── Agregación de canales ─────────────────────────────────────────────
 
 /**
- * Canales que forman las "ventas netas" (suman al facturado).
- * Vienen del snapshot `informe.por_canal` producido por
- * app/lib/agregarPeriodoBodega.js y de las cabeceras opcionales
- * (eventos_bodega) cuando las tablas estén aplicadas.
+ * Canales que forman las VENTAS NETAS en la hoja "Canales venta".
+ *
+ * Decisión informada: en la shape REAL del agregador
+ * (app/lib/agregarPeriodoBodega.js) sólo `botella` y `copa` llevan
+ * `ingresos` facturados por líneas de TPV. `maridaje` y `evento`
+ * guardan `valor` (PVP interno del vino consumido, NO facturación)
+ * y se contabilizan como salidas no-venta — hasta que la Fase 3
+ * active la tabla `eventos_bodega` con el importe NETO del menú /
+ * grupo, momento en el que se añadirán a esta lista.
+ *
+ * Así el total NETO de la hoja cuadra exactamente con
+ * `ventas_neto` del snapshot (sin IVA).
  */
-export const CANALES_VENTA = Object.freeze(['botella', 'copa', 'maridaje', 'evento'])
+export const CANALES_VENTA = Object.freeze(['botella', 'copa'])
 
 /**
  * Canales de SALIDA NO-VENTA (no suman facturado; sí descuentan stock).
- * Coincide con app/lib/cierreDesglose.js → CATEGORIAS_SALIDA_SIN_VENTA.
+ * El agregador emite `invitacion` COMO ÚNICO CANAL con sub-campos
+ * botella_uds/copa_uds/botella_coste/copa_coste; listarSalidasNoVenta
+ * lo expande en dos filas canónicas invitacion_botella/invitacion_copa.
+ *
+ * `evento` (que emite el agregador) es alias de `grupo_evento` (clave
+ * canónica usada por cierreDesglose.CATEGORIAS_SALIDA_SIN_VENTA y en
+ * la UI del cierre).
  */
 export const CANALES_SALIDA_SIN_VENTA = Object.freeze([
   'invitacion_botella', 'invitacion_copa',
@@ -115,53 +132,150 @@ export const CANALES_SALIDA_SIN_VENTA = Object.freeze([
 
 /**
  * Normaliza el bloque `por_canal` del snapshot en una lista
- * homogénea `[{ canal, uds, ingresos_bruto, coste, beneficio }]`
- * sólo para los canales de VENTA. Añade `beneficio = ingresos − coste`.
+ * homogénea `[{ canal, uds, copas, ingresos_neto, ingresos_bruto,
+ * coste, beneficio }]` sólo para los canales de VENTA.
  *
- * Si un canal no está en el snapshot se omite de la lista (en lugar
- * de inventar una fila en 0). El caller decide si pinta "Sin dato".
+ * El campo `ingresos` que emite agregarPeriodoBodega es BRUTO
+ * (precio_unitario × cantidad, PVP con IVA). Para que la hoja
+ * cuadre con el resto del informe económico y con `ventas_neto`
+ * del snapshot, dividimos por (1 + iva_pct/100) y exponemos el
+ * neto como importe principal. `ingresos_bruto` queda disponible
+ * para auditorías.
+ *
+ * `iva_pct` null/omitted → no se convierte (ingresos_neto =
+ * ingresos_bruto). El caller debería pasar siempre el iva_pct del
+ * snapshot.
+ *
+ * `beneficio = ingresos_neto − coste`.
  */
-export function listarCanalesVenta(porCanal = {}) {
+export function listarCanalesVenta(porCanal = {}, { iva_pct = null } = {}) {
+  const iva = toNum(iva_pct)
+  const factor = iva != null && iva >= 0 ? (1 + iva / 100) : 1
   const out = []
   for (const canal of CANALES_VENTA) {
     const c = porCanal?.[canal]
     if (!c) continue
     const uds = toNum(c.uds) ?? 0
-    const ingresos = toNum(c.ingresos) ?? toNum(c.valor) ?? 0
+    const bruto = toNum(c.ingresos) ?? toNum(c.valor) ?? 0
+    const neto = factor > 0 ? bruto / factor : bruto
     const coste = toNum(c.coste) ?? 0
-    const beneficio = r4(ingresos - coste)
     out.push({
       canal,
       uds: r4(uds),
       copas: toNum(c.copas) ?? null,
-      ingresos_bruto: r4(ingresos),
-      coste: r4(coste),
-      beneficio,
+      // Importes monetarios a 2 decimales (idéntica semántica que
+      // agregarPeriodoBodega.r2 y ventas_neto del snapshot).
+      ingresos_neto:  r2(neto),
+      ingresos_bruto: r2(bruto),
+      coste:          r2(coste),
+      beneficio:      r2(neto - coste),
     })
   }
   return out
 }
 
 /**
- * Misma normalización para salidas no-venta.
- * `coste` es el único importe relevante aquí (no hay facturado).
+ * Normaliza salidas no-venta. Dos puntos clave vs lo que emite
+ * hoy app/lib/agregarPeriodoBodega.js:
+ *
+ *  1) El canal `invitacion` viene AGREGADO con sub-campos
+ *     `botella_uds / copa_uds / botella_coste / copa_coste`. Aquí
+ *     lo EXPANDIMOS a dos filas canónicas (`invitacion_botella`,
+ *     `invitacion_copa`) con la shape estándar { uds, coste, copas }.
+ *     Si futuras versiones del agregador ya emiten las claves
+ *     separadas, también se respetan; se evita duplicar.
+ *
+ *  2) `grupo_evento` ↔ `evento`: el agregador emite `evento`; la
+ *     clave canónica (cierreDesglose + CATEGORIAS_SALIDA_SIN_VENTA)
+ *     es `grupo_evento`. Aceptamos ambas al leer.
+ *
+ * Importes `coste` se dejan tal cual (ya son coste a inventario,
+ * no PVP). `valor` se ignora excepto cuando `coste` no existe y
+ * `rotura` (que no tiene valor) va con `coste` directo.
  */
 export function listarSalidasNoVenta(porCanal = {}) {
   const out = []
+  const visto = new Set()
+  const push = (canal, fila) => { out.push({ canal, ...fila }); visto.add(canal) }
+
   for (const canal of CANALES_SALIDA_SIN_VENTA) {
+    // Expansión especial de 'invitacion' → 2 filas canónicas.
+    if (canal === 'invitacion_botella' || canal === 'invitacion_copa') {
+      // ¿ya emitida por la fuente con la clave canónica?
+      const canonica = porCanal?.[canal]
+      if (canonica) {
+        push(canal, {
+          uds:   r4(toNum(canonica.uds) ?? 0),
+          copas: toNum(canonica.copas) ?? null,
+          coste: r4(toNum(canonica.coste) ?? 0),
+        })
+        continue
+      }
+      // Si no, mirar si el agregador emite 'invitacion' con subcampos.
+      const inv = porCanal?.invitacion
+      if (!inv) continue
+      if (canal === 'invitacion_botella') {
+        const uds = toNum(inv.botella_uds)
+        if (uds == null || uds === 0) continue
+        push('invitacion_botella', {
+          uds:   r4(uds),
+          copas: null,
+          coste: r4(toNum(inv.botella_coste) ?? 0),
+        })
+      } else {
+        const copas = toNum(inv.copa_uds)
+        if (copas == null || copas === 0) continue
+        push('invitacion_copa', {
+          uds:   r4(copas),   // uds = copas servidas (consistente con cierreDesglose)
+          copas: r4(copas),
+          coste: r4(toNum(inv.copa_coste) ?? 0),
+        })
+      }
+      continue
+    }
+
+    // 'grupo_evento' canónico; también aceptamos 'evento' del agregador.
+    if (canal === 'grupo_evento') {
+      const c = porCanal?.grupo_evento || porCanal?.evento
+      if (!c) continue
+      push('grupo_evento', {
+        uds:   r4(toNum(c.uds) ?? 0),
+        copas: null,
+        coste: r4(toNum(c.coste) ?? toNum(c.valor) ?? 0),
+      })
+      continue
+    }
+
     const c = porCanal?.[canal]
     if (!c) continue
-    const uds = toNum(c.uds) ?? toNum(c.botella_uds) ?? 0
-    const coste = toNum(c.coste) ?? toNum(c.botella_coste) ?? toNum(c.valor) ?? 0
-    const copas = toNum(c.copas) ?? toNum(c.copa_uds) ?? null
-    out.push({
-      canal,
-      uds: r4(uds),
-      copas,
-      coste: r4(coste),
+    push(canal, {
+      uds:   r4(toNum(c.uds) ?? 0),
+      copas: null,
+      coste: r4(toNum(c.coste) ?? toNum(c.valor) ?? 0),
     })
   }
   return out
+}
+
+// ── Helper puro de coincidencia de periodo ─────────────────────────────
+//
+// Protege al Excel/PDF de usar datos obsoletos cuando el usuario
+// cambia rápido entre meses: el export sólo usa el `cached` si su
+// `mes` coincide EXACTAMENTE con el periodo pedido. Si no, el
+// consumer recibe null y decide (deshabilitar botón, degradar
+// hojas, etc.).
+
+/**
+ * `datosParaPeriodo({ mes, datos }, periodo)`:
+ *   - cached null / sin mes / mes distinto → null
+ *   - cached con mes === periodo → datos (puede ser null si no
+ *     había payload, lo cual también vale como "sin dato")
+ */
+export function datosParaPeriodo(cached, periodo) {
+  if (!cached || typeof cached !== 'object') return null
+  if (typeof periodo !== 'string' || !periodo) return null
+  if (cached.mes !== periodo) return null
+  return cached.datos != null ? cached.datos : null
 }
 
 // ── Consumo derivado y conciliación teórico vs real ───────────────────

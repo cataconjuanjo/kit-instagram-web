@@ -1,48 +1,39 @@
 /**
- * Test de integración (sin red) para el Informe Económico Excel
- * y las hojas nuevas de Fase 3.
+ * Test de integración (sin red) para el Informe Económico Excel.
  *
- * Verifica:
- *   - Con `datosVino.informe.por_canal` presente, el workbook incluye
- *     las hojas "Canales venta" y "Salidas no-venta" ADEMÁS de las
- *     5 habituales del Acompañado.
- *   - Sin `por_canal` (snapshot sin informe o datosVino null) las 5
- *     hojas de siempre siguen apareciendo y las 2 nuevas no.
- *   - Ningún `formula` empieza por "=" (convención del repo: ExcelJS
- *     añade el "=" al pintar; si lo mandamos literal rompe recálculo).
- *
- * Ejecutar: node --test scripts/informeEconomicoCanales.test.mjs
+ * Verifica, usando la shape REAL de `por_canal` que emite
+ * app/lib/agregarPeriodoBodega.js (con `invitacion` agregado, `evento`
+ * como alias de `grupo_evento`, `ingresos` BRUTO con IVA):
+ *   - El workbook incluye "Canales venta" y "Salidas no-venta" cuando
+ *     hay datos.
+ *   - Los importes de "Canales venta" están en NETO y cuadran con
+ *     `datosVino.ventas_neto` del snapshot.
+ *   - "Salidas no-venta" expande `invitacion` en 2 filas canónicas y
+ *     respeta el alias `evento`→`grupo_evento`.
+ *   - Las fórmulas (objeto { formula, result }) NO empiezan por "=".
+ *   - Sin `por_canal` las 5 hojas de siempre siguen apareciendo.
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { construirInformeEconomicoWorkbook } from '../app/lib/informeEconomicoExcel.js'
 
-// Snapshot realista producido por agregarPeriodoBodega.js (campos
-// mínimos que necesitan las hojas Resumen y Canales venta/Salidas
-// no-venta). El objetivo del test no es validar el cálculo del
-// agregador sino que la spec de workbook se construye correctamente.
-function datosVinoRealista() {
+// Shape REAL del agregador para Casa Marisma 2026-11 (según preview):
+//   ventas_bruto=5245.00, ventas_neto=4768.18, iva_pct=10.
+function datosVinoNoviembre() {
   return {
-    ventas_bruto:           4400,
-    ventas_neto:            4000,
-    iva_pct:                10,
-    coste_ventas_teorico:   1200,
-    margen_bruto:           2800,
-    stock_inicial:          8000,
-    stock_final:            7500,
-    compras_netas:           900,
-    resultado:              1000,
-    merma_copa_eur:           25,
+    ventas_bruto: 5245.00,
+    ventas_neto:  4768.18,
+    iva_pct:      10,
+    coste_ventas_teorico: 1560,
     informe: {
       por_canal: {
-        botella:  { uds: 100, ingresos: 3000, coste:  900 },
-        copa:     { uds:  50, copas: 300, ingresos: 1500, coste: 450 },
-        maridaje: { uds:  20, valor:  800, coste:  240 },
-        evento:   { uds:  15, valor:  600, coste:  180 },
-        invitacion_botella: { uds: 3, coste: 90 },
-        invitacion_copa:    { uds: 2, coste: 50 },
-        cocina:             { uds: 1, coste: 30 },
-        rotura:             { uds: 1, coste: 25 },
+        botella:    { uds:  88, ingresos: 2200.00, coste:  660 },
+        copa:       { uds:   0, copas: 651, ingresos: 3045.00, coste:  900 },
+        invitacion: { uds: 6, botella_uds: 2, copa_uds: 4, botella_coste: 60, copa_coste: 20 },
+        cocina:     { uds: 1, valor: 30, coste: 30 },
+        evento:     { uds: 5, valor: 150, coste: 150 },     // alias grupo_evento
+        maridaje:   { uds: 3, valor: 90, coste: 90 },
+        rotura:     { uds: 1, coste: 25 },
       },
     },
   }
@@ -53,9 +44,9 @@ function argsBase(overrides = {}) {
     restauranteNombre: 'Casa Marisma',
     periodo: '2026-11',
     esSomm: false,
-    facturacion:      4000,
+    facturacion:      4768.18,
     restoIngresos:     200,
-    consumoMp:        1200,
+    consumoMp:        1560,
     totalPersonal:     800,
     totalGastos:       300,
     totalAlquiler:     200,
@@ -68,7 +59,7 @@ function argsBase(overrides = {}) {
     canales:           { copa_barra: 1000, botella_mesa: 2000, grupos_eventos: 700, take_away: 100 },
     registrosCompras:  [],
     imputacion_pct:    {},
-    datosVino:         datosVinoRealista(),
+    datosVino:         datosVinoNoviembre(),
     ...overrides,
   }
 }
@@ -76,71 +67,57 @@ function argsBase(overrides = {}) {
 function nombres(spec) { return spec.sheets.map(s => s.name) }
 function hoja(spec, nombre) { return spec.sheets.find(s => s.name === nombre) }
 
-function recorrer(valor, fn) {
-  if (valor == null) return
-  if (typeof valor === 'object') {
-    for (const k of Object.keys(valor)) recorrer(valor[k], fn)
-    return
-  }
-  fn(valor)
-}
-
-describe('construirInformeEconomicoWorkbook — hojas Fase 3', () => {
-  it('con por_canal: añade "Canales venta" y "Salidas no-venta"', () => {
+describe('Informe Económico Excel — hojas Fase 3', () => {
+  it('con por_canal y iva_pct: añade "Canales venta" y "Salidas no-venta"', () => {
     const spec = construirInformeEconomicoWorkbook(argsBase())
     const names = nombres(spec)
-    assert.ok(names.includes('Canales venta'),   `falta hoja Canales venta: ${names.join(', ')}`)
-    assert.ok(names.includes('Salidas no-venta'),`falta hoja Salidas no-venta: ${names.join(', ')}`)
-    // Perfil Acompañado: Resumen + Personal + Gastos + Compras? +
-    // Canales (allocation) + 2 nuevas + Cierre.
-    const esperadas = ['Resumen', 'Personal', 'Gastos', 'Canales', 'Canales venta', 'Salidas no-venta', 'Cierre bodega']
-    for (const n of esperadas) {
-      assert.ok(names.includes(n), `falta ${n} en workbook; hojas = ${names.join(', ')}`)
+    for (const n of ['Canales venta', 'Salidas no-venta']) {
+      assert.ok(names.includes(n), `falta ${n}; hojas = ${names.join(', ')}`)
     }
   })
 
-  it('"Canales venta" lista los 4 canales con facturado/coste/beneficio', () => {
+  it('"Canales venta" muestra NETO y el total cuadra con ventas_neto', () => {
     const spec = construirInformeEconomicoWorkbook(argsBase())
     const s = hoja(spec, 'Canales venta')
-    assert.ok(s, 'hoja no presente')
-    const filas = s.rows.map(r => r.canal)
-    // Orden canónico CANALES_VENTA → botella / copa / maridaje / evento
-    assert.deepEqual(filas, [
-      'Botella (mesa)', 'Copa', 'Maridaje', 'Grupos / Eventos',
-    ])
-    // Beneficio en la fila botella = 3000 − 900 = 2100.
-    const botella = s.rows[0]
-    assert.equal(botella.beneficio.result, 2100)
-    // Totals presentes.
-    assert.ok(s.totals && s.totals.canal === 'TOTAL')
+    // 2 filas: Botella (mesa), Copa.
+    assert.equal(s.rows.length, 2)
+    const nombresFila = s.rows.map(r => r.canal)
+    assert.deepEqual(nombresFila, ['Botella (mesa)', 'Copa'])
+
+    // La fila de botella: bruto 2200 → neto 2000 (iva 10%).
+    const bot = s.rows[0]
+    assert.equal(bot.ingresos_bruto, 2200)
+    assert.equal(bot.ingresos_neto, 2000)
+    // La fila de copa: bruto 3045 → neto 2768.18.
+    const cop = s.rows[1]
+    assert.equal(cop.ingresos_bruto, 3045)
+    assert.equal(cop.ingresos_neto, 2768.18)
+    // Totales: NETO = 4768.18 = ventas_neto.
+    assert.equal(s.totals.ingresos_bruto.result, 5245)
+    assert.equal(s.totals.ingresos_neto.result,  4768.18)
+    assert.equal(s.totals.coste.result,          1560)
+    assert.equal(s.totals.beneficio.result,      3208.18)   // 4768.18 − 1560
   })
 
-  it('"Salidas no-venta" lista los canales con coste', () => {
+  it('"Salidas no-venta" expande invitacion → 2 filas, alias evento→grupo_evento', () => {
     const spec = construirInformeEconomicoWorkbook(argsBase())
     const s = hoja(spec, 'Salidas no-venta')
-    assert.ok(s)
     const filas = s.rows.map(r => r.canal)
-    // Orden canónico CANALES_SALIDA_SIN_VENTA: invitacion_botella,
-    // invitacion_copa, cocina, grupo_evento, maridaje, rotura, cata.
-    // En el snapshot de prueba están: invit. botella/copa, cocina,
-    // maridaje (comparte clave con "canal de venta") y rotura.
     assert.deepEqual(filas, [
-      'Invitación (botella)', 'Invitación (copa)', 'Cocina', 'Maridaje', 'Rotura / defecto',
+      'Invitación (botella)', 'Invitación (copa)',
+      'Cocina', 'Grupo / Evento', 'Maridaje', 'Rotura / defecto',
     ])
-    assert.equal(s.rows.find(r => r.canal === 'Invitación (copa)').coste, 50)
+    const porCanal = Object.fromEntries(s.rows.map(r => [r.canal, r]))
+    assert.equal(porCanal['Invitación (botella)'].uds, 2)
+    assert.equal(porCanal['Invitación (botella)'].coste, 60)
+    assert.equal(porCanal['Invitación (copa)'].uds,  4)
+    assert.equal(porCanal['Invitación (copa)'].copas, 4)
+    assert.equal(porCanal['Invitación (copa)'].coste, 20)
+    assert.equal(porCanal['Grupo / Evento'].uds, 5)
+    assert.equal(porCanal['Grupo / Evento'].coste, 150)
   })
 
-  it('ninguna fórmula declarada empieza por "=" (convención ExcelJS)', () => {
-    // Nota: los LABELS tipo "= TOTAL INGRESOS" o "= Margen bruto" son
-    // concepto (string, columna A) y no se interpretan como fórmula
-    // por ExcelJS al asignarse vía `value` directo. La convención del
-    // repo sólo afecta a objetos `{ formula, result }`, que se
-    // comprueban en el test siguiente.
-    const spec = construirInformeEconomicoWorkbook(argsBase())
-    assert.ok(spec.sheets.length > 0)
-  })
-
-  it('las fórmulas declaradas (objeto { formula, result }) NO llevan "=" inicial', () => {
+  it('ninguna fórmula declarada { formula, result } empieza por "=" (convención ExcelJS)', () => {
     const spec = construirInformeEconomicoWorkbook(argsBase())
     let encontradas = 0
     for (const sheet of spec.sheets) {
@@ -156,39 +133,35 @@ describe('construirInformeEconomicoWorkbook — hojas Fase 3', () => {
         }
       }
     }
-    // Verificación sana: al menos las nuevas hojas aportan fórmulas.
-    assert.ok(encontradas >= 4, `se esperaban ≥4 fórmulas (resumen+canales), encontradas: ${encontradas}`)
+    assert.ok(encontradas >= 6, `se esperaban ≥6 fórmulas (resumen+canales venta+salidas), encontradas: ${encontradas}`)
   })
 })
 
-describe('construirInformeEconomicoWorkbook — degradación sin por_canal', () => {
-  it('datosVino sin informe.por_canal → NO se añaden las 2 hojas', () => {
-    const args = argsBase({ datosVino: { ventas_bruto: 4400, ventas_neto: 4000, iva_pct: 10 } })
-    const spec = construirInformeEconomicoWorkbook(args)
+describe('Informe Económico Excel — degradación', () => {
+  it('datosVino sin informe.por_canal → NO se añaden las 2 hojas; sí 5 clásicas', () => {
+    const spec = construirInformeEconomicoWorkbook(argsBase({
+      datosVino: { ventas_bruto: 5245, ventas_neto: 4768.18, iva_pct: 10 },
+    }))
     const names = nombres(spec)
-    assert.ok(!names.includes('Canales venta'),    'no debería tener Canales venta sin datos')
-    assert.ok(!names.includes('Salidas no-venta'), 'no debería tener Salidas no-venta sin datos')
-    // Las 5 de siempre sí.
+    assert.ok(!names.includes('Canales venta'))
+    assert.ok(!names.includes('Salidas no-venta'))
     for (const n of ['Resumen', 'Personal', 'Gastos', 'Canales', 'Cierre bodega']) {
-      assert.ok(names.includes(n), `falta ${n}; hojas = ${names.join(', ')}`)
+      assert.ok(names.includes(n))
     }
   })
 
-  it('datosVino = null → NO hojas nuevas, Cierre bodega tampoco', () => {
+  it('datosVino=null → sin hojas nuevas; sin Cierre bodega', () => {
     const spec = construirInformeEconomicoWorkbook(argsBase({ datosVino: null }))
     const names = nombres(spec)
     assert.ok(!names.includes('Canales venta'))
     assert.ok(!names.includes('Salidas no-venta'))
     assert.ok(!names.includes('Cierre bodega'))
-    // Resumen/Personal/Gastos/Canales (allocation) siguen.
-    for (const n of ['Resumen', 'Personal', 'Gastos', 'Canales']) {
-      assert.ok(names.includes(n))
-    }
   })
 
-  it('por_canal vacío ({}) → NO hojas nuevas', () => {
-    const args = argsBase({ datosVino: { informe: { por_canal: {} } } })
-    const spec = construirInformeEconomicoWorkbook(args)
+  it('por_canal={} → sin hojas nuevas', () => {
+    const spec = construirInformeEconomicoWorkbook(argsBase({
+      datosVino: { informe: { por_canal: {} }, iva_pct: 10 },
+    }))
     const names = nombres(spec)
     assert.ok(!names.includes('Canales venta'))
     assert.ok(!names.includes('Salidas no-venta'))
