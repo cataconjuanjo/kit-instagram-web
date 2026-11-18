@@ -1313,13 +1313,11 @@ export default function ControlBodega() {
         {panelAbierto === 'simulador_margen' && puedeUsar(restaurante, 'somm_simulador_margen_bodega') && (
           <section className={styles.panel} id="simulador_margen">
             <div className={styles.panelBody}>
-              <SimuladorMargenBodega
-                restauranteId={restaurante.id}
-                snapshotMes={null}
-                parametros={null}
-                periodoReferencia={null}
-                catalogo={null}
-              />
+              {/* El componente se auto-abastece de parametros_explotacion
+                  y del snapshot via /api/cierres-mes con sello de periodo
+                  (fase C-2). Los props permiten override desde arriba
+                  si en el futuro se enchufa desde Explotación. */}
+              <SimuladorMargenBodega restauranteId={restaurante.id} />
             </div>
           </section>
         )}

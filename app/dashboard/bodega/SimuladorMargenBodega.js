@@ -32,6 +32,8 @@ import {
   calcularTotalPersonal,
   calcularTotalAlquiler,
 } from '../../lib/sommExplotacion'
+import { datosParaPeriodo } from '../../lib/canalesSalidas'
+import { costeBase } from '../../lib/margenMinimo'
 
 const CLAVES_GASTO = [
   { k: 'personal',             label: 'Personal asignado a bodega' },
@@ -52,7 +54,7 @@ export default function SimuladorMargenBodega({
   snapshotMes: snapshotMesProp = null,
   parametros: parametrosProp = null,
   periodoReferencia: periodoProp = null,
-  catalogo = null,
+  catalogo: catalogoProp = null,
 }) {
   // Permite elegir mes de referencia: por defecto el mes anterior
   // (los datos del mes en curso suelen estar incompletos).
@@ -60,6 +62,20 @@ export default function SimuladorMargenBodega({
   const [periodo, setPeriodo] = useState(mesPorDefecto)
   const [parametrosFetched, setParametrosFetched] = useState(null)
   const [paramsError, setParamsError] = useState(null)
+
+  // Snapshot del mes (cerrado o cálculo en vivo) via /api/cierres-mes.
+  // Guardamos { mes, datos } para que `datosParaPeriodo(cached, periodo)`
+  // devuelva null en cuanto cambia `periodo` — mismo sello que el P&L de
+  // Explotación. Mientras llega el nuevo dato, la precarga de
+  // roturas/ventas queda vacía ("Sin dato") en lugar de mostrar las del
+  // mes anterior.
+  const [snapshotCache, setSnapshotCache] = useState(null)
+  const [cargandoSnapshot, setCargandoSnapshot] = useState(false)
+  const [snapshotError, setSnapshotError] = useState(null)
+
+  // Catálogo de vinos activos para el multiplicador medio real. Sin
+  // uds vendidas por vino, aplicamos media simple y lo etiquetamos.
+  const [catalogoCache, setCatalogoCache] = useState(null)
 
   // Si el padre no pasa `parametros`, los traemos de parametros_explotacion
   // para el mes seleccionado. `imputacion_pct` puede faltar (columna
@@ -94,16 +110,104 @@ export default function SimuladorMargenBodega({
     return () => { vivo = false }
   }, [restauranteId, periodo, parametrosProp])
 
-  const parametros  = parametrosProp || parametrosFetched
-  const snapshotMes = snapshotMesProp  // la precarga de snapshot se queda
-                                        // como prop (lo enchufa el padre
-                                        // si lo tiene; vale null si no).
+  const parametros = parametrosProp || parametrosFetched
+
+  // Fetch del snapshot del mes (cierres-mes). Si llega después de
+  // cambiar `periodo`, `datosParaPeriodo` lo descarta por sello de
+  // mes y no contamina la UI con datos del mes anterior.
+  useEffect(() => {
+    // Si el padre nos pasa snapshot, usamos SIEMPRE ese: no llamamos
+    // al endpoint. snapshotCache queda sin actualizar (null inicial),
+    // que es exactamente lo que queremos.
+    if (snapshotMesProp) return
+    if (!restauranteId || !periodo) return
+    let vivo = true
+    ;(async () => {
+      // Todos los setState viven en la rama "al llegar algo del
+      // exterior" — ningún setState en el cuerpo síncrono del effect.
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        if (!vivo) return
+        setCargandoSnapshot(true)
+        setSnapshotError(null)
+        const token = sess?.session?.access_token || ''
+        const res = await fetch(
+          `/api/cierres-mes?restaurante_id=${restauranteId}&mes=${periodo}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        )
+        if (!vivo) return
+        if (!res.ok) {
+          setSnapshotCache({ mes: periodo, datos: null })
+          setSnapshotError(new Error(`HTTP ${res.status}`))
+          setCargandoSnapshot(false)
+          return
+        }
+        const json = await res.json()
+        if (!vivo) return
+        const datos = json?.cerrado ? json?.cierre?.snapshot : json?.datos
+        // Propagamos el periodo que pidió esta carga; si el usuario ha
+        // cambiado de mes mientras tanto, el useMemo lo descarta.
+        setSnapshotCache({ mes: periodo, datos: datos || null })
+        setCargandoSnapshot(false)
+      } catch (e) {
+        if (!vivo) return
+        setSnapshotCache({ mes: periodo, datos: null })
+        setSnapshotError(e)
+        setCargandoSnapshot(false)
+      }
+    })()
+    return () => { vivo = false }
+  }, [restauranteId, periodo, snapshotMesProp])
+
+  // Fetch del catálogo activo para el multiplicador medio real.
+  // Si el padre pasa `catalogoProp`, lo usamos tal cual y no hacemos
+  // fetch: catalogoCache se queda en null, que es su inicial.
+  useEffect(() => {
+    if (catalogoProp) return
+    if (!restauranteId) return
+    let vivo = true
+    supabase
+      .from('vinos')
+      .select('id, nombre, precio_botella, coste_medio_pmp, coste_compra, activo')
+      .eq('restaurante_id', restauranteId)
+      .then(({ data }) => {
+        if (!vivo) return
+        setCatalogoCache(Array.isArray(data) ? data : [])
+      })
+    return () => { vivo = false }
+  }, [restauranteId, catalogoProp])
+
+  // Snapshot "seguro" para el `periodo` actual (si hay desfase por
+  // una petición aún en vuelo, datosParaPeriodo devuelve null).
+  const snapshotMes = useMemo(
+    () => snapshotMesProp || datosParaPeriodo(snapshotCache, periodo),
+    [snapshotMesProp, snapshotCache, periodo],
+  )
 
   const precarga = useMemo(() => precargarDesdeSnapshot({
     snapshotMes,
     parametros,
     referencia: 'mes',
   }), [snapshotMes, parametros])
+
+  // Catálogo normalizado al shape que consume compararConReal:
+  // sin ventas por-vino, va `unidades = 1` (media simple). La UI lo
+  // etiqueta como "media simple del catálogo (sin ponderar por
+  // ventas)". IVA de vino en España por defecto 10 %.
+  const catalogo = useMemo(() => {
+    if (catalogoProp) return catalogoProp
+    const lista = catalogoCache || []
+    const out = []
+    for (const v of lista) {
+      if (v?.activo === false) continue
+      const coste = costeBase(v)
+      const pvp   = Number(v?.precio_botella) || 0
+      if (coste > 0 && pvp > 0) {
+        out.push({ pvp, iva_pct: 10, coste, unidades: 1 })
+      }
+    }
+    return out.length > 0 ? out : null
+  }, [catalogoProp, catalogoCache])
 
   // Separamos edits del usuario de los valores precargados. El form
   // que ve la UI es un valor DERIVADO (no estado): overrides del
@@ -219,6 +323,18 @@ export default function SimuladorMargenBodega({
           supuestos manuales no se están guardando entre sesiones.
           Pide al admin que aplique
           <code> supabase/migrations_pendientes/fase_c_simulador_margen</code>.
+        </div>
+      )}
+      {cargandoSnapshot && (
+        <div role="status" style={estilos.hint}>
+          Cargando datos del mes {periodo}…
+        </div>
+      )}
+      {snapshotError && !cargandoSnapshot && (
+        <div role="alert" style={estilos.error}>
+          No se pudieron cargar los datos del mes {periodo}
+          {snapshotError.message ? `: ${snapshotError.message}` : ''}.
+          La precarga de roturas y ventas queda vacía (nunca 0 inventado).
         </div>
       )}
       {persistError && (
@@ -376,6 +492,11 @@ function Comparativa({ resultado, comparativa }) {
           <strong>{comparativa.multiplicador_medio_real != null
             ? `${comparativa.multiplicador_medio_real.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×`
             : 'Sin dato'}</strong>
+          {comparativa.multiplicador_medio_real != null && (
+            <small style={estilos.notaMult}>
+              {' '}(media simple del catálogo, sin ponderar por ventas: no disponemos de uds vendidas por vino en el snapshot del mes)
+            </small>
+          )}
         </li>
       </ul>
     </div>
@@ -470,4 +591,5 @@ const estilos = {
     cursor: 'pointer',
   },
   pie: { fontSize: 12, color: '#8b8278' },
+  notaMult: { fontSize: 11, color: '#8b8278', fontStyle: 'italic' },
 }
