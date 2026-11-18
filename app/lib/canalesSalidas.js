@@ -161,8 +161,9 @@ export function listarCanalesVenta(porCanal = {}, { iva_pct = null, eventos = nu
     const coste = toNum(c.coste) ?? 0
     out.push({
       canal,
-      uds: r4(uds),
+      uds:   r4(uds),
       copas: toNum(c.copas) ?? null,
+      pax:   null,                     // PAX es específico de eventos
       // Importes monetarios a 2 decimales (idéntica semántica que
       // agregarPeriodoBodega.r2 y ventas_neto del snapshot).
       ingresos_neto:  r2(neto),
@@ -183,17 +184,22 @@ export function listarCanalesVenta(porCanal = {}, { iva_pct = null, eventos = nu
   // coste no viene de aquí: el consumo de vino de esos eventos sigue
   // en `por_canal.evento.coste` / `por_canal.maridaje.coste` desde
   // movimientos_stock. Para el beneficio del Excel sumamos ambos.
+  //
+  // IMPORTANTE (Fase B): `comensales` va en una columna PAX propia,
+  // NO en `uds`, para que el TOTAL de uds no sume comensales con
+  // botellas. `uds` del evento queda null; `pax` lleva los comensales.
   const addEventoRow = (canal, agregado) => {
     if (!agregado) return
     const neto = toNum(agregado.importe_neto_total) ?? 0
     if (neto <= 0) return
     const costeCanal = toNum(porCanal?.[canal]?.coste) ?? 0
-    const uds = toNum(agregado.comensales_total) ?? toNum(agregado.n) ?? 0
+    const pax = toNum(agregado.comensales_total) ?? null
     const bruto = (iva != null && iva >= 0) ? neto * (1 + iva / 100) : neto
     out.push({
       canal,
-      uds: r4(uds),
+      uds:   null,                     // no mezcla con uds de botella
       copas: null,
+      pax:   pax != null ? r4(pax) : null,
       ingresos_neto:  r2(neto),
       ingresos_bruto: r2(bruto),
       coste:          r2(costeCanal),

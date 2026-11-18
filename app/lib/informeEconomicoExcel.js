@@ -403,19 +403,25 @@ function construirSheetCanalesVenta({ datosVino }) {
   const nFilas   = filas.length
   const rowTotal = nFilas + 2  // header=1, filas 2..nFilas+1, total nFilas+2
 
+  // Layout (Fase B — PAX separada de uds):
+  //   A canal | B uds | C copas | D pax | E bruto | F neto | G coste | H beneficio
+  // uds sólo recoge botellas (no comensales). pax sólo recoge
+  // comensales de eventos. El TOTAL de cada columna suma SOLO su
+  // columna; ningún total mezcla uds con pax.
   const rows = filas.map((f, i) => {
     const rowNum = i + 2
     return {
       canal: CANAL_LABEL[f.canal] || f.canal,
-      uds: f.uds,
+      uds:   f.uds ?? '',
       copas: f.copas ?? '',
+      pax:   f.pax ?? '',
       ingresos_bruto: f.ingresos_bruto,
       ingresos_neto:  f.ingresos_neto,
       coste: f.coste,
-      // Beneficio como fórmula E-F (ingresos_neto − coste) para que
+      // Beneficio como fórmula F-G (ingresos_neto − coste) para que
       // Excel lo recalcule si el usuario edita. Sin IVA.
       beneficio: {
-        formula: `E${rowNum}-F${rowNum}`,
+        formula: `F${rowNum}-G${rowNum}`,
         result: f.beneficio,
       },
     }
@@ -425,13 +431,14 @@ function construirSheetCanalesVenta({ datosVino }) {
   const sum = (key) => r2(filas.reduce((s, f) => s + Number(f[key] || 0), 0))
   const totals = {
     canal: 'TOTAL',
-    uds:            { formula: `SUM(B2:B${nFilas + 1})`, result: filas.reduce((s, f) => s + f.uds, 0) },
+    uds:            { formula: `SUM(B2:B${nFilas + 1})`, result: sum('uds') },
     copas:          '',
-    ingresos_bruto: { formula: `SUM(D2:D${nFilas + 1})`, result: sum('ingresos_bruto') },
-    ingresos_neto:  { formula: `SUM(E2:E${nFilas + 1})`, result: sum('ingresos_neto') },
-    coste:          { formula: `SUM(F2:F${nFilas + 1})`, result: sum('coste') },
+    pax:            { formula: `SUM(D2:D${nFilas + 1})`, result: sum('pax') },
+    ingresos_bruto: { formula: `SUM(E2:E${nFilas + 1})`, result: sum('ingresos_bruto') },
+    ingresos_neto:  { formula: `SUM(F2:F${nFilas + 1})`, result: sum('ingresos_neto') },
+    coste:          { formula: `SUM(G2:G${nFilas + 1})`, result: sum('coste') },
     beneficio: {
-      formula: `E${rowTotal}-F${rowTotal}`,
+      formula: `F${rowTotal}-G${rowTotal}`,
       result: sum('beneficio'),
     },
   }
@@ -442,6 +449,7 @@ function construirSheetCanalesVenta({ datosVino }) {
       { header: 'Canal',               key: 'canal',          width: 22 },
       { header: 'uds',                 key: 'uds',            width: 10 },
       { header: 'copas',               key: 'copas',          width: 10 },
+      { header: 'PAX',                 key: 'pax',            width: 10 },
       { header: `Facturado bruto c/IVA ${ivaPct ?? ''}% (€)`.trim(), key: 'ingresos_bruto', width: 22, format: FMT_EUR },
       { header: 'Facturado NETO (€)',  key: 'ingresos_neto',  width: 20, format: FMT_EUR },
       { header: 'Coste (€)',           key: 'coste',          width: 14, format: FMT_EUR },
