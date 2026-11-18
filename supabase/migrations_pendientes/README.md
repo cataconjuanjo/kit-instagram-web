@@ -51,15 +51,17 @@ Cada migración consta de tres archivos:
   en runtime si la columna no existe (igual que `imputacion_pct`).
 
 - `add_eventos_bodega.up.sql` — nueva tabla `public.eventos_bodega`
-  para la Fase 3 (cabecera de maridajes y grupos: fecha, PAX,
-  menú, importe neto). Aditiva (CREATE TABLE IF NOT EXISTS), con
-  RLS que replica el patrón `auth_carta_historial_*` (admin
-  cataconjuanjo@gmail.com + `restaurantes.email` = dueño). El código
-  de la Fase 3 funciona sin la tabla: detecta su ausencia y degrada
-  silenciosamente (misma estrategia que resto_ingresos). Las
-  copas/botellas consumidas en el evento siguen registradas en
-  `movimientos_stock` con tipos `maridaje`/`grupo_evento`; esta
-  tabla sólo guarda la cabecera (importe facturado neto y PAX).
+  para la Fase A (cabecera de maridajes y grupos). ACTUALIZADO
+  respecto a la versión original del PR #44 (nunca aplicada):
+  añade `incluido_en_tpv boolean NOT NULL DEFAULT false` (evita
+  doble conteo con ventas TPV), `menu_nombre text` (nombre libre
+  del menú), `importe_bruto numeric(12,2)` (con IVA, nullable) y
+  `created_by text` (email del creador, auditoría). Aditiva
+  (CREATE TABLE IF NOT EXISTS), con RLS que replica el patrón
+  `auth_carta_historial_*` (admin cataconjuanjo@gmail.com +
+  `restaurantes.email` = dueño). El código de la Fase A funciona
+  sin la tabla: la pestaña "Eventos" muestra aviso "SQL pendiente"
+  y el agregador/Excel no cambian de comportamiento.
 
 AVISO IMPORTANTE: los ficheros `.up.sql` y `.down.sql` están
 SEPARADOS. **Ejecuta SÓLO UNO**. El `.down.sql` elimina la tabla y

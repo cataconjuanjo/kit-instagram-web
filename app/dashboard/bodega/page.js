@@ -30,6 +30,7 @@ import InventarioPanel from '../inventario/InventarioPanel'
 import PreciosPanel from './PreciosPanel'
 import ConteoInventario from './ConteoInventario'
 import CierreMensual from './CierreMensual'
+import EventosSection from './EventosSection'
 import FormularioCompra from './FormularioCompra'
 import FacturaIA from './FacturaIA'
 import LibroBodegaTable from './LibroBodegaTable'
@@ -1108,8 +1109,8 @@ export default function ControlBodega() {
             </button>
             <button
               type="button"
-              className={`${styles.tabPill} ${['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? styles.tabPillActive : ''}`}
-              onClick={() => setPanelAbierto(['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? null : 'conteo')}
+              className={`${styles.tabPill} ${['conteo', 'conteo_fisico', 'cierre_mensual', 'eventos'].includes(panelAbierto) ? styles.tabPillActive : ''}`}
+              onClick={() => setPanelAbierto(['conteo', 'conteo_fisico', 'cierre_mensual', 'eventos'].includes(panelAbierto) ? null : 'conteo')}
             >
               Inventario
             </button>
@@ -1162,7 +1163,7 @@ export default function ControlBodega() {
         )}
 
         {/* ── Sub-nav Inventario ────────────────────────────── */}
-        {['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) && (
+        {['conteo', 'conteo_fisico', 'cierre_mensual', 'eventos'].includes(panelAbierto) && (
           <div className={bStyles.cellarSubNav}>
             <button
               type="button"
@@ -1184,6 +1185,13 @@ export default function ControlBodega() {
               onClick={() => setPanelAbierto(panelAbierto === 'cierre_mensual' ? null : 'cierre_mensual')}
             >
               Cierre mensual
+            </button>
+            <button
+              type="button"
+              className={panelAbierto === 'eventos' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'eventos' ? null : 'eventos')}
+            >
+              Eventos
             </button>
           </div>
         )}
@@ -1288,6 +1296,24 @@ export default function ControlBodega() {
         {panelAbierto === 'cierre_mensual' && (
           <section className={styles.panel} id="cierre_mensual">
             <CierreMensual restauranteId={restaurante.id} restaurante={restaurante} />
+          </section>
+        )}
+
+        {/* ── Panel: Eventos de bodega (Fase A) ─────────── */}
+        {panelAbierto === 'eventos' && (
+          <section className={styles.panel} id="eventos">
+            <div className={styles.panelHead}>
+              <h2 className={styles.panelTitle}>Eventos de bodega</h2>
+              <p className={styles.panelSub} style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                Grupos y maridajes con PAX, importe y notas. Los eventos
+                marcados como &ldquo;ya facturados por el TPV&rdquo; no suman al
+                canal (evita doble conteo). Los demás aparecen como fila
+                propia en &ldquo;Canales venta&rdquo; del informe económico.
+              </p>
+            </div>
+            <div className={styles.panelBody}>
+              <EventosSection restauranteId={restaurante.id} />
+            </div>
           </section>
         )}
 
