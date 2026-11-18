@@ -681,7 +681,13 @@ function ExplotacionContent() {
         bancarios,
         canales,
         registrosCompras: regsCompras || [],
-        datosVino,
+        // Para las hojas "Canales venta" y "Salidas no-venta" (Fase 3)
+        // y para la hoja "Cierre bodega" preferimos la fuente EN VIVO
+        // del agregador (datosCierreApi), que cubre meses no cerrados;
+        // si por lo que fuera el endpoint no respondió, caemos al
+        // snapshot firmado (datosVino). Ambas tienen la misma forma
+        // `{ informe: { por_canal, por_vino, ... }, ventas_neto, ... }`.
+        datosVino: datosCierreApi || datosVino,
         // F4: % bodega por concepto. Con imputacion_pct = {} las nuevas
         // columnas del Excel se pintan a 100 % → imputado = importe
         // total, idéntico al comportamiento anterior.
