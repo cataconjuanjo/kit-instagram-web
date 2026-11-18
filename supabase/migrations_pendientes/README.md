@@ -49,3 +49,19 @@ Cada migración consta de tres archivos:
   Netas). Con la columna, la UI muestra la nueva línea y los
   cálculos usan TOTAL INGRESOS como denominador. El código degrada
   en runtime si la columna no existe (igual que `imputacion_pct`).
+
+- `add_eventos_bodega.up.sql` — nueva tabla `public.eventos_bodega`
+  para la Fase 3 (cabecera de maridajes y grupos: fecha, PAX,
+  menú, importe neto). Aditiva (CREATE TABLE IF NOT EXISTS), con
+  RLS que replica el patrón `auth_carta_historial_*` (admin
+  cataconjuanjo@gmail.com + `restaurantes.email` = dueño). El código
+  de la Fase 3 funciona sin la tabla: detecta su ausencia y degrada
+  silenciosamente (misma estrategia que resto_ingresos). Las
+  copas/botellas consumidas en el evento siguen registradas en
+  `movimientos_stock` con tipos `maridaje`/`grupo_evento`; esta
+  tabla sólo guarda la cabecera (importe facturado neto y PAX).
+
+AVISO IMPORTANTE: los ficheros `.up.sql` y `.down.sql` están
+SEPARADOS. **Ejecuta SÓLO UNO**. El `.down.sql` elimina la tabla y
+pierde todos los datos; siempre haz backup en `backup_privado`
+antes.

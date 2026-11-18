@@ -19,6 +19,7 @@
 
 import { construirComprasWorkbook, slugRestaurante } from './excelSomm.js'
 import { getPct } from './imputacionBodega.js'
+import { listarCanalesVenta, listarSalidasNoVenta } from './canalesSalidas.js'
 
 const FMT_EUR = '#,##0.00 €'
 const FMT_PCT = '0.0 %'        // numFmt sobre ratio (0.32 → "32.0 %")
@@ -372,6 +373,121 @@ function construirSheetCanales({ canales }) {
   }
 }
 
+// ── Hoja "Canales de venta" (Fase 3) ──────────────────────────────────────
+//
+// Derivada del snapshot del cierre (`datosVino.informe.por_canal`) y de
+// la lógica pura `listarCanalesVenta`. Fila por canal con facturado,
+// coste y beneficio. Totales como fórmula SUM; % como ratio.
+// Devuelve null si no hay datos (el workbook omitirá la hoja).
+
+function construirSheetCanalesVenta({ datosVino }) {
+  const porCanal = datosVino?.informe?.por_canal
+  if (!porCanal) return null
+  const filas = listarCanalesVenta(porCanal)
+  if (filas.length === 0) return null
+
+  const CANAL_LABEL = {
+    botella:  'Botella (mesa)',
+    copa:     'Copa',
+    maridaje: 'Maridaje',
+    evento:   'Grupos / Eventos',
+  }
+  const nFilas   = filas.length
+  const rowTotal = nFilas + 2  // header=1, filas 2..nFilas+1, total nFilas+2
+
+  const rows = filas.map((f, i) => {
+    const rowNum = i + 2
+    return {
+      canal: CANAL_LABEL[f.canal] || f.canal,
+      uds: f.uds,
+      copas: f.copas ?? '',
+      ingresos: f.ingresos_bruto,
+      coste: f.coste,
+      // Beneficio como fórmula D-E para que al editar los números en
+      // Excel el beneficio se recalcule. Result precalculado por si
+      // Numbers/preview no evalúa la fórmula al abrir.
+      beneficio: {
+        formula: `D${rowNum}-E${rowNum}`,
+        result: f.beneficio,
+      },
+    }
+  })
+
+  const totals = {
+    canal: 'TOTAL',
+    uds:      { formula: `SUM(B2:B${nFilas + 1})`, result: filas.reduce((s, f) => s + f.uds, 0) },
+    copas:    '',
+    ingresos: { formula: `SUM(D2:D${nFilas + 1})`, result: filas.reduce((s, f) => s + f.ingresos_bruto, 0) },
+    coste:    { formula: `SUM(E2:E${nFilas + 1})`, result: filas.reduce((s, f) => s + f.coste, 0) },
+    beneficio: {
+      formula: `D${rowTotal}-E${rowTotal}`,
+      result: filas.reduce((s, f) => s + f.beneficio, 0),
+    },
+  }
+
+  return {
+    name: 'Canales venta',
+    columns: [
+      { header: 'Canal',         key: 'canal',     width: 22 },
+      { header: 'uds',           key: 'uds',       width: 10 },
+      { header: 'copas',         key: 'copas',     width: 10 },
+      { header: 'Facturado (€)', key: 'ingresos',  width: 16, format: FMT_EUR },
+      { header: 'Coste (€)',     key: 'coste',     width: 14, format: FMT_EUR },
+      { header: 'Beneficio (€)', key: 'beneficio', width: 16, format: FMT_EUR },
+    ],
+    rows,
+    totals,
+    freezeHeader: true,
+  }
+}
+
+// ── Hoja "Salidas no-venta" (Fase 3) ──────────────────────────────────────
+
+function construirSheetSalidasNoVenta({ datosVino }) {
+  const porCanal = datosVino?.informe?.por_canal
+  if (!porCanal) return null
+  const filas = listarSalidasNoVenta(porCanal)
+  if (filas.length === 0) return null
+
+  const LABEL = {
+    invitacion_botella: 'Invitación (botella)',
+    invitacion_copa:    'Invitación (copa)',
+    cocina:             'Cocina',
+    grupo_evento:       'Grupo / Evento',
+    maridaje:           'Maridaje',
+    rotura:             'Rotura / defecto',
+    cata:               'Cata interna',
+  }
+  const nFilas = filas.length
+
+  const rows = filas.map(f => ({
+    canal: LABEL[f.canal] || f.canal,
+    uds:   f.uds,
+    copas: f.copas ?? '',
+    coste: f.coste,
+  }))
+
+  const totals = {
+    canal: 'TOTAL',
+    uds:   { formula: `SUM(B2:B${nFilas + 1})`, result: filas.reduce((s, f) => s + f.uds, 0) },
+    copas: '',
+    coste: { formula: `SUM(D2:D${nFilas + 1})`, result: filas.reduce((s, f) => s + f.coste, 0) },
+  }
+
+  return {
+    name: 'Salidas no-venta',
+    columns: [
+      { header: 'Canal',     key: 'canal', width: 22 },
+      { header: 'uds',       key: 'uds',   width: 10 },
+      { header: 'copas',     key: 'copas', width: 10 },
+      { header: 'Coste (€)', key: 'coste', width: 14, format: FMT_EUR },
+    ],
+    rows,
+    totals,
+    freezeHeader: true,
+  }
+}
+
 // ── Hoja "Cierre bodega" (sólo si hay cierre del periodo) ──────────────────
 
 function construirSheetCierre({ datosVino }) {
@@ -464,6 +580,16 @@ export function construirInformeEconomicoWorkbook({
   if (sheetCompras) sheets.push(sheetCompras)
 
   sheets.push(construirSheetCanales({ canales }))
+
+  // Hojas de Fase 3: desglose REAL por canal y salidas no-venta
+  // extraídas del snapshot del cierre (`datosVino.informe.por_canal`).
+  // Se añaden sólo si hay datos para no inflar el .xlsx con hojas
+  // vacías cuando el mes no se ha cerrado todavía.
+  const sheetCanalesReales = construirSheetCanalesVenta({ datosVino })
+  if (sheetCanalesReales) sheets.push(sheetCanalesReales)
+
+  const sheetSalidasNoVenta = construirSheetSalidasNoVenta({ datosVino })
+  if (sheetSalidasNoVenta) sheets.push(sheetSalidasNoVenta)
 
   const sheetCierre = construirSheetCierre({ datosVino })
   if (sheetCierre) sheets.push(sheetCierre)

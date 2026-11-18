@@ -1,0 +1,33 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Fase 3 — rollback de `public.eventos_bodega`
+-- ─────────────────────────────────────────────────────────────────────────
+--
+-- ADVERTENCIA
+--   Al eliminar la tabla se PIERDEN TODAS las cabeceras de eventos
+--   introducidas por el usuario. Haz backup previo en schema privado:
+--
+--     CREATE SCHEMA IF NOT EXISTS backup_privado;
+--     DROP TABLE IF EXISTS backup_privado.eventos_bodega_pre_rollback;
+--     CREATE TABLE backup_privado.eventos_bodega_pre_rollback AS
+--       SELECT * FROM public.eventos_bodega;
+--     SELECT count(*) FROM backup_privado.eventos_bodega_pre_rollback;
+--
+--   NO EJECUTAR POR ACCIDENTE JUNTO AL .up.sql. Son ficheros
+--   separados precisamente para evitarlo. El README de esta carpeta
+--   lo indica: "ejecuta SOLO uno".
+--
+-- EFECTO EN EL CÓDIGO
+--   El código Fase 3 degrada con el patrón resto_ingresos /
+--   imputacion_pct: detecta que la tabla no existe en runtime,
+--   oculta la UI de eventos y los informes no fallan.
+--
+-- COMPROBACIÓN PREVIA
+--     SELECT count(*) AS filas_actuales FROM public.eventos_bodega;
+--
+-- COMPROBACIÓN POSTERIOR
+--     SELECT table_name FROM information_schema.tables
+--      WHERE table_schema = 'public' AND table_name = 'eventos_bodega';
+--     -- Debe devolver 0 filas.
+-- ─────────────────────────────────────────────────────────────────────────
+
+DROP TABLE IF EXISTS public.eventos_bodega;
