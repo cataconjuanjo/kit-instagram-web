@@ -10,6 +10,13 @@ import {
   calcularResultadoExplotacion,
 } from '../../../lib/sommExplotacion'
 import { imputarParametros } from '../../../lib/imputacionBodega'
+import {
+  PDF_COLORS,
+  cargarLogoPdf,
+  formatPeriodoPdfEs,
+  pintarCabecera,
+  pintarPiesEnTodas,
+} from '../../../lib/pdfEstilos'
 
 function num(v) { return Number(v) || 0 }
 
@@ -129,7 +136,7 @@ export async function GET(req) {
       doc.text(ascii(text), x, yPos, { align })
     }
 
-    function hrule(yPos, color = [220, 215, 200]) {
+    function hrule(yPos, color = PDF_COLORS.borde) {
       doc.setDrawColor(...color)
       doc.setLineWidth(0.3)
       doc.line(margin, yPos, W - margin, yPos)
@@ -139,36 +146,38 @@ export async function GET(req) {
       line(label, margin, yPos)
       line(value, W - margin - 30, yPos, { align: 'right' })
       if (pct !== undefined && pct !== null) {
-        line(formatPct(pct), W - margin, yPos, { align: 'right', color: negativo ? [220, 60, 60] : [80, 80, 80] })
+        line(formatPct(pct), W - margin, yPos, { align: 'right', color: negativo ? PDF_COLORS.red : [80, 80, 80] })
       }
     }
 
-    // Cabecera (banda negra + línea fina de acento dorado)
-    doc.setFillColor(26, 26, 26)
-    doc.rect(0, 0, W, 28, 'F')
-    doc.setFillColor(201, 168, 106)
-    doc.rect(0, 28, W, 1.2, 'F')
-    line('Carta Viva', margin, 11, { size: 14, bold: true, color: [255, 255, 255] })
-    line('Informe de Explotación Mensual', margin, 18, { size: 9, color: [180, 170, 155] })
-    line(nombreMes(periodo), W - margin, 11, { size: 12, bold: true, color: [255, 255, 255], align: 'right' })
-    if (restaurante?.nombre) {
-      line(restaurante.nombre, W - margin, 18, { size: 9, color: [180, 170, 155], align: 'right' })
-    }
+    // Cabecera Carta Viva (burdeos + filete dorado + logo isotipo).
+    // Delegada en app/lib/pdfEstilos.js para compartir paleta con el
+    // Excel (BRAND de excelEstilos.js). Si el logo no carga,
+    // degrada a sólo texto.
+    const logo = cargarLogoPdf()
+    pintarCabecera(doc, {
+      W, margin,
+      restauranteNombre: restaurante?.nombre || '',
+      periodoEs: formatPeriodoPdfEs(periodo),
+      subtitulo: 'Informe de Explotacion Mensual',
+      logo,
+    })
 
     y = 38
 
     // Sección: Resultados principales
-    line('CUENTA DE EXPLOTACIÓN', margin, y, { size: 8, bold: true, color: [150, 140, 130] })
+    line('CUENTA DE EXPLOTACION', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
     y += 6
     hrule(y)
     y += 6
 
-    // Columna headers
-    line('Partida', margin, y, { size: 8, bold: true, color: [120, 110, 100] })
-    line('Importe', W - margin - 30, y, { size: 8, bold: true, color: [120, 110, 100], align: 'right' })
-    line('% s/total ing.', W - margin, y, { size: 8, bold: true, color: [120, 110, 100], align: 'right' })
+    // Columna headers (tono burdeos oscuro para contraste con los
+    // datos en marrón oscuro del cuerpo de la tabla).
+    line('Partida', margin, y, { size: 8, bold: true, color: PDF_COLORS.wineDark })
+    line('Importe', W - margin - 30, y, { size: 8, bold: true, color: PDF_COLORS.wineDark, align: 'right' })
+    line('% s/total ing.', W - margin, y, { size: 8, bold: true, color: PDF_COLORS.wineDark, align: 'right' })
     y += 5
-    hrule(y, [235, 230, 220])
+    hrule(y, PDF_COLORS.borde)
     y += 5
 
     // Dos líneas de ingresos y un TOTAL INGRESOS explícito. La fila
@@ -193,31 +202,32 @@ export async function GET(req) {
     filas.forEach((f, idx) => {
       // Línea separadora reforzada antes de cada total (bold) que no sea el primero.
       if (f.bold && idx > 0) {
-        hrule(y - 4, [210, 200, 180])
+        hrule(y - 4, PDF_COLORS.gold)
       }
-      // Fondo alternado suave (zebra) en filas pares.
+      // Fondo alternado beige (zebra) con la banda Carta Viva.
       if (idx % 2 === 1) {
-        doc.setFillColor(250, 248, 243)
+        doc.setFillColor(...PDF_COLORS.banda)
         doc.rect(margin - 2, y - 5, W - margin * 2 + 4, 7, 'F')
       }
       doc.setFontSize(10)
       doc.setFont('helvetica', f.bold ? 'bold' : 'normal')
-      doc.setTextColor(30, 30, 30)
+      doc.setTextColor(...PDF_COLORS.textDark)
       doc.text(ascii(f.label), margin, y)
       doc.text(f.value, W - margin - 30, y, { align: 'right' })
       if (f.pct !== null && f.pct !== undefined) {
         doc.setFontSize(9)
-        doc.setTextColor(f.negativo ? 180 : 80, f.negativo ? 50 : 80, f.negativo ? 50 : 80)
+        if (f.negativo) doc.setTextColor(...PDF_COLORS.red)
+        else            doc.setTextColor(80, 80, 80)
         doc.text(formatPct(f.pct), W - margin, y, { align: 'right' })
       }
       y += 7
       if (f.bold) {
-        hrule(y - 2, [235, 230, 220])
+        hrule(y - 2, PDF_COLORS.borde)
       }
     })
 
     y += 2
-    hrule(y, [26, 26, 26])
+    hrule(y, PDF_COLORS.wine)
     y += 7
 
     // Resultado explotación: caja destacada en verde (positivo) o rojo (negativo)
@@ -250,7 +260,7 @@ export async function GET(req) {
     y += 16
 
     // Break-Even
-    line('PUNTO DE EQUILIBRIO', margin, y, { size: 8, bold: true, color: [150, 140, 130] })
+    line('PUNTO DE EQUILIBRIO', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
     y += 6
     hrule(y)
     y += 6
@@ -277,7 +287,7 @@ export async function GET(req) {
     // Presupuesto vs real (si hay datos)
     if (presupuesto?.objetivo_facturacion) {
       y += 4
-      line('PRESUPUESTO VS REAL', margin, y, { size: 8, bold: true, color: [150, 140, 130] })
+      line('PRESUPUESTO VS REAL', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
       y += 6
       hrule(y)
       y += 6
@@ -299,13 +309,19 @@ export async function GET(req) {
       }
     }
 
-    // Pie de página
+    // Pie: fecha de generación en una línea sutil sobre el footer de
+    // marca; el footer "Carta Viva · Informe economico" + "Pagina X de N"
+    // se pinta en pintarPiesEnTodas al final, iterando páginas, para
+    // que el total sea correcto aunque el PDF crezca.
     const fechaGeneracion = ascii(new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }))
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(180, 170, 155)
-    doc.text(ascii(`Generado el ${fechaGeneracion} · Carta Viva`), margin, 287)
-    doc.text('Confidencial', W - margin, 287, { align: 'right' })
+    doc.setTextColor(...PDF_COLORS.textDark)
+    doc.text(ascii(`Generado el ${fechaGeneracion}`), 18, 282)
+    doc.text('Confidencial', W - 18, 282, { align: 'right' })
+
+    // Footer de marca con Página X de N en TODAS las páginas.
+    pintarPiesEnTodas(doc, { W })
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
     const nombreArchivo = `informe-explotacion-${periodo}.pdf`
