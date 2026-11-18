@@ -5,13 +5,21 @@ import {
   leerExtrasHistorico,
   tieneHistoricoExtras,
   ratiosHistoricos,
+  coincideMesHistorico,
 } from './historicoExtras.js'
 
 /**
  * Construye las filas "Histórico mes del año anterior" que se inyectan
  * al final de la hoja "Ratios" del cierre mensual. Devuelve siempre
  * texto plano (nunca fórmulas): "Sin dato" cuando la fila de
- * historico_mensual no tiene extras utilizables.
+ * historico_mensual no tiene extras utilizables, cuando la fila no
+ * corresponde exactamente al (año-1, mes) del cierre exportado, o
+ * cuando no se pasa fila alguna.
+ *
+ * La guarda `coincideMesHistorico` es la última red de seguridad: si
+ * aun así la UI pasase una fila obsoleta de otro mes (p. ej. tras un
+ * cambio rápido con los botones ◄ ►), aquí se trata como "Sin dato"
+ * y la hoja Ratios no contiene cifras cruzadas.
  *
  * Firma export para poder testearla aislada.
  */
@@ -22,13 +30,16 @@ export function construirFilasHistoricoPrevYear(mesActual, historicoPrevYear) {
   const m = parseInt(mStr, 10)
   if (!Number.isFinite(y) || !Number.isFinite(m)) return []
   const prevYearMesStr = `${y - 1}-${String(m).padStart(2, '0')}`
-  const extras = leerExtrasHistorico(historicoPrevYear)
-  const hayDato = tieneHistoricoExtras(historicoPrevYear)
-  const rh = ratiosHistoricos({
-    extras,
-    consumo_mp: Number(historicoPrevYear.consumo_mp),
-    dias: diasDelMes(prevYearMesStr),
-  })
+  const coincide = coincideMesHistorico(mesActual, historicoPrevYear)
+  const extras   = coincide ? leerExtrasHistorico(historicoPrevYear) : {}
+  const hayDato  = coincide && tieneHistoricoExtras(historicoPrevYear)
+  const rh = hayDato
+    ? ratiosHistoricos({
+        extras,
+        consumo_mp: Number(historicoPrevYear.consumo_mp),
+        dias: diasDelMes(prevYearMesStr),
+      })
+    : { rotacion: null, cobertura_dias: null, consumo_vs_compras: null }
   const texto = (v) => (hayDato && v != null) ? v : 'Sin dato'
   return [
     { concepto: `Histórico ${prevYearMesStr} · Rotación`,          valor: texto(rh.rotacion) },

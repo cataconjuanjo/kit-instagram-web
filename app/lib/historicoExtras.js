@@ -142,6 +142,43 @@ export function extrasHistoricoPayload(entrada) {
 //    de historico_mensual del año anterior) ────────────────────────────
 
 /**
+ * Valida que una fila de `historico_mensual` corresponde exactamente
+ * al MISMO MES del AÑO ANTERIOR del cierre que se está visualizando.
+ *
+ *   - mesActual: cadena 'YYYY-MM' del cierre mostrado en pantalla.
+ *   - row:       fila de la tabla con `.anio` y `.mes` (numéricos).
+ *
+ * Devuelve `true` sólo cuando row.anio === mesActual.year − 1 y
+ * row.mes === mesActual.month. Si alguno falta, no es numérico, o la
+ * fila es null/undefined, devuelve `false`. Sirve como guarda
+ * defensiva contra renders con estado obsoleto cuando el usuario
+ * cambia de mes antes de que termine el fetch del histórico.
+ */
+export function coincideMesHistorico(mesActual, row) {
+  if (!row || typeof row !== 'object') return false
+  if (typeof mesActual !== 'string' || !/^\d{4}-\d{2}$/.test(mesActual)) return false
+  const [yStr, mStr] = mesActual.split('-')
+  const yEsp = parseInt(yStr, 10) - 1
+  const mEsp = parseInt(mStr, 10)
+  const yRow = typeof row.anio === 'number' ? row.anio : Number(row.anio)
+  const mRow = typeof row.mes  === 'number' ? row.mes  : Number(row.mes)
+  if (!Number.isFinite(yRow) || !Number.isFinite(mRow)) return false
+  return yRow === yEsp && mRow === mEsp
+}
+
+/**
+ * Devuelve `true` cuando el `datos` de un cierre (o el cálculo en
+ * vivo) trae informe con al menos una entrada por vino. Es la misma
+ * condición que usa `construirCierreWorkbook` para el `early return`
+ * con `empty: true`: la usamos en la UI para avisar antes de pulsar
+ * el botón de exportar, en lugar de que la descarga falle en silencio.
+ */
+export function tieneDatosExportables(datos) {
+  const porVino = datos?.informe?.por_vino
+  return Array.isArray(porVino) && porVino.length > 0
+}
+
+/**
  * Deriva rotación / cobertura / consumo-vs-compras a partir de los
  * cuatro extras + consumo_mp + días del mes. Null-safe: cualquier
  * ingrediente faltante → el ratio correspondiente sale null.

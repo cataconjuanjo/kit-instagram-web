@@ -6,11 +6,13 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   EXTRAS_KEYS,
+  coincideMesHistorico,
   extrasHistoricoPayload,
   formatComaEs,
   leerExtrasHistorico,
   parseComaEs,
   ratiosHistoricos,
+  tieneDatosExportables,
   tieneHistoricoExtras,
 } from '../app/lib/historicoExtras.js'
 
@@ -220,6 +222,55 @@ describe('ratiosHistoricos', () => {
     assert.equal(r.rotacion, null)        // falta stock_inicial
     assert.ok(Math.abs(r.cobertura_dias - 60) < 0.01)
     assert.equal(r.consumo_vs_compras, null)  // falta compras_total
+  })
+})
+
+describe('coincideMesHistorico — guarda defensiva contra estado obsoleto', () => {
+  it('true cuando la fila corresponde a (anio-1, mes) del cierre mostrado', () => {
+    assert.equal(coincideMesHistorico('2026-11', { anio: 2025, mes: 11 }), true)
+    assert.equal(coincideMesHistorico('2026-01', { anio: 2025, mes: 1 }),  true)
+    assert.equal(coincideMesHistorico('2025-02', { anio: 2024, mes: 2 }),  true)
+  })
+
+  it('false cuando la fila es del mes vecino (bug reproducido en la preview)', () => {
+    // Usuario está viendo Nov 2026 pero el estado tiene la fila de
+    // Dic 2025 (quedó obsoleto tras cambiar de mes con ◄).
+    assert.equal(coincideMesHistorico('2026-11', { anio: 2025, mes: 12 }), false)
+    assert.equal(coincideMesHistorico('2026-11', { anio: 2025, mes: 10 }), false)
+  })
+
+  it('false cuando la fila es del mismo mes pero de otro año (no es YoY)', () => {
+    assert.equal(coincideMesHistorico('2026-11', { anio: 2026, mes: 11 }), false)
+    assert.equal(coincideMesHistorico('2026-11', { anio: 2024, mes: 11 }), false)
+  })
+
+  it('false para fila null / undefined / vacía', () => {
+    assert.equal(coincideMesHistorico('2026-11', null), false)
+    assert.equal(coincideMesHistorico('2026-11', undefined), false)
+    assert.equal(coincideMesHistorico('2026-11', {}), false)
+  })
+
+  it('false si mes del cierre no es YYYY-MM', () => {
+    assert.equal(coincideMesHistorico('', { anio: 2025, mes: 11 }),  false)
+    assert.equal(coincideMesHistorico('2026/11', { anio: 2025, mes: 11 }), false)
+    assert.equal(coincideMesHistorico(null, { anio: 2025, mes: 11 }), false)
+  })
+
+  it('acepta anio/mes como strings numéricos', () => {
+    assert.equal(coincideMesHistorico('2026-11', { anio: '2025', mes: '11' }), true)
+  })
+})
+
+describe('tieneDatosExportables', () => {
+  it('false si no hay informe.por_vino o está vacío', () => {
+    assert.equal(tieneDatosExportables(null), false)
+    assert.equal(tieneDatosExportables(undefined), false)
+    assert.equal(tieneDatosExportables({}), false)
+    assert.equal(tieneDatosExportables({ informe: {} }), false)
+    assert.equal(tieneDatosExportables({ informe: { por_vino: [] } }), false)
+  })
+  it('true si por_vino tiene al menos una entrada', () => {
+    assert.equal(tieneDatosExportables({ informe: { por_vino: [{ nombre: 'X' }] } }), true)
   })
 })
 

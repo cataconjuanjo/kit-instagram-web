@@ -29,8 +29,9 @@ describe('construirFilasHistoricoPrevYear — sin dato', () => {
 })
 
 describe('construirFilasHistoricoPrevYear — con dato', () => {
-  it('con extras completos → 3 ratios numéricos', () => {
+  it('con extras completos y mes coincidente → 3 ratios numéricos', () => {
     const filas = construirFilasHistoricoPrevYear('2026-07', {
+      anio: 2025, mes: 7,
       valor_stock_bodega: 900,
       stock_inicial_valor: 1000,
       stock_final_valor: 800,
@@ -48,6 +49,7 @@ describe('construirFilasHistoricoPrevYear — con dato', () => {
 
   it('ninguna fila empieza por "=" (texto plano, no fórmulas)', () => {
     const filas = construirFilasHistoricoPrevYear('2026-07', {
+      anio: 2025, mes: 7,
       stock_inicial_valor: 100,
       stock_final_valor: 100,
       compras_total: 50,
@@ -63,11 +65,58 @@ describe('construirFilasHistoricoPrevYear — con dato', () => {
 
   it('con solo stock final + consumo → sólo cobertura es numérica; las otras "Sin dato"', () => {
     const filas = construirFilasHistoricoPrevYear('2026-07', {
+      anio: 2025, mes: 7,
       stock_final_valor: 800,
       consumo_mp: 400,
     })
     assert.equal(filas[0].valor, 'Sin dato')             // rotación
     assert.equal(typeof filas[1].valor, 'number')         // cobertura sí
     assert.equal(filas[2].valor, 'Sin dato')             // consumo/compras
+  })
+})
+
+describe('construirFilasHistoricoPrevYear — guarda defensiva de mes', () => {
+  // Reproduce el bug: Noviembre 2026 con la fila de Diciembre 2025
+  // todavía en memoria. Debe salir "Sin dato" en las 3 filas y la
+  // etiqueta debe decir Noviembre 2025 (nunca Diciembre).
+  it('fila de Dic 2025 con cierre de Nov 2026 → 3 filas "Sin dato"', () => {
+    const filas = construirFilasHistoricoPrevYear('2026-11', {
+      anio: 2025, mes: 12,   // mes OBSOLETO
+      stock_inicial_valor: 10000,
+      stock_final_valor: 9000,
+      compras_total: 5000,
+      consumo_mp: 4500,
+    })
+    assert.equal(filas.length, 3)
+    assert.ok(filas[0].concepto.includes('2025-11'))
+    assert.ok(!filas[0].concepto.includes('2025-12'))
+    assert.equal(filas[0].valor, 'Sin dato')
+    assert.equal(filas[1].valor, 'Sin dato')
+    assert.equal(filas[2].valor, 'Sin dato')
+  })
+
+  it('fila sin anio/mes (obsoleta sin metadata) → 3 filas "Sin dato"', () => {
+    const filas = construirFilasHistoricoPrevYear('2026-07', {
+      stock_inicial_valor: 100,
+      stock_final_valor: 100,
+      compras_total: 50,
+      consumo_mp: 50,
+    })
+    assert.equal(filas[0].valor, 'Sin dato')
+    assert.equal(filas[1].valor, 'Sin dato')
+    assert.equal(filas[2].valor, 'Sin dato')
+  })
+
+  it('fila del mismo mes pero año actual (no YoY) → 3 filas "Sin dato"', () => {
+    const filas = construirFilasHistoricoPrevYear('2026-07', {
+      anio: 2026, mes: 7,
+      stock_inicial_valor: 1000,
+      stock_final_valor: 800,
+      compras_total: 500,
+      consumo_mp: 450,
+    })
+    assert.equal(filas[0].valor, 'Sin dato')
+    assert.equal(filas[1].valor, 'Sin dato')
+    assert.equal(filas[2].valor, 'Sin dato')
   })
 })
