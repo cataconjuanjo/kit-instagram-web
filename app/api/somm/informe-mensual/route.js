@@ -159,14 +159,14 @@ export async function GET(req) {
       W, margin,
       restauranteNombre: restaurante?.nombre || '',
       periodoEs: formatPeriodoPdfEs(periodo),
-      subtitulo: 'Informe de Explotacion Mensual',
+      subtitulo: 'Informe de Explotación Mensual',
       logo,
     })
 
     y = 38
 
     // Sección: Resultados principales
-    line('CUENTA DE EXPLOTACION', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
+    line('CUENTA DE EXPLOTACIÓN', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
     y += 6
     hrule(y)
     y += 6

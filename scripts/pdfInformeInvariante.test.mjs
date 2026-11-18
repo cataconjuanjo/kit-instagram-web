@@ -98,7 +98,7 @@ function generarPdfFixture() {
     W, margin,
     restauranteNombre: 'Casa Marisma',
     periodoEs: formatPeriodoPdfEs('2026-11'),
-    subtitulo: 'Informe de Explotacion Mensual',
+    subtitulo: 'Informe de Explotación Mensual',
     logo,
   })
 
@@ -113,11 +113,11 @@ function generarPdfFixture() {
   let y = 38
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
   doc.setTextColor(...PDF_COLORS.wine)
-  doc.text(ascii('CUENTA DE EXPLOTACION'), margin, y)
+  doc.text(ascii('CUENTA DE EXPLOTACIÓN'), margin, y)
   y += 10
   const filas = [
     ['Ventas netas',               formatEur(fixture.ventasNetas)],
-    ['+ Resto de ingresos de explotacion', formatEur(fixture.restoIngresos)],
+    ['+ Resto de ingresos de explotación', formatEur(fixture.restoIngresos)],
     ['= Total ingresos',           formatEur(fixture.totalIngresos)],
     ['- Consumo Materia Prima',    formatEur(fixture.consumoMp)],
     ['= Margen Bruto',             formatEur(fixture.margenBruto)],
@@ -125,7 +125,7 @@ function generarPdfFixture() {
     ['- Gastos Operacionales',     formatEur(fixture.gastos)],
     ['- Alquileres',               formatEur(fixture.alquiler)],
     ['- Gastos Bancarios',         formatEur(fixture.bancarios)],
-    ['= Margen de Explotacion',    formatEur(fixture.resultado)],
+    ['= Margen de Explotación',    formatEur(fixture.resultado)],
     ['Break-Even del mes',         formatEur(fixture.breakEven)],
   ]
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
@@ -144,10 +144,29 @@ describe('PDF informe — contenido invariable', () => {
   const buf = generarPdfFixture()
   const texto = extraerTextoDePdf(buf)
 
-  it('cabecera: Carta Viva + restaurante + mes en español', () => {
+  it('cabecera: Carta Viva + restaurante + mes en español (formato main)', () => {
     assert.match(texto, /Carta Viva/)
     assert.match(texto, /Casa Marisma/)
-    assert.match(texto, /Noviembre de 2026/)
+    // Formato main: "Noviembre 2026" (sin "de").
+    assert.match(texto, /Noviembre 2026/)
+  })
+
+  it('tildes preservadas en jsPDF (helvetica WinAnsi soporta áéíóúñ)', () => {
+    assert.ok(texto.includes('Explotación'),  'falta "Explotación" (subtítulo/etiquetas)')
+    assert.ok(texto.includes('EXPLOTACIÓN'),  'falta "EXPLOTACIÓN" (título de sección)')
+    assert.ok(texto.includes('Página 1 de 1'), 'falta "Página 1 de 1" en el pie')
+    assert.ok(texto.includes('Informe económico'), 'falta "Informe económico" en el pie')
+  })
+
+  it('logo isotipo embebido: el PDF contiene al menos un objeto /Subtype /Image', () => {
+    // Firma del objeto imagen que jsPDF emite al llamar addImage(PNG).
+    const bin = buf.toString('binary')
+    assert.ok(bin.includes('/Subtype /Image'),
+      'el PDF no contiene objetos de imagen — el logo NO se embebió')
+    // Con el logo PNG real (~77 KB → ~100 KB base64 bundleado, ~75 KB en el
+    // stream del PDF), el PDF total pasa holgado los 15 KB.
+    assert.ok(buf.byteLength > 15_000,
+      `PDF demasiado pequeño (${buf.byteLength} B) para incluir el logo`)
   })
 
   it('contiene TODAS las cifras clave en formato es-ES', () => {
@@ -171,7 +190,7 @@ describe('PDF informe — contenido invariable', () => {
     }
   })
 
-  it('contiene todas las etiquetas de datos', () => {
+  it('contiene todas las etiquetas de datos (con tildes)', () => {
     const esperadas = [
       'Ventas netas',
       '+ Resto de ingresos',
@@ -182,7 +201,7 @@ describe('PDF informe — contenido invariable', () => {
       '- Gastos Operacionales',
       '- Alquileres',
       '- Gastos Bancarios',
-      '= Margen de Explotacion',
+      '= Margen de Explotación',
       'Break-Even del mes',
     ]
     for (const label of esperadas) {
@@ -190,12 +209,12 @@ describe('PDF informe — contenido invariable', () => {
     }
   })
 
-  it('pie con "Pagina 1 de 1"', () => {
-    assert.match(texto, /Pagina 1 de 1/)
+  it('pie con "Página 1 de 1" (con tilde)', () => {
+    assert.match(texto, /Página 1 de 1/)
   })
 
-  it('CUENTA DE EXPLOTACION en burdeos (título de sección)', () => {
-    assert.ok(texto.includes('CUENTA DE EXPLOTACION'))
+  it('CUENTA DE EXPLOTACIÓN en burdeos (título de sección, con tilde)', () => {
+    assert.ok(texto.includes('CUENTA DE EXPLOTACIÓN'))
   })
 
   it('tamaño razonable del PDF (< 300 KB con logo embebido)', () => {
@@ -204,9 +223,9 @@ describe('PDF informe — contenido invariable', () => {
   })
 
   it('una sola página con la fixture actual', () => {
-    // El contador "Pagina X de N" extraído debe tener N=1 (una página).
-    assert.match(texto, /Pagina 1 de 1/)
-    assert.doesNotMatch(texto, /Pagina 2 de/)
+    // El contador "Página X de N" extraído debe tener N=1 (una página).
+    assert.match(texto, /Página 1 de 1/)
+    assert.doesNotMatch(texto, /Página 2 de/)
   })
 })
 
@@ -216,7 +235,7 @@ describe('PDF degradación — sin logo', () => {
     pintarCabecera(doc, {
       W: 210, margin: 18,
       restauranteNombre: 'Casa Marisma',
-      periodoEs: 'Noviembre de 2026',
+      periodoEs: 'Noviembre 2026',
       logo: null,   // simula fallo de carga
     })
     pintarPiesEnTodas(doc, { W: 210 })
@@ -224,8 +243,11 @@ describe('PDF degradación — sin logo', () => {
     const txt = extraerTextoDePdf(out)
     assert.match(txt, /Carta Viva/)
     assert.match(txt, /Casa Marisma/)
-    assert.match(txt, /Pagina 1 de 1/)
+    assert.match(txt, /Página 1 de 1/)
     // Sin logo embebido, el PDF debe ser más pequeño que con logo.
     assert.ok(out.byteLength < 30_000, `PDF sin logo: ${out.byteLength} B`)
+    // Y además no debe contener ningún objeto imagen.
+    assert.ok(!out.toString('binary').includes('/Subtype /Image'),
+      'sin logo no debería haber imágenes en el PDF')
   })
 })

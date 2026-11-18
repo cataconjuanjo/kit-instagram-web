@@ -18,10 +18,13 @@
  * dependencia del DOM. La lectura del logo usa fs.readFileSync.
  */
 
-import fs from 'node:fs'
-import path from 'node:path'
 import { BRAND } from './excelEstilos.js'
 import { leerDimensionesPng } from './excelEstilos.js'
+import {
+  ISOTIPO_PNG_HEIGHT,
+  ISOTIPO_PNG_WIDTH,
+  getIsotipoBuffer,
+} from './isotipoBase64.js'
 
 // Convierte HEX (6 chars, sin '#') → [r, g, b] 0..255 (lo que
 // jsPDF espera en setTextColor/setFillColor/setDrawColor).
@@ -55,7 +58,7 @@ const MESES_ES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-/** 'YYYY-MM' → 'Noviembre de 2026'. Formato con "de" para encabezados. */
+/** 'YYYY-MM' → 'Noviembre 2026' (mismo formato que main; sin "de"). */
 export function formatPeriodoPdfEs(periodo) {
   if (typeof periodo !== 'string') return ''
   const m = periodo.match(/^(\d{4})-(\d{2})$/)
@@ -63,25 +66,39 @@ export function formatPeriodoPdfEs(periodo) {
   const y = +m[1]
   const mo = +m[2]
   if (mo < 1 || mo > 12) return periodo
-  return `${MESES_ES[mo - 1]} de ${y}`
+  return `${MESES_ES[mo - 1]} ${y}`
 }
 
-// ── Logo isotipo: lectura con fs (server-side) ─────────────────────────
+// ── Logo isotipo: módulo base64 embebido en el bundle ─────────────────
+//
+// En main el módulo leía el PNG con `fs.readFileSync('public/…')`,
+// pero en runtime serverless (Vercel) `public/` NO está disponible
+// en el fs de la lambda — sólo se sirve estáticamente por el CDN.
+// La función caía al null-fallback y el PDF salía sin logo (9.4 KB
+// y 0 objetos /Subtype /Image, verificado en el preview d48b846).
+//
+// Fix: importamos el PNG inline como base64 desde `isotipoBase64.js`,
+// un módulo generado desde el fichero real y commiteado al repo. Al
+// importarse como JS, se bundlea con la función serverless y
+// funciona idéntico en local y en producción. Añade ~100 KB al
+// bundle de la ruta (aceptable para serverless, límite 50 MB).
+//
+// Se mantiene `leerDimensionesPng` para derivar el ratio exacto
+// del PNG y no estirarlo nunca.
 
-const LOGO_FS_PATH = path.join(process.cwd(), 'public/brand/carta-viva/isotipo.png')
-
-/**
- * Carga el logo isotipo desde el filesystem. Devuelve
- * `{ buffer, width, height }` o null si falla (p. ej. fichero
- * ausente, lectura rechazada). El consumidor degrada a solo
- * texto "Carta Viva" en ese caso.
- */
 export function cargarLogoPdf() {
   try {
-    const buffer = fs.readFileSync(LOGO_FS_PATH)
-    const dims = leerDimensionesPng(buffer)
-    if (!dims) return null
-    return { buffer, width: dims.width, height: dims.height }
+    const buffer = getIsotipoBuffer()
+    if (!buffer || buffer.length === 0) return null
+    // Dimensiones: se podrían leer con leerDimensionesPng, pero
+    // el módulo ya exporta ancho y alto exactos del PNG; usamos
+    // esos valores para evitar reparseo del header.
+    const width  = ISOTIPO_PNG_WIDTH
+    const height = ISOTIPO_PNG_HEIGHT
+    // Defensivo: si por cualquier motivo el buffer no es un PNG
+    // (corrupción), seguimos devolviendo null.
+    if (!leerDimensionesPng(buffer)) return null
+    return { buffer, width, height }
   } catch {
     return null
   }
@@ -163,9 +180,10 @@ export function pintarPie(doc, { W, pagina, totalPaginas, yBottom = 287 }) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...PDF_COLORS.textDark)
-  doc.text('Carta Viva · Informe economico', 18, yBottom)
+  // Helvetica estándar de jsPDF soporta WinAnsi (incluye tildes y ñ).
+  doc.text('Carta Viva · Informe económico', 18, yBottom)
   doc.text(
-    `Pagina ${pagina} de ${totalPaginas}`,
+    `Página ${pagina} de ${totalPaginas}`,
     W - 18, yBottom,
     { align: 'right' },
   )

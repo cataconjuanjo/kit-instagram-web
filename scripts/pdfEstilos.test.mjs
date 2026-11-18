@@ -50,11 +50,11 @@ describe('hexToRgb + PDF_COLORS', () => {
 })
 
 describe('formatPeriodoPdfEs', () => {
-  it("'2026-11' → 'Noviembre de 2026'", () => {
-    assert.equal(formatPeriodoPdfEs('2026-11'), 'Noviembre de 2026')
+  it("'2026-11' → 'Noviembre 2026' (mismo formato que main; sin 'de')", () => {
+    assert.equal(formatPeriodoPdfEs('2026-11'), 'Noviembre 2026')
   })
-  it("'2026-01' → 'Enero de 2026'", () => {
-    assert.equal(formatPeriodoPdfEs('2026-01'), 'Enero de 2026')
+  it("'2026-01' → 'Enero 2026'", () => {
+    assert.equal(formatPeriodoPdfEs('2026-01'), 'Enero 2026')
   })
   it('inválido / vacío → "" o se devuelve tal cual', () => {
     assert.equal(formatPeriodoPdfEs(''), '')
@@ -64,13 +64,34 @@ describe('formatPeriodoPdfEs', () => {
   })
 })
 
-describe('cargarLogoPdf — lectura del isotipo real', () => {
-  it('lee public/brand/carta-viva/isotipo.png y devuelve dims 512×512', () => {
+describe('cargarLogoPdf — módulo base64 embebido (funciona en Vercel)', () => {
+  it('devuelve { buffer, width:512, height:512 } sin leer el fs', () => {
     const logo = cargarLogoPdf()
     assert.ok(logo, 'logo no cargado')
     assert.ok(Buffer.isBuffer(logo.buffer) || logo.buffer instanceof Uint8Array)
     assert.equal(logo.width, 512)
     assert.equal(logo.height, 512)
+    // Validación adicional: el buffer es un PNG válido (firma magic).
+    const u8 = logo.buffer instanceof Uint8Array ? logo.buffer : new Uint8Array(logo.buffer)
+    assert.equal(u8[0], 0x89)
+    assert.equal(u8[1], 0x50)   // 'P'
+    assert.equal(u8[2], 0x4E)   // 'N'
+    assert.equal(u8[3], 0x47)   // 'G'
+  })
+
+  it('funciona aunque public/ no esté disponible (simulación: cwd vacío)', () => {
+    // Simula entorno serverless: process.cwd apunta a directorio
+    // sin public/. El módulo NO usa fs/cwd en runtime, así que
+    // debe seguir funcionando.
+    const originalCwd = process.cwd
+    try {
+      process.cwd = () => '/tmp/no-existe-public'
+      const logo = cargarLogoPdf()
+      assert.ok(logo, 'logo debe cargar aunque no haya public/ en cwd')
+      assert.equal(logo.width, 512)
+    } finally {
+      process.cwd = originalCwd
+    }
   })
 })
 
@@ -120,7 +141,7 @@ describe('pintarCabecera — banda burdeos + logo con proporción', () => {
     pintarCabecera(doc, {
       W: 210, margin: 18,
       restauranteNombre: 'Casa Marisma',
-      periodoEs: 'Noviembre de 2026',
+      periodoEs: 'Noviembre 2026',
       subtitulo: 'Informe de Explotacion Mensual',
       logo,
     })
@@ -147,7 +168,7 @@ describe('pintarCabecera — banda burdeos + logo con proporción', () => {
     const textos = doc.calls.text.map(t => t.txt)
     assert.ok(textos.includes('Carta Viva'))
     assert.ok(textos.includes('Informe de Explotacion Mensual'))
-    assert.ok(textos.includes('Noviembre de 2026'))
+    assert.ok(textos.includes('Noviembre 2026'))
     assert.ok(textos.includes('Casa Marisma'))
   })
 
@@ -156,7 +177,7 @@ describe('pintarCabecera — banda burdeos + logo con proporción', () => {
     pintarCabecera(doc, {
       W: 210, margin: 18,
       restauranteNombre: 'Casa Marisma',
-      periodoEs: 'Noviembre de 2026',
+      periodoEs: 'Noviembre 2026',
       logo: null,
     })
     assert.equal(doc.calls.image.length, 0)
@@ -168,21 +189,21 @@ describe('pintarCabecera — banda burdeos + logo con proporción', () => {
 })
 
 describe('pintarPiesEnTodas — Página X de N en todas', () => {
-  it('con 1 página → "Pagina 1 de 1"', () => {
+  it('con 1 página → "Página 1 de 1"', () => {
     const doc = createJsPdfSpy(1)
     pintarPiesEnTodas(doc, { W: 210 })
     const paginas = doc.calls.text
       .map(t => t.txt)
-      .filter(x => /^Pagina \d+ de \d+$/.test(x))
-    assert.deepEqual(paginas, ['Pagina 1 de 1'])
+      .filter(x => /^Página \d+ de \d+$/.test(x))
+    assert.deepEqual(paginas, ['Página 1 de 1'])
   })
-  it('con 3 páginas → "Pagina 1 de 3", "2 de 3", "3 de 3"', () => {
+  it('con 3 páginas → "Página 1 de 3", "2 de 3", "3 de 3"', () => {
     const doc = createJsPdfSpy(3)
     pintarPiesEnTodas(doc, { W: 210 })
     const paginas = doc.calls.text
       .map(t => t.txt)
-      .filter(x => /^Pagina \d+ de \d+$/.test(x))
-    assert.deepEqual(paginas, ['Pagina 1 de 3', 'Pagina 2 de 3', 'Pagina 3 de 3'])
+      .filter(x => /^Página \d+ de \d+$/.test(x))
+    assert.deepEqual(paginas, ['Página 1 de 3', 'Página 2 de 3', 'Página 3 de 3'])
   })
   it('restaura la página activa al terminar (snapshot al inicio)', () => {
     const doc = createJsPdfSpy(3)
