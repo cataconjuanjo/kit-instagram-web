@@ -4258,6 +4258,112 @@ export default function KioskoPage() {
     }
   }, [tienda?.font_family])
 
+  // F7 · Instrumentación opcional de fullscreen (?debugfs=1).
+  //
+  // Objetivo: diagnosticar la salida del fullscreen que reporta el puesto
+  // de Síbaris cada vez que salta a destacados. Sin este flag el kiosko
+  // se comporta exactamente como antes (cero cambios de runtime). Con el
+  // flag activo:
+  //   · Se parchea `Element.prototype.requestFullscreen` y
+  //     `document.exitFullscreen` para `console.trace` cada llamada
+  //     ANTES de delegar en la implementación nativa. Así vemos QUIÉN
+  //     (y desde qué stack) provoca entrar/salir.
+  //   · Se loguea cada `fullscreenchange` / `webkitfullscreenchange` con
+  //     la vista actual, el elemento fullscreen y la visibilidad.
+  //   · Al desmontar restauramos los originales. Todo va entre try/catch
+  //     para no romper el kiosko si algo del navegador cambia.
+  useEffect(() => {
+    if (searchParams.get('debugfs') !== '1') return
+    let restoreReq = null
+    let restoreExit = null
+    let restoreWkReq = null
+    try {
+      const origReq = Element.prototype.requestFullscreen
+      if (typeof origReq === 'function') {
+        Element.prototype.requestFullscreen = function patchedRequestFullscreen(...args) {
+          try {
+            const tag = this?.tagName || '?'
+            const id = this?.id ? `#${this.id}` : ''
+            const cls = this?.className ? `.${String(this.className).split(' ').join('.')}` : ''
+            console.trace('[fs] requestFullscreen called on', `${tag}${id}${cls}`, 'view=', viewRef.current)
+          } catch {}
+          return origReq.apply(this, args)
+        }
+        restoreReq = () => { Element.prototype.requestFullscreen = origReq }
+      }
+      const origWkReq = Element.prototype.webkitRequestFullscreen
+      if (typeof origWkReq === 'function') {
+        Element.prototype.webkitRequestFullscreen = function patchedWebkitRequestFullscreen(...args) {
+          try {
+            const tag = this?.tagName || '?'
+            console.trace('[fs] webkitRequestFullscreen called on', tag, 'view=', viewRef.current)
+          } catch {}
+          return origWkReq.apply(this, args)
+        }
+        restoreWkReq = () => { Element.prototype.webkitRequestFullscreen = origWkReq }
+      }
+      const origExit = document.exitFullscreen
+      if (typeof origExit === 'function') {
+        document.exitFullscreen = function patchedExitFullscreen(...args) {
+          try {
+            console.trace('[fs] exitFullscreen called', 'view=', viewRef.current)
+          } catch {}
+          return origExit.apply(document, args)
+        }
+        restoreExit = () => { document.exitFullscreen = origExit }
+      }
+    } catch (err) {
+      console.warn('[fs] instrumentación fallida:', err?.message || err)
+    }
+
+    const logFsChange = (ev) => {
+      try {
+        const el = document.fullscreenElement || document.webkitFullscreenElement || null
+        const tag = el?.tagName || null
+        const id = el?.id || null
+        const cls = el?.className || null
+        console.log('[fs]', ev.type, {
+          t: Date.now(),
+          view: viewRef.current,
+          fullscreenElement: el ? { tag, id, cls } : null,
+          visibilityState: document.visibilityState,
+        })
+      } catch {}
+    }
+    document.addEventListener('fullscreenchange', logFsChange)
+    document.addEventListener('webkitfullscreenchange', logFsChange)
+
+    console.log('[fs] debug activado. Observa pointerdown/click para gesto de rescate.')
+
+    return () => {
+      try { restoreReq && restoreReq() } catch {}
+      try { restoreWkReq && restoreWkReq() } catch {}
+      try { restoreExit && restoreExit() } catch {}
+      document.removeEventListener('fullscreenchange', logFsChange)
+      document.removeEventListener('webkitfullscreenchange', logFsChange)
+    }
+  }, [searchParams])
+
+  // F7 · Rescate pasivo: cuando la vista cambia a SHOWCASE y teníamos
+  // intención de fullscreen pero NO estamos en fullscreen, intentamos
+  // recuperar. En Chrome desktop sin --kiosk esta llamada puede ser
+  // rechazada (requiere "transient user activation"); en PWA instalada
+  // con `display: fullscreen` o en Chrome iniciado con --kiosk sí es
+  // viable. No reemplaza a la red de seguridad por gesto, la refuerza.
+  useEffect(() => {
+    if (view !== VIEWS.SHOWCASE) return
+    try {
+      const intent = sessionStorage.getItem('kiosko:fullscreenDeseado') === '1'
+      if (!intent) return
+      if (document.fullscreenElement || document.webkitFullscreenElement) return
+      const el = document.documentElement
+      try {
+        if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}) }
+        else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen() }
+      } catch {}
+    } catch {}
+  }, [view])
+
   useEffect(() => {
     let keyboardCausedExit = false
     let gestureRearmed = false
