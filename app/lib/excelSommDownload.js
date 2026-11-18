@@ -22,6 +22,7 @@ import {
   aplicarHeaderFooter,
   cargarLogoBuffer,
   construirHojaConBranding,
+  leerDimensionesPng,
 } from './excelEstilos.js'
 
 export async function descargarWorkbook(spec) {
@@ -36,6 +37,9 @@ export async function descargarWorkbook(spec) {
   const logoImageId = (logoBuffer && typeof wb.addImage === 'function')
     ? wb.addImage({ buffer: logoBuffer, extension: 'png' })
     : null
+  // Dimensiones REALES del PNG (IHDR). Si no se pudieron leer, el
+  // builder caerá a un cuadrado 56×56 — mejor que estirar.
+  const logoDims = logoBuffer ? leerDimensionesPng(logoBuffer) : null
 
   const restauranteNombre = spec.restauranteNombre || ''
   const periodo           = spec.periodo           || ''
@@ -45,6 +49,7 @@ export async function descargarWorkbook(spec) {
     try {
       construirHojaConBranding(ws, sheet, {
         logoImageId,
+        logoDims,
         restauranteNombre,
         periodo,
       })

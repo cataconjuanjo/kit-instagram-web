@@ -60,15 +60,14 @@ describe('BRAND / TAB_COLORS / constantes', () => {
     assert.ok(Object.isFrozen(TAB_COLORS))
   })
 
-  it('BRANDING_ROWS = 4 y LOGO_ANCHOR cae dentro de filas 1..3', () => {
+  it('BRANDING_ROWS = 4 y LOGO_ANCHOR.tl = (0,0)', () => {
     assert.equal(BRANDING_ROWS, 4)
     assert.equal(LOGO_ANCHOR.tl.col, 0)
     assert.equal(LOGO_ANCHOR.tl.row, 0)
-    assert.equal(LOGO_ANCHOR.br.col, 1)
-    assert.equal(LOGO_ANCHOR.br.row, 3)
-    // La tabla empieza en BRANDING_ROWS+1=5; datos en BRANDING_ROWS+2=6,
-    // claramente por debajo del anclaje del logo (fila 4).
-    assert.ok(BRANDING_ROWS + 2 > LOGO_ANCHOR.br.row + 1)
+    // LOGO_ANCHOR ya NO lleva `br`: el tamaño va por `ext` calculado
+    // desde las dimensiones reales del PNG. La altura objetivo son
+    // 56 px (≤ 32+16+16=64 px del bloque de título).
+    assert.equal(LOGO_ANCHOR.targetHeight, 56)
   })
 })
 

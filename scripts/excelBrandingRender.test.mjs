@@ -217,18 +217,14 @@ describe('Branding — informe económico — invarianza celda a celda', () => {
   })
 
   it('logo anclado dentro de las filas 1..3 (sin tapar la tabla)', () => {
-    // El anclaje se verifica sobre la constante LOGO_ANCHOR y las
-    // alturas del bloque. `br.row = 3` es exclusivo en ExcelJS (la
-    // imagen se extiende hasta el inicio de la fila 4, no la ocupa).
+    // El anclaje nuevo usa tl + ext (no br). La constante
+    // LOGO_ANCHOR expone tl y targetHeight; la primera fila de
+    // datos es BRANDING_ROWS+2 = 6, muy por debajo del logo.
     assert.equal(LOGO_ANCHOR.tl.row, 0)
-    assert.equal(LOGO_ANCHOR.br.row, 3)
-    // Suma de alturas de filas 1..3 (32+16+16=64 px) ≥ 56 px del logo.
-    // No hace falta recalcular aquí: las constantes están congeladas
-    // y la fila 4 queda como aire antes del header.
-    // Lo crítico: la primera fila de datos es BRANDING_ROWS+2 = 6,
-    // muy por debajo de la zona anclada del logo (filas 1..3).
-    assert.ok(BRANDING_ROWS + 2 > LOGO_ANCHOR.br.row + 1,
-      'primera fila de datos debe caer bajo el anclaje del logo')
+    assert.equal(LOGO_ANCHOR.tl.col, 0)
+    assert.equal(LOGO_ANCHOR.targetHeight, 56)
+    assert.ok(BRANDING_ROWS + 2 > 3,
+      'primera fila de datos debe caer bajo el bloque de título')
   })
 
   it('print header contiene marca + restaurante + mes en español', async () => {
