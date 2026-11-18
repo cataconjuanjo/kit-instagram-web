@@ -148,7 +148,7 @@ export const CANALES_SALIDA_SIN_VENTA = Object.freeze([
  *
  * `beneficio = ingresos_neto − coste`.
  */
-export function listarCanalesVenta(porCanal = {}, { iva_pct = null } = {}) {
+export function listarCanalesVenta(porCanal = {}, { iva_pct = null, eventos = null } = {}) {
   const iva = toNum(iva_pct)
   const factor = iva != null && iva >= 0 ? (1 + iva / 100) : 1
   const out = []
@@ -170,6 +170,39 @@ export function listarCanalesVenta(porCanal = {}, { iva_pct = null } = {}) {
       coste:          r2(coste),
       beneficio:      r2(neto - coste),
     })
+  }
+
+  // Fase A — eventos de bodega: cabeceras de maridajes y grupos con
+  // importe NETO facturado (la columna `ingresos` ya es neto, no se
+  // convierte por iva). `eventos` tiene la forma
+  //   { maridaje: { num, importe_neto_total, comensales_total },
+  //     grupo:    { num, importe_neto_total, comensales_total } }
+  // (producida por `sumarEventosPorTipo` en app/lib/eventosBodega.js).
+  //
+  // Sólo añadimos la fila si hay dato (importe_neto_total > 0). El
+  // coste no viene de aquí: el consumo de vino de esos eventos sigue
+  // en `por_canal.evento.coste` / `por_canal.maridaje.coste` desde
+  // movimientos_stock. Para el beneficio del Excel sumamos ambos.
+  const addEventoRow = (canal, agregado) => {
+    if (!agregado) return
+    const neto = toNum(agregado.importe_neto_total) ?? 0
+    if (neto <= 0) return
+    const costeCanal = toNum(porCanal?.[canal]?.coste) ?? 0
+    const uds = toNum(agregado.comensales_total) ?? toNum(agregado.n) ?? 0
+    const bruto = (iva != null && iva >= 0) ? neto * (1 + iva / 100) : neto
+    out.push({
+      canal,
+      uds: r4(uds),
+      copas: null,
+      ingresos_neto:  r2(neto),
+      ingresos_bruto: r2(bruto),
+      coste:          r2(costeCanal),
+      beneficio:      r2(neto - costeCanal),
+    })
+  }
+  if (eventos && typeof eventos === 'object') {
+    addEventoRow('maridaje', eventos.maridaje)
+    addEventoRow('evento',   eventos.grupo)
   }
   return out
 }

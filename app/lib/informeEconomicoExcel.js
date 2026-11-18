@@ -384,12 +384,21 @@ function construirSheetCanalesVenta({ datosVino }) {
   const porCanal = datosVino?.informe?.por_canal
   if (!porCanal) return null
   const ivaPct = Number.isFinite(Number(datosVino?.iva_pct)) ? Number(datosVino.iva_pct) : null
-  const filas = listarCanalesVenta(porCanal, { iva_pct: ivaPct })
+  // Fase A: si el snapshot trae `informe.eventos` (producido por
+  // calcularMesBodega leyendo la tabla eventos_bodega), lo pasamos a
+  // listarCanalesVenta para que añada las filas "Maridaje" y
+  // "Grupos / Eventos" con sus ingresos NETOS NO incluidos en TPV.
+  // Si no hay eventos (tabla ausente o mes sin cabeceras), queda
+  // igual que main.
+  const eventos = datosVino?.informe?.eventos || null
+  const filas = listarCanalesVenta(porCanal, { iva_pct: ivaPct, eventos })
   if (filas.length === 0) return null
 
   const CANAL_LABEL = {
-    botella: 'Botella (mesa)',
-    copa:    'Copa',
+    botella:  'Botella (mesa)',
+    copa:     'Copa',
+    maridaje: 'Maridaje',
+    evento:   'Grupos / Eventos',
   }
   const nFilas   = filas.length
   const rowTotal = nFilas + 2  // header=1, filas 2..nFilas+1, total nFilas+2

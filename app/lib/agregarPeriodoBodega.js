@@ -467,9 +467,57 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
 
   const informe = await agregarPeriodoBodega({ restaurante_id, desde, hasta, supabase })
 
+  // Fase A — eventos de bodega: cabeceras de maridaje/grupo con
+  // importe neto facturado. La tabla `public.eventos_bodega` es
+  // opcional: si no existe (migración pendiente) la consulta falla
+  // con 42P01 y el agregador degrada silenciosamente.
+  //
+  // DECISIÓN DOCUMENTADA (ver app/lib/eventosBodega.js):
+  //   - NO se suman a `ventas_neto` para no romper la coherencia
+  //     con cierres firmados ni con YoY de Explotación.
+  //   - Se exponen en `informe.eventos` y como filas propias en la
+  //     hoja "Canales venta" del Excel.
+  //   - Los eventos con `incluido_en_tpv=true` se muestran en la
+  //     pestaña Eventos pero NO suman al canal (evita doble conteo).
+  let eventosAgregados = null
+  try {
+    const { data: eventos, error: errEv } = await supabase
+      .from('eventos_bodega')
+      .select('tipo, importe_neto, importe_bruto, num_comensales, incluido_en_tpv, fecha')
+      .eq('restaurante_id', restaurante_id)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+    if (!errEv && Array.isArray(eventos)) {
+      // Import lazy para evitar ciclos en builds server.
+      const { sumarEventosPorTipo } = await import('./eventosBodega.js')
+      eventosAgregados = sumarEventosPorTipo(eventos)
+    } else if (errEv) {
+      // Si no es "relación inexistente", logueamos para diagnóstico.
+      // Degradación: eventosAgregados queda null y el agregador no
+      // adjunta `informe.eventos`; comportamiento igual a main.
+      const { esRelacionInexistente } = await import('./eventosBodega.js')
+      if (!esRelacionInexistente(errEv)) {
+        console.warn('[agregarPeriodoBodega:eventos_bodega]', {
+          code:    errEv.code,
+          message: errEv.message,
+          hint:    errEv.hint,
+          details: errEv.details,
+        })
+      }
+    }
+  } catch (err) {
+    // Excepción inesperada (tipo de datos, red). No rompemos el
+    // agregador — degrada sin eventos.
+    console.warn('[agregarPeriodoBodega:eventos_bodega] excepción', err?.message || err?.name)
+  }
+
   const ventas_bruto     = informe.resumen.ingresos_venta
   const ventas_neto      = r2(ventas_bruto / (1 + ivaPct / 100))
   const salidas_no_venta = informe.resumen.consumos_valor
+  // Ventas netas provenientes de cabeceras de eventos NO-TPV
+  // (informativo; NO se suma a ventas_neto).
+  const ventas_eventos_neto = eventosAgregados
+    ? r2(eventosAgregados.ingresos_netos_para_canal) : 0
 
   // Coste de ventas teórico
   const copasVendibles = r4(copasXBot * (1 - merraPct / 100))
@@ -692,12 +740,21 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     coste_ventas_teorico,
   })
 
+  // Fase A — enriquecemos `informe.eventos` con los agregados por
+  // tipo para que el Excel lo consuma al pintar la hoja "Canales
+  // venta". Si no hay tabla / mes vacío, queda null y la hoja no
+  // añade filas de maridaje/evento.
+  const informeConEventos = eventosAgregados
+    ? { ...informe, eventos: eventosAgregados }
+    : informe
+
   return {
     mes, desde, hasta,
     partes_incluidos:     informe.meta.partes_incluidos,
     borradores_excluidos: informe.meta.borradores_excluidos ?? 0,
     b8_pendiente:         informe.meta.b8_pendiente ?? false,
     ventas_bruto, ventas_neto, iva_pct: ivaPct,
+    ventas_eventos_neto,            // informativo; NO suma a ventas_neto
     coste_ventas_teorico, margen_bruto, margen_pct,
     compras_bruto, devoluciones, compras_netas,
     salidas_no_venta,
@@ -707,7 +764,7 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     resultado,
     cobertura: { partes_incluidos: informe.meta.partes_incluidos, sin_coste },
     rendimiento_copa,
-    informe,
+    informe: informeConEventos,
     desglose,
   }
 }
