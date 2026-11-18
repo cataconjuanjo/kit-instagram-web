@@ -45,6 +45,7 @@ import {
   esErrorColumnaFalta,
   parseComaEs as parseComaEsIng,
 } from '../../lib/explotacionIngresos'
+import { datosParaPeriodo } from '../../lib/canalesSalidas'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -681,7 +682,17 @@ function ExplotacionContent() {
         bancarios,
         canales,
         registrosCompras: regsCompras || [],
-        datosVino,
+        // Fase 3: usamos la fuente EN VIVO del agregador (datosCierreApi)
+        // o el snapshot firmado (datosVino), lo que esté disponible.
+        // Guarda defensiva CRÍTICA: `datosParaPeriodo({mes,datos}, periodo)`
+        // garantiza que sólo usamos un cache si se cargó para el MISMO
+        // periodo que estamos exportando. Sin esta comprobación, al
+        // cambiar de 2026-11 a 2026-10 y pulsar Excel antes de que
+        // acabara el fetch, el workbook salía con los datos del mes
+        // anterior (bug A reportado en el preview).
+        datosVino:
+          datosParaPeriodo({ mes: datosCierreApiMes, datos: datosCierreApi }, periodo)
+          || datosParaPeriodo({ mes: datosVinoMes,      datos: datosVino      }, periodo),
         // F4: % bodega por concepto. Con imputacion_pct = {} las nuevas
         // columnas del Excel se pintan a 100 % → imputado = importe
         // total, idéntico al comportamiento anterior.
@@ -732,6 +743,12 @@ function ExplotacionContent() {
     stock_final_valor: '',  compras_total: '',
   })
   const [datosVino, setDatosVino] = useState(null)
+  // Stamps del periodo con el que se cargaron datosVino y datosCierreApi.
+  // Si el usuario cambia de periodo y el fetch del nuevo mes aún no
+  // llegó, el export NO debe cruzar los datos del mes anterior
+  // (bug A reportado en el preview). Lo chequeamos con
+  // datosParaPeriodo(cached, periodo) del módulo canalesSalidas.
+  const [datosVinoMes, setDatosVinoMes] = useState(null)
   // Fuente del desglose para la sugerencia de "Consumo calculado".
   // Viene del mismo endpoint que usa el panel Cierre mensual, que
   // devuelve el snapshot firmado (cierre.snapshot) si existe o el
@@ -740,6 +757,7 @@ function ExplotacionContent() {
   //   null  = aún no cargado o no se pudo cargar.
   //   {...} = snapshot o cálculo en vivo, con o sin bloque desglose v1.
   const [datosCierreApi, setDatosCierreApi] = useState(null)
+  const [datosCierreApiMes, setDatosCierreApiMes] = useState(null)
   const [cierreExiste, setCierreExiste] = useState(null) // null=cargando, true/false
   const [aplicandoCierre, setAplicandoCierre] = useState(false)
   // Perfil Somm: la pantalla habla solo de vino. Guardamos la fila
@@ -816,8 +834,20 @@ function ExplotacionContent() {
   }, [])
 
   useEffect(() => {
+    if (!restaurante) return
+    // Cancelación por cambio de periodo o restaurante: la respuesta
+    // de un fetch obsoleto no debe sobreescribir el estado del periodo
+    // actual. Además, ANTES del fetch reseteamos a null los estados
+    // dependientes del periodo para que el Excel/PDF no pueda usar
+    // datos del mes anterior durante la ventana de carga (bug A).
+    let cancelado = false
+    setDatosVino(null)
+    setDatosVinoMes(null)
+    setDatosCierreApi(null)
+    setDatosCierreApiMes(null)
+    setCierreExiste(null)
+    const periodoDeLaCarga = periodo
     async function cargarPeriodo() {
-      if (!restaurante) return
       const { data } = await supabase
         .from('parametros_explotacion')
         .select('*')
@@ -912,7 +942,9 @@ function ExplotacionContent() {
         .eq('restaurante_id', restaurante.id)
         .eq('mes', periodo)
         .maybeSingle()
+      if (cancelado) return
       setDatosVino(cierre?.snapshot || null)
+      setDatosVinoMes(periodoDeLaCarga)
       if (errCierre) {
         console.warn('[explotacion] no se pudo verificar cierre del periodo', periodo, errCierre.message)
         setCierreExiste(null)
@@ -929,18 +961,25 @@ function ExplotacionContent() {
           `/api/cierres-mes?restaurante_id=${restaurante.id}&mes=${periodo}`,
           { method: 'GET' }
         )
+        if (cancelado) return
         if (res.ok) {
           const json = await res.json()
+          if (cancelado) return
           const src = json?.cerrado ? json?.cierre?.snapshot : json?.datos
           setDatosCierreApi(src || null)
+          setDatosCierreApiMes(periodoDeLaCarga)
         } else {
           setDatosCierreApi(null)
+          setDatosCierreApiMes(periodoDeLaCarga)
         }
       } catch {
+        if (cancelado) return
         setDatosCierreApi(null)
+        setDatosCierreApiMes(periodoDeLaCarga)
       }
     }
     cargarPeriodo()
+    return () => { cancelado = true }
   }, [restaurante, periodo])
 
   const totales = useMemo(() => {
@@ -1187,47 +1226,61 @@ function ExplotacionContent() {
                 Mes sin cerrar: los datos son entrada manual
               </span>
             )}
-            <button
-              type="button"
-              onClick={descargarPdf}
-              disabled={!restaurante || pdfCargando}
-              style={{
-                padding: '8px 16px',
-                border: '1px solid #d8d3c8',
-                borderRadius: 6,
-                fontSize: 13,
-                color: '#444',
-                background: '#fff',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                cursor: (!restaurante || pdfCargando) ? 'not-allowed' : 'pointer',
-                opacity: (!restaurante || pdfCargando) ? 0.6 : 1,
-              }}
-            >
-              {pdfCargando ? 'Generando…' : '↓ PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={descargarExcelInforme}
-              disabled={!restaurante || excelCargando}
-              title="Descargar informe económico del periodo en Excel (varias hojas)"
-              style={{
-                padding: '8px 16px',
-                border: '1px solid #d8d3c8',
-                borderRadius: 6,
-                fontSize: 13,
-                color: '#444',
-                background: '#fff',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                cursor: (!restaurante || excelCargando) ? 'not-allowed' : 'pointer',
-                opacity: (!restaurante || excelCargando) ? 0.6 : 1,
-              }}
-            >
-              {excelCargando ? 'Generando…' : 'Informe económico (Excel)'}
-            </button>
+            {(() => {
+              // Mientras el fetch del periodo no termine, los dos
+              // botones de export quedan disabled. Evita exportar
+              // con datos del mes anterior cacheados en estado.
+              const datosListos = datosCierreApiMes === periodo && datosVinoMes === periodo
+              const tip = datosListos ? '' : 'Cargando datos del periodo…'
+              const pdfDisabled   = !restaurante || pdfCargando   || !datosListos
+              const excelDisabled = !restaurante || excelCargando || !datosListos
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={descargarPdf}
+                    disabled={pdfDisabled}
+                    title={tip}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #d8d3c8',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      color: '#444',
+                      background: '#fff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: pdfDisabled ? 'not-allowed' : 'pointer',
+                      opacity: pdfDisabled ? 0.6 : 1,
+                    }}
+                  >
+                    {pdfCargando ? 'Generando…' : '↓ PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={descargarExcelInforme}
+                    disabled={excelDisabled}
+                    title={tip || 'Descargar informe económico del periodo en Excel (varias hojas)'}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #d8d3c8',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      color: '#444',
+                      background: '#fff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: excelDisabled ? 'not-allowed' : 'pointer',
+                      opacity: excelDisabled ? 0.6 : 1,
+                    }}
+                  >
+                    {excelCargando ? 'Generando…' : 'Informe económico (Excel)'}
+                  </button>
+                </>
+              )
+            })()}
             {pdfError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{pdfError}</span>}
             {excelError && <span style={{ fontSize: 13, color: '#e74c3c' }}>{excelError}</span>}
             {guardado && <span style={{ fontSize: 13, color: '#27ae60' }}>Guardado ✓</span>}
