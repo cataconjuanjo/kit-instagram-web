@@ -55,7 +55,10 @@ export async function PATCH(req, { params }) {
 
     if (error) {
       if (esRelacionInexistente(error)) return respSqlPendiente()
-      console.error('[eventos-bodega PATCH]', error.message)
+      console.error('[eventos-bodega PATCH]', {
+        code: error.code, message: error.message,
+        hint: error.hint, details: error.details,
+      })
       return Response.json({ error: 'No se pudo actualizar el evento.' }, { status: 500 })
     }
     return Response.json({ evento: data })
@@ -86,7 +89,10 @@ export async function DELETE(req, { params }) {
 
     if (error) {
       if (esRelacionInexistente(error)) return respSqlPendiente()
-      console.error('[eventos-bodega DELETE]', error.message)
+      console.error('[eventos-bodega DELETE]', {
+        code: error.code, message: error.message,
+        hint: error.hint, details: error.details,
+      })
       return Response.json({ error: 'No se pudo borrar el evento.' }, { status: 500 })
     }
     return Response.json({ ok: true })

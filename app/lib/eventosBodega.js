@@ -240,14 +240,38 @@ export function ingresosCanalDesdeEventos(eventos = []) {
 
 /**
  * Detecta si un error de Supabase/PostgREST corresponde a tabla
- * ausente (42P01 "relation does not exist") — devuelve true cuando
- * la pestaña de Eventos debe mostrar "SQL pendiente" y el agregador
- * debe tratar los eventos como lista vacía.
+ * ausente — devuelve true cuando la pestaña de Eventos debe mostrar
+ * "SQL pendiente" y el agregador debe tratar los eventos como lista
+ * vacía.
+ *
+ * Códigos y mensajes cubiertos:
+ *   - `42P01` → código Postgres nativo "undefined_table".
+ *   - `PGRST205` → PostgREST, tabla no encontrada en schema cache.
+ *     Mensaje típico: "Could not find the table 'public.X' in the
+ *     schema cache". ESTE es el que devuelve Supabase cuando la
+ *     migración no se ha aplicado (verificado en preview).
+ *   - `PGRST200` → variante PostgREST, también usada por algunas
+ *     versiones para relaciones no encontradas.
+ *   - Fallback por mensaje: "does not exist" (Postgres nativo),
+ *     "schema cache" (PostgREST), "could not find the table"
+ *     (PostgREST).
+ *
+ * NO cubre (y es intencional):
+ *   - 42501 insufficient_privilege (RLS) → error real, se escala.
+ *   - 23505 unique_violation → error real, se escala.
+ *   - Errores de red / timeout → error real, se escala.
  */
+const REL_INEXISTENTE_CODES = new Set(['42P01', 'PGRST205', 'PGRST200'])
+const REL_INEXISTENTE_MSG_FRAGMENTS = [
+  'does not exist',
+  'schema cache',
+  'could not find the table',
+]
+
 export function esRelacionInexistente(err) {
   if (!err) return false
-  if (err.code === '42P01') return true
-  const msg = String(err.message || err.error || '').toLowerCase()
+  if (typeof err.code === 'string' && REL_INEXISTENTE_CODES.has(err.code)) return true
+  const msg = String(err.message || err.error || err.hint || '').toLowerCase()
   if (!msg) return false
-  return msg.includes('relation') && msg.includes('does not exist')
+  return REL_INEXISTENTE_MSG_FRAGMENTS.some(f => msg.includes(f))
 }

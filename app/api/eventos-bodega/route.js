@@ -57,7 +57,14 @@ export async function GET(req) {
 
     if (error) {
       if (esRelacionInexistente(error)) return respSqlPendiente()
-      console.error('[eventos-bodega GET]', error.message)
+      // Error REAL: log completo en servidor (code + hint + details)
+      // para diagnosticar 500 futuros. NUNCA se filtra al cliente.
+      console.error('[eventos-bodega GET]', {
+        code:    error.code,
+        message: error.message,
+        hint:    error.hint,
+        details: error.details,
+      })
       return Response.json({ error: 'No se pudieron cargar los eventos.' }, { status: 500 })
     }
 
@@ -97,7 +104,10 @@ export async function POST(req) {
 
     if (error) {
       if (esRelacionInexistente(error)) return respSqlPendiente()
-      console.error('[eventos-bodega POST]', error.message)
+      console.error('[eventos-bodega POST]', {
+        code: error.code, message: error.message,
+        hint: error.hint, details: error.details,
+      })
       return Response.json({ error: 'No se pudo crear el evento.' }, { status: 500 })
     }
 

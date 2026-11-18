@@ -186,16 +186,70 @@ describe('ingresosCanalDesdeEventos', () => {
   })
 })
 
-describe('esRelacionInexistente', () => {
-  it('code 42P01 → true', () => {
+describe('esRelacionInexistente — códigos reales de PostgREST/Postgres', () => {
+  it('code PGRST205 → true (el que devuelve Supabase cuando falta migración)', () => {
+    // Mensaje real tomado del preview de Casa Marisma 50f5c3d5:
+    assert.equal(
+      esRelacionInexistente({
+        code: 'PGRST205',
+        message: "Could not find the table 'public.eventos_bodega' in the schema cache",
+        hint: null,
+        details: null,
+      }),
+      true,
+    )
+  })
+  it('code 42P01 → true (undefined_table de Postgres nativo)', () => {
     assert.equal(esRelacionInexistente({ code: '42P01' }), true)
   })
-  it('message con "relation ... does not exist" → true', () => {
-    assert.equal(esRelacionInexistente({ message: 'relation "eventos_bodega" does not exist' }), true)
+  it('code PGRST200 → true (variante legacy de PostgREST)', () => {
+    assert.equal(esRelacionInexistente({ code: 'PGRST200' }), true)
   })
-  it('otro error → false', () => {
-    assert.equal(esRelacionInexistente({ code: '42501' }), false)
-    assert.equal(esRelacionInexistente({ message: 'permission denied' }), false)
+  it('message con "relation ... does not exist" → true (sin code)', () => {
+    assert.equal(
+      esRelacionInexistente({ message: 'relation "eventos_bodega" does not exist' }),
+      true,
+    )
+  })
+  it('message con "schema cache" → true', () => {
+    assert.equal(
+      esRelacionInexistente({ message: "table not found in schema cache" }),
+      true,
+    )
+  })
+  it('message con "Could not find the table" → true (case-insensitive)', () => {
+    assert.equal(
+      esRelacionInexistente({ message: "Could not find the table 'public.X'" }),
+      true,
+    )
+  })
+  it('hint con la frase (fallback) → true', () => {
+    assert.equal(
+      esRelacionInexistente({ hint: "The table does not exist, apply migration" }),
+      true,
+    )
+  })
+  it('42501 insufficient_privilege (RLS) → false (es error REAL)', () => {
+    assert.equal(
+      esRelacionInexistente({ code: '42501', message: 'permission denied for table eventos_bodega' }),
+      false,
+    )
+  })
+  it('23505 unique_violation → false', () => {
+    assert.equal(
+      esRelacionInexistente({ code: '23505', message: 'duplicate key value violates unique constraint' }),
+      false,
+    )
+  })
+  it('error de red / desconocido → false', () => {
+    assert.equal(esRelacionInexistente({ message: 'fetch failed' }), false)
+    assert.equal(esRelacionInexistente({ message: 'network error' }), false)
+    assert.equal(esRelacionInexistente(new Error('timeout')), false)
+  })
+  it('null / undefined / vacío → false', () => {
     assert.equal(esRelacionInexistente(null), false)
+    assert.equal(esRelacionInexistente(undefined), false)
+    assert.equal(esRelacionInexistente({}), false)
+    assert.equal(esRelacionInexistente({ message: '' }), false)
   })
 })

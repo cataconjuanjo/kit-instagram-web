@@ -491,8 +491,25 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
       // Import lazy para evitar ciclos en builds server.
       const { sumarEventosPorTipo } = await import('./eventosBodega.js')
       eventosAgregados = sumarEventosPorTipo(eventos)
+    } else if (errEv) {
+      // Si no es "relación inexistente", logueamos para diagnóstico.
+      // Degradación: eventosAgregados queda null y el agregador no
+      // adjunta `informe.eventos`; comportamiento igual a main.
+      const { esRelacionInexistente } = await import('./eventosBodega.js')
+      if (!esRelacionInexistente(errEv)) {
+        console.warn('[agregarPeriodoBodega:eventos_bodega]', {
+          code:    errEv.code,
+          message: errEv.message,
+          hint:    errEv.hint,
+          details: errEv.details,
+        })
+      }
     }
-  } catch { /* 42P01 u otro — tabla ausente, degrada */ }
+  } catch (err) {
+    // Excepción inesperada (tipo de datos, red). No rompemos el
+    // agregador — degrada sin eventos.
+    console.warn('[agregarPeriodoBodega:eventos_bodega] excepción', err?.message || err?.name)
+  }
 
   const ventas_bruto     = informe.resumen.ingresos_venta
   const ventas_neto      = r2(ventas_bruto / (1 + ivaPct / 100))
