@@ -85,7 +85,13 @@ export async function GET(req) {
     // mismos números que antes. SELECT * trae imputacion_pct si existe;
     // si no, viene undefined y imputarParametros lo trata como "100 %
     // en todo".
-    const facturacion = num(historico?.ingresos)
+    const ventasNetas = num(historico?.ingresos)
+    // `resto_ingresos` sólo existe si la migración `add_resto_ingresos`
+    // está aplicada. `SELECT *` no falla si la columna no existe; en
+    // ese caso params no la trae y `num(undefined)` queda en 0, con
+    // lo que TOTAL INGRESOS = Ventas netas (comportamiento previo).
+    const restoIngresos = num(params?.resto_ingresos)
+    const totalIngresos = ventasNetas + restoIngresos
     const consumoMp = num(historico?.consumo_mp)
     const paramsImp = imputarParametros(params || {})
     const totalPersonal = calcularTotalPersonal(paramsImp).total
@@ -93,8 +99,10 @@ export async function GET(req) {
     const totalAlquiler = calcularTotalAlquiler(paramsImp.partidas_alquiler || []).total
     const totalBancarios = calcularTotalBancarios(paramsImp).total
 
+    // Ratios y resultado se calculan con TOTAL INGRESOS como denominador
+    // (ver sheet real del usuario "CUENTA EXPLOTACIÓN BODEGA").
     const resultado = calcularResultadoExplotacion({
-      facturacion,
+      facturacion: totalIngresos,
       consumoMp,
       personal: totalPersonal,
       generales: totalGastos,
@@ -102,9 +110,9 @@ export async function GET(req) {
       bancarios: totalBancarios,
     })
 
-    const pctMp = facturacion > 0 ? (consumoMp / facturacion) * 100 : 0
-    const margenBruto = facturacion - consumoMp
-    const pctMargenBruto = facturacion > 0 ? (margenBruto / facturacion) * 100 : 0
+    const pctMp = totalIngresos > 0 ? (consumoMp / totalIngresos) * 100 : 0
+    const margenBruto = totalIngresos - consumoMp
+    const pctMargenBruto = totalIngresos > 0 ? (margenBruto / totalIngresos) * 100 : 0
     const be = calcularBreakEven(totalPersonal, totalGastos, totalAlquiler, totalBancarios, pctMp)
 
     // Generar PDF
@@ -158,20 +166,29 @@ export async function GET(req) {
     // Columna headers
     line('Partida', margin, y, { size: 8, bold: true, color: [120, 110, 100] })
     line('Importe', W - margin - 30, y, { size: 8, bold: true, color: [120, 110, 100], align: 'right' })
-    line('% s/fact.', W - margin, y, { size: 8, bold: true, color: [120, 110, 100], align: 'right' })
+    line('% s/total ing.', W - margin, y, { size: 8, bold: true, color: [120, 110, 100], align: 'right' })
     y += 5
     hrule(y, [235, 230, 220])
     y += 5
 
+    // Dos líneas de ingresos y un TOTAL INGRESOS explícito. La fila
+    // "Resto" sólo aparece cuando es > 0 (si la columna no está
+    // aplicada aún, resto = 0 y el PDF queda idéntico al previo).
     const filas = [
-      { label: 'Facturación', value: formatEur(facturacion), pct: null, bold: true },
+      { label: 'Ventas netas', value: formatEur(ventasNetas), pct: null, bold: false },
+    ]
+    if (restoIngresos > 0) {
+      filas.push({ label: '+ Resto de ingresos de explotación', value: formatEur(restoIngresos), pct: null, bold: false })
+    }
+    filas.push(
+      { label: '= Total ingresos', value: formatEur(totalIngresos), pct: null, bold: true },
       { label: '- Consumo Materia Prima', value: formatEur(consumoMp), pct: resultado.pctMp, negativo: true },
       { label: '= Margen Bruto', value: formatEur(margenBruto), pct: pctMargenBruto, bold: true },
       { label: '- Personal', value: formatEur(totalPersonal), pct: resultado.pctPersonal, negativo: true },
       { label: '- Gastos Operacionales', value: formatEur(totalGastos), pct: resultado.pctGenerales, negativo: true },
       { label: '- Alquileres', value: formatEur(totalAlquiler), pct: resultado.pctAlquiler, negativo: true },
       { label: '- Gastos Bancarios', value: formatEur(totalBancarios), pct: resultado.pctBancarios, negativo: true },
-    ]
+    )
 
     filas.forEach((f, idx) => {
       // Línea separadora reforzada antes de cada total (bold) que no sea el primero.
@@ -243,12 +260,14 @@ export async function GET(req) {
     y += 7
     row('Break-Even del mes', formatEur(be.breakEven), y, undefined)
     y += 7
-    if (facturacion > 0 && be.breakEven > 0) {
-      const superado = facturacion >= be.breakEven
+    if (totalIngresos > 0 && be.breakEven > 0) {
+      // El punto de equilibrio se evalúa contra TOTAL INGRESOS
+      // (ventas netas + resto), coherente con la hoja real.
+      const superado = totalIngresos >= be.breakEven
       const color = superado ? [39, 174, 96] : [231, 76, 60]
       const texto = superado
-        ? `Cubierto: superado en ${formatEur(facturacion - be.breakEven)}`
-        : `Sin cubrir: faltan ${formatEur(be.breakEven - facturacion)}`
+        ? `Cubierto: superado en ${formatEur(totalIngresos - be.breakEven)}`
+        : `Sin cubrir: faltan ${formatEur(be.breakEven - totalIngresos)}`
       doc.setFillColor(superado ? 240 : 255, superado ? 250 : 245, superado ? 240 : 240)
       doc.rect(margin, y - 4, W - margin * 2, 8, 'F')
       line(texto, margin + 2, y, { size: 9, bold: true, color })
@@ -262,12 +281,15 @@ export async function GET(req) {
       y += 6
       hrule(y)
       y += 6
+      // El comparativo de presupuesto se mantiene sobre VENTAS NETAS
+      // (es como se fijan los objetivos YoY en Histórico y Bonus).
+      // El "Resto de ingresos" no entra en este bloque.
       const desvFact = presupuesto.objetivo_facturacion > 0
-        ? ((facturacion - presupuesto.objetivo_facturacion) / presupuesto.objetivo_facturacion) * 100
+        ? ((ventasNetas - presupuesto.objetivo_facturacion) / presupuesto.objetivo_facturacion) * 100
         : null
-      row('Objetivo facturación', formatEur(presupuesto.objetivo_facturacion), y)
+      row('Objetivo facturación (ventas)', formatEur(presupuesto.objetivo_facturacion), y)
       y += 7
-      row('Facturación real', formatEur(facturacion), y)
+      row('Ventas netas reales', formatEur(ventasNetas), y)
       y += 7
       if (desvFact !== null) {
         const color = desvFact >= 0 ? [39, 174, 96] : [231, 76, 60]

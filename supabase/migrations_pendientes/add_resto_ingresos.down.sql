@@ -1,0 +1,44 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Explotación — rollback de `resto_ingresos` en parametros_explotacion
+-- ─────────────────────────────────────────────────────────────────────────
+--
+-- ADVERTENCIA
+--   Al eliminar la columna se PIERDEN los valores que el usuario haya
+--   introducido como "Resto de ingresos". Haz backup antes:
+--
+--     CREATE SCHEMA IF NOT EXISTS backup_privado;
+--     DROP TABLE IF EXISTS backup_privado.parametros_explotacion_pre_rollback_resto;
+--     CREATE TABLE backup_privado.parametros_explotacion_pre_rollback_resto AS
+--       SELECT restaurante_id, periodo, resto_ingresos
+--         FROM public.parametros_explotacion
+--        WHERE resto_ingresos <> 0;
+--     -- Verifica cuántas filas tienen datos reales:
+--     SELECT * FROM backup_privado.parametros_explotacion_pre_rollback_resto LIMIT 10;
+--
+-- EFECTO EN EL CÓDIGO
+--   Con la columna ausente:
+--     - Explotación la detecta en runtime (SELECT de prueba) y
+--       oculta el input de Resto de ingresos, muestra aviso.
+--     - calcularTotalIngresos trata resto = 0 → TOTAL INGRESOS =
+--       facturacion_total, idéntico al comportamiento anterior.
+--     - /api/somm/informe-mensual deja resto_ingresos = 0; el PDF
+--       omite la fila "Resto" y "Total ingresos" queda igual a
+--       "Ventas netas".
+--   Ningún otro flujo cambia.
+--
+-- COMPROBACIÓN PREVIA
+--     SELECT count(*) AS filas_con_resto
+--       FROM public.parametros_explotacion
+--      WHERE resto_ingresos <> 0;
+--     -- Si > 0, confirma backup antes de continuar.
+--
+-- COMPROBACIÓN POSTERIOR
+--     SELECT column_name FROM information_schema.columns
+--      WHERE table_schema = 'public'
+--        AND table_name   = 'parametros_explotacion'
+--        AND column_name  = 'resto_ingresos';
+--     -- Debe devolver 0 filas.
+-- ─────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.parametros_explotacion
+  DROP COLUMN IF EXISTS resto_ingresos;

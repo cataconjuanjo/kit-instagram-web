@@ -1,0 +1,76 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Explotación — columna `resto_ingresos` en parametros_explotacion
+-- ─────────────────────────────────────────────────────────────────────────
+--
+-- MOTIVO
+--   La hoja real del usuario ("CUENTA EXPLOTACIÓN BODEGA") tiene dos
+--   líneas en INGRESOS: "VENTAS NETAS" y "RESTO DE INGRESOS DE
+--   EXPLOTACIÓN", y TOTAL INGRESOS es la suma. Hoy la app sólo guarda
+--   `facturacion_total` (= ventas netas). Añadimos la nueva columna
+--   para permitir editar y guardar el resto de ingresos y que el
+--   resultado, el % de margen, los ratios y el punto de equilibrio se
+--   calculen sobre TOTAL INGRESOS.
+--
+-- CARACTERÍSTICAS
+--   - ADD COLUMN IF NOT EXISTS: aditiva e idempotente.
+--   - DEFAULT 0: coincide con la hoja ("- €" cuando no hay otros
+--     ingresos). Las filas existentes reciben 0 y los informes
+--     siguen produciendo los mismos números que antes.
+--   - NOT NULL: evita lidiar con NULL en el código. El valor "sin
+--     otros ingresos" aquí SÍ es 0 (a diferencia de los extras de
+--     stock/compras de la otra rama, donde 0 significaba "sin dato").
+--   - No se toca RLS ni ninguna policy. Las policies existentes de
+--     `parametros_explotacion` usan la fila entera via
+--     `restaurante_id`/`auth.jwt()` y el WITH CHECK cubre todas las
+--     columnas automáticamente; añadir una columna no requiere cambio
+--     de policies.
+--   - No se toca ninguna otra columna, trigger ni índice.
+--
+-- COMPATIBILIDAD CON EL CÓDIGO
+--   La app degrada si la columna NO existe:
+--     - Explotación detecta la columna con un SELECT de prueba. Si
+--       falta, oculta el input de Resto, muestra un aviso ("funciones
+--       pendientes del SQL"), y OMITE la clave en el upsert.
+--     - calcularTotalIngresos trata resto=0 cuando no llega.
+--     - /api/somm/informe-mensual lee `resto_ingresos` dentro de
+--       params; si Postgres devuelve 42703 el valor queda 0.
+--
+-- BACKUP PREVIO (obligatorio; esquema privado `backup_privado`, nunca `public`):
+--
+--     CREATE SCHEMA IF NOT EXISTS backup_privado;
+--     DROP TABLE IF EXISTS backup_privado.parametros_explotacion_pre_resto;
+--     CREATE TABLE backup_privado.parametros_explotacion_pre_resto AS
+--       SELECT * FROM public.parametros_explotacion;
+--     -- Verifica que el recuento coincide:
+--     SELECT count(*) FROM public.parametros_explotacion;
+--     SELECT count(*) FROM backup_privado.parametros_explotacion_pre_resto;
+--
+-- COMPROBACIÓN PREVIA (debe devolver 0 filas; si devuelve 1, la
+-- columna ya existe y el ADD COLUMN IF NOT EXISTS es no-op):
+--     SELECT column_name, data_type, column_default, is_nullable
+--       FROM information_schema.columns
+--      WHERE table_schema = 'public'
+--        AND table_name   = 'parametros_explotacion'
+--        AND column_name  = 'resto_ingresos';
+--
+-- COMPROBACIÓN POSTERIOR (debe devolver 1 fila con numeric NOT NULL
+-- DEFAULT 0):
+--     SELECT column_name, data_type, column_default, is_nullable
+--       FROM information_schema.columns
+--      WHERE table_schema = 'public'
+--        AND table_name   = 'parametros_explotacion'
+--        AND column_name  = 'resto_ingresos';
+--
+-- COMPROBACIÓN POSTERIOR DE DATOS (todas las filas existentes deben
+-- tener resto_ingresos = 0, es decir, el P&L no cambia):
+--     SELECT count(*) AS filas,
+--            count(*) FILTER (WHERE resto_ingresos = 0) AS en_cero
+--       FROM public.parametros_explotacion;
+--     -- filas y en_cero deben coincidir.
+-- ─────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.parametros_explotacion
+  ADD COLUMN IF NOT EXISTS resto_ingresos numeric NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.parametros_explotacion.resto_ingresos IS
+  'Resto de ingresos de explotación del periodo (€/mes). Suma con facturacion_total para dar TOTAL INGRESOS, denominador de ratios y resultado. Default 0 ≡ "sin otros ingresos" (comportamiento histórico).';

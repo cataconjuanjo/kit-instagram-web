@@ -40,6 +40,11 @@ import {
   formatComaEs,
   leerExtrasHistorico,
 } from '../../lib/historicoExtras'
+import {
+  calcularTotalIngresos,
+  esErrorColumnaFalta,
+  parseComaEs as parseComaEsIng,
+} from '../../lib/explotacionIngresos'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -252,7 +257,7 @@ function SeccionGastos({ partidas, onChange }) {
     <section className={styles.panel}>
       <div className={styles.panelHead}>
         <h2 className={styles.panelTitle}>Gastos Operacionales</h2>
-        <p className={styles.panelSub}>Introduce el importe mensual. Para compras anuales (ej: carta impresa), activa "Repartir en 12 meses".</p>
+        <p className={styles.panelSub}>Introduce el importe mensual. Para compras anuales (ej: carta impresa), activa &ldquo;Repartir en 12 meses&rdquo;.</p>
       </div>
       <div className={styles.panelBody}>
         <div style={{ overflowX: 'auto' }}>
@@ -658,7 +663,12 @@ function ExplotacionContent() {
         restauranteNombre: restaurante?.nombre_comercial || restaurante?.nombre || restaurante?.slug || 'restaurante',
         periodo,
         esSomm,
+        // `facturacion` histórico = ventas netas; pasamos TAMBIÉN `restoIngresos`.
+        // El workbook lo usa para añadir las filas "Ventas netas" + "+ Resto"
+        // + "= TOTAL INGRESOS" al resumen y para que los % de cada
+        // concepto sean sobre TOTAL INGRESOS.
         facturacion: num(facturacion),
+        restoIngresos: totales.restoIngresos,
         consumoMp: num(consumoMp),
         totalPersonal: totales.totalPersonal,
         totalGastos: totales.totalGastos,
@@ -687,6 +697,13 @@ function ExplotacionContent() {
 
   // Datos de la P&L
   const [facturacion, setFacturacion] = useState('')
+  // Línea nueva "Resto de ingresos de explotación" (€/mes).
+  //   - String con coma decimal española (p. ej. "1.234,56" o "150").
+  //   - Vacío ≡ 0 (semántica de la hoja real: "- €" sin otros ingresos).
+  //   - Si la columna SQL no está aplicada aún, el input queda oculto
+  //     y el guardado omite la clave.
+  const [restoIngresos, setRestoIngresos] = useState('')
+  const [restoIngresosDisponible, setRestoIngresosDisponible] = useState(null)
   const [consumoMp, setConsumoMp] = useState('')
   const [tipoBenchmark, setTipoBenchmark] = useState('bodega_profesional')
   const [personal, setPersonal] = useState({
@@ -780,6 +797,19 @@ function ExplotacionContent() {
         setImputacionDisponible(false)
       }
 
+      // Detección runtime de la columna resto_ingresos. Mismo patrón que
+      // con imputacion_pct: si falta, se oculta el input, el upsert no
+      // envía la clave y el P&L usa TOTAL INGRESOS = Ventas Netas.
+      try {
+        const { error: errRi } = await supabase
+          .from('parametros_explotacion')
+          .select('resto_ingresos')
+          .limit(1)
+        setRestoIngresosDisponible(!esErrorColumnaFalta(errRi, 'resto_ingresos'))
+      } catch {
+        setRestoIngresosDisponible(false)
+      }
+
       setLoading(false)
     }
     cargar()
@@ -806,6 +836,14 @@ function ExplotacionContent() {
       )
       if (data) {
         setFacturacion(data.facturacion_total || '')
+        // `resto_ingresos` sólo existe si la migración está aplicada.
+        // Viene como number (0 por defecto); lo pintamos con coma
+        // decimal para coincidir con la convención del input.
+        setRestoIngresos(
+          data.resto_ingresos != null && Number(data.resto_ingresos) > 0
+            ? formatComaEs(Number(data.resto_ingresos))
+            : ''
+        )
         setConsumoMp(data.consumo_mp || '')
         setPersonal({
           nominas_brutas: data.nominas_brutas || '',
@@ -829,6 +867,7 @@ function ExplotacionContent() {
         })
       } else {
         setFacturacion('')
+        setRestoIngresos('')
         setConsumoMp('')
         setPersonal({ nominas_brutas: '', ss_empresa: '', retenciones_irpf: '', extras_personal: '' })
         setGastosPartidas(CATEGORIAS_GASTOS_PRESET.map(c => ({ ...c })))
@@ -925,8 +964,15 @@ function ExplotacionContent() {
     const { total: totalGastos } = calcularTotalGastos(imputado.partidas_gastos)
     const totalAlquiler  = calcularTotalAlquiler(imputado.partidas_alquiler).total
     const totalBancarios = calcularTotalBancarios(imputado).total
+    const ventasNetasNum  = num(facturacion)
+    const restoIngNum     = parseComaEsIng(restoIngresos) || 0
+    const totalIngresos   = calcularTotalIngresos({ facturacion: ventasNetasNum, resto: restoIngNum })
+    // IMPORTANTE: el denominador del P&L es TOTAL INGRESOS (Ventas +
+    // Resto), siguiendo la hoja real. Los ratios (MP, personal,
+    // alquiler, generales, bancarios, margen) y el % de resultado
+    // salen sobre total ingresos. BreakEven hereda al heredar pctMp.
     const resultado = calcularResultadoExplotacion({
-      facturacion: num(facturacion),
+      facturacion: totalIngresos,
       consumoMp: num(consumoMp),
       personal: totalPersonal,
       generales: totalGastos,
@@ -934,8 +980,19 @@ function ExplotacionContent() {
       bancarios: totalBancarios,
     })
     const { breakEven } = calcularBreakEven(totalPersonal, totalGastos, totalAlquiler, totalBancarios, resultado.pctMp)
-    return { ...resultado, totalPersonal, totalGastos, totalAlquiler, totalBancarios, breakEven }
-  }, [facturacion, consumoMp, personal, gastosPartidas, alquilerPartidas, bancarios, imputacionPct])
+    return {
+      ...resultado,
+      // Exponemos ambas magnitudes para que la UI/PDF/Excel puedan
+      // pintar las dos filas de ingresos y el total. `facturacion`
+      // (heredado de `resultado`) pasa a ser TOTAL INGRESOS para no
+      // romper a los consumidores existentes de `totales.facturacion`
+      // (breakEven ratio, benchmark, StatCard, SeccionCanales, etc.).
+      ventasNetas: ventasNetasNum,
+      restoIngresos: restoIngNum,
+      totalIngresos,
+      totalPersonal, totalGastos, totalAlquiler, totalBancarios, breakEven,
+    }
+  }, [facturacion, restoIngresos, consumoMp, personal, gastosPartidas, alquilerPartidas, bancarios, imputacionPct])
 
   const benchmark = useMemo(() => {
     if (!totales.facturacion) return null
@@ -1026,6 +1083,12 @@ function ExplotacionContent() {
     // y el P&L recalcula al 100 % por concepto.
     if (imputacionDisponible) {
       payload.imputacion_pct = imputacionPct
+    }
+    // Mismo patrón para resto_ingresos. Con la columna presente, se
+    // escribe el número parseado desde el input (coma decimal); vacío
+    // cae a 0. Con la columna ausente, el upsert no lleva la clave.
+    if (restoIngresosDisponible) {
+      payload.resto_ingresos = parseComaEsIng(restoIngresos) || 0
     }
 
     const r1 = await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
@@ -1207,9 +1270,48 @@ function ExplotacionContent() {
           <div className={styles.panelBody}>
             <div className={styles.formGrid}>
               <label className={styles.label}>
-                Facturación total neta (€)
+                Ventas netas (€)
                 <input className={styles.input} type="number" min="0" step="100" value={facturacion} onChange={e => setFacturacion(e.target.value)} placeholder="0 €" />
+                <small style={{ color: '#888', marginTop: 4, display: 'block', fontSize: 11 }}>
+                  Facturación de bodega del periodo, sin IVA. Es el valor que se envía a
+                  &ldquo;Histórico y Bonus&rdquo; para los comparativos de facturación.
+                </small>
               </label>
+              {restoIngresosDisponible === false && (
+                <label className={styles.label} title="Pendiente de aplicar el SQL">
+                  Resto de ingresos de explotación (€)
+                  <input
+                    className={styles.input}
+                    type="text"
+                    value=""
+                    disabled
+                    placeholder="— SQL pendiente —"
+                  />
+                  <small style={{ color: '#b15a00', marginTop: 4, display: 'block', fontSize: 11 }}>
+                    Se activa cuando se aplique la migración
+                    <code style={{ padding: '0 3px' }}>add_resto_ingresos.up.sql</code>.
+                    Mientras tanto, el P&amp;L sigue usando sólo &ldquo;Ventas netas&rdquo;
+                    como TOTAL INGRESOS.
+                  </small>
+                </label>
+              )}
+              {restoIngresosDisponible === true && (
+                <label className={styles.label}>
+                  Resto de ingresos de explotación (€)
+                  <input
+                    className={styles.input}
+                    type="text"
+                    inputMode="decimal"
+                    value={restoIngresos}
+                    onChange={e => setRestoIngresos(e.target.value)}
+                    placeholder="0,00"
+                  />
+                  <small style={{ color: '#888', marginTop: 4, display: 'block', fontSize: 11 }}>
+                    Otros ingresos de explotación del periodo (eventos, cursos,
+                    comisiones, alquileres recibidos, etc.). Vacío ≡ 0.
+                  </small>
+                </label>
+              )}
               <label className={styles.label}>
                 Consumo de materia prima (€)
                 <input className={styles.input} type="number" min="0" step="100" value={consumoMp} onChange={e => setConsumoMp(e.target.value)} placeholder="0 €" />
@@ -1459,8 +1561,8 @@ function ExplotacionContent() {
         {alertaBreakEven && !esSomm && (
           <div style={{ margin: '8px 0 16px', padding: '12px 16px', background: '#fff4f1', border: '1px solid #e0b4aa', borderRadius: 4, fontSize: 13 }}>
             <strong>Alerta: el mes cierra en pérdidas a este ritmo.</strong>{' '}
-            Break-even: {eur(totales.breakEven)}. Facturación actual: {eur(facturacionNum)}.
-            Faltan {eur(totales.breakEven - facturacionNum)} para cubrir costes.
+            Break-even: {eur(totales.breakEven)}. Total ingresos actual: {eur(totales.totalIngresos)}.
+            Faltan {eur(totales.breakEven - totales.totalIngresos)} para cubrir costes.
           </div>
         )}
 
@@ -1490,14 +1592,40 @@ function ExplotacionContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { label: 'Facturación total neta', importe: totales.facturacion, pct: 100, bKey: null, bold: true },
-                    { label: '− Materia Prima (consumo)', importe: -totales.consumoMp, pct: totales.pctMp, bKey: 'mp', color: '#e74c3c' },
-                    { label: '− Personal', importe: -totales.personal, pct: totales.pctPersonal, bKey: 'personal', color: '#e74c3c' },
-                    { label: '− Gastos Generales', importe: -totales.generales, pct: totales.pctGenerales, bKey: null },
-                    { label: '− Alquileres', importe: -totales.alquiler, pct: totales.pctAlquiler, bKey: 'alquiler' },
-                    { label: '− Gastos Bancarios', importe: -totales.bancarios, pct: totales.pctBancarios, bKey: null },
-                  ].map((fila, i) => (
+                  {(() => {
+                    // Estructura real de la hoja:
+                    //   + Ventas netas
+                    //   + Resto de ingresos
+                    //   = TOTAL INGRESOS  (denominador de todos los ratios)
+                    //   − Consumo MP / Personal / Generales / Alquiler / Bancarios
+                    //   = Resultado de Explotación
+                    const filasBase = [
+                      { label: 'Ventas netas', importe: totales.ventasNetas,
+                        pct: totales.totalIngresos > 0 ? (totales.ventasNetas / totales.totalIngresos) * 100 : null,
+                        bKey: null, bold: false },
+                    ]
+                    // La fila "Resto de ingresos" sólo aparece si está la
+                    // columna SQL aplicada; en cuanto el usuario introduce
+                    // un valor > 0 también la enseñamos aunque restoIngresosDisponible
+                    // ya haya sido activado.
+                    if (restoIngresosDisponible || totales.restoIngresos > 0) {
+                      filasBase.push({
+                        label: '+ Resto de ingresos de explotación',
+                        importe: totales.restoIngresos,
+                        pct: totales.totalIngresos > 0 ? (totales.restoIngresos / totales.totalIngresos) * 100 : null,
+                        bKey: null, bold: false,
+                      })
+                    }
+                    filasBase.push(
+                      { label: '= TOTAL INGRESOS', importe: totales.totalIngresos, pct: 100, bKey: null, bold: true },
+                      { label: '− Materia Prima (consumo)', importe: -totales.consumoMp, pct: totales.pctMp, bKey: 'mp', color: '#e74c3c' },
+                      { label: '− Personal', importe: -totales.personal, pct: totales.pctPersonal, bKey: 'personal', color: '#e74c3c' },
+                      { label: '− Gastos Generales', importe: -totales.generales, pct: totales.pctGenerales, bKey: null },
+                      { label: '− Alquileres', importe: -totales.alquiler, pct: totales.pctAlquiler, bKey: 'alquiler' },
+                      { label: '− Gastos Bancarios', importe: -totales.bancarios, pct: totales.pctBancarios, bKey: null },
+                    )
+                    return filasBase
+                  })().map((fila, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f5f2ec' }}>
                       <td style={{ padding: '7px 8px', fontWeight: fila.bold ? 600 : 400 }}>{fila.label}</td>
                       <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: fila.bold ? 600 : 400 }}>{eur(Math.abs(fila.importe))}</td>
