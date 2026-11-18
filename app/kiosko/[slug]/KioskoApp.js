@@ -53,6 +53,24 @@ const SHOWCASE_VALUE_PROPS = {
 const MOBILE_SELECTION_MAX = 20
 const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
+// Ventanas de recarga para kioskos en fullscreen permanente (Síbaris y
+// otros puestos fijos). El guard por fullscreen del polling de
+// auto_update retendría indefinidamente un pendingReload si el kiosko
+// nunca sale del modo inmersivo, impidiendo que lleguen nuevos deploys.
+// Estas constantes abren tres vías para aplicar la recarga sin perder
+// fullscreen a plena vista del cliente:
+//   · Salida manual de fullscreen (se recarga en cuanto el usuario sale).
+//   · Franja nocturna de baja actividad (03:00–06:00 hora local).
+//   · Tope duro: tras RELOAD_MAX_HOLD_MS marcado como pendiente, se
+//     aplica igualmente para evitar que un puesto quede "congelado" en
+//     una build antigua de manera indefinida.
+// La red de seguridad de sessionStorage['kiosko:fullscreenDeseado']
+// re-pide fullscreen con el primer gesto tras la recarga.
+const RELOAD_WINDOW_START_HOUR = 3   // 03:00 local, inclusive
+const RELOAD_WINDOW_END_HOUR   = 6   // 06:00 local, exclusive
+const RELOAD_MAX_HOLD_MS       = 24 * 60 * 60 * 1000 // 24 h
+const RELOAD_PENDING_SINCE_KEY = 'kiosko:autoUpdatePendingSince'
+
 const TIPO_LABELS = {
   tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso',
   generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol',
@@ -4056,6 +4074,29 @@ export default function KioskoPage() {
     let cancelled = false
     let intervalId = null
 
+    // Timestamp (ms) en que pendingReload pasó a true. Se persiste en
+    // localStorage para sobrevivir a cierres accidentales de pestaña y
+    // para que el tope de 24 h tenga sentido en un puesto 24/7.
+    const readPendingSince = () => {
+      try {
+        const raw = localStorage.getItem(RELOAD_PENDING_SINCE_KEY)
+        const n = raw ? Number(raw) : 0
+        return Number.isFinite(n) && n > 0 ? n : 0
+      } catch { return 0 }
+    }
+    const writePendingSince = (ts) => {
+      try {
+        if (ts) localStorage.setItem(RELOAD_PENDING_SINCE_KEY, String(ts))
+        else localStorage.removeItem(RELOAD_PENDING_SINCE_KEY)
+      } catch {}
+    }
+
+    // Si al montar ya había un pendingReload persistido de una sesión
+    // anterior (p. ej. el kiosko se reinició sin haber podido aplicar la
+    // recarga porque seguía en fullscreen), lo rescatamos.
+    const pendingSinceBoot = readPendingSince()
+    if (pendingSinceBoot > 0) pendingReload = true
+
     const fetchVersion = async () => {
       try {
         const res = await fetch(`/api/kiosko/${slug}/version`, { cache: 'no-store' })
@@ -4069,6 +4110,16 @@ export default function KioskoPage() {
       }
     }
 
+    const isInNightlyWindow = () => {
+      const h = new Date().getHours()
+      const start = RELOAD_WINDOW_START_HOUR
+      const end = RELOAD_WINDOW_END_HOUR
+      // Soporta ventanas que cruzan medianoche (p. ej. 22→4).
+      if (start === end) return false
+      if (start < end) return h >= start && h < end
+      return h >= start || h < end
+    }
+
     const canReload = () => {
       if (document.visibilityState !== 'visible') return false
       const v = viewRef.current
@@ -4078,12 +4129,45 @@ export default function KioskoPage() {
       if (mobileSelectionRef.current) return false
       if (wineFoodVinoRef.current) return false
       if (Date.now() - lastInteractionRef.current < inactivityMs) return false
-      // Si el kiosko está en pantalla completa (Síbaris y otros puestos fijos),
-      // NO recargar: una recarga crea un documento nuevo y la Fullscreen API
-      // obliga a abandonar el modo. Mantener pendingReload=true: se aplicará
-      // la próxima vez que el navegador ya no esté en fullscreen.
-      if (document.fullscreenElement || document.webkitFullscreenElement) return false
+      // Si el kiosko está en pantalla completa (Síbaris y otros puestos
+      // fijos), una recarga crea un documento nuevo y la Fullscreen API
+      // obliga a abandonar el modo. Por defecto NO recargamos; hay tres
+      // vías de escape para que el pendingReload no quede retenido
+      // indefinidamente en puestos que viven siempre en fullscreen:
+      //   1) Franja nocturna de baja actividad (solo en SHOWCASE).
+      //   2) Tope duro RELOAD_MAX_HOLD_MS desde que quedó pendiente.
+      //   3) Salida manual de fullscreen (se maneja fuera de canReload,
+      //      escuchando fullscreenchange, para aplicar al instante).
+      const inFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement)
+      if (inFullscreen) {
+        const pendingSince = readPendingSince()
+        const heldLongEnough = pendingSince > 0 && (Date.now() - pendingSince) >= RELOAD_MAX_HOLD_MS
+        if (v === VIEWS.SHOWCASE && isInNightlyWindow()) return true
+        if (v === VIEWS.SHOWCASE && heldLongEnough) return true
+        return false
+      }
       return true
+    }
+
+    const markPending = () => {
+      if (!pendingReload) {
+        pendingReload = true
+        writePendingSince(Date.now())
+      } else if (readPendingSince() === 0) {
+        // pendingReload ya era true pero el timestamp no estaba
+        // persistido todavía (primera iteración tras cambio).
+        writePendingSince(Date.now())
+      }
+    }
+
+    const applyReloadIfPossible = () => {
+      if (pendingReload && canReload()) {
+        // El timestamp queda en localStorage: si por cualquier motivo
+        // el reload no completa, la próxima sesión seguirá viéndolo
+        // pendiente. Se limpiará tras el reload, cuando el polling
+        // confirme que el nuevo baseline ya no está "cambiado".
+        window.location.reload()
+      }
     }
 
     const tick = async () => {
@@ -4092,6 +4176,10 @@ export default function KioskoPage() {
       if (!now) return
       if (!baseline) {
         baseline = now
+        // Si veníamos de una sesión anterior con pendingReload
+        // persistido pero la versión actual YA coincide (p. ej. el
+        // deploy acabó llegando por otra vía), limpiamos el flag.
+        if (!pendingReload) writePendingSince(0)
         return
       }
       const changed = (
@@ -4099,11 +4187,21 @@ export default function KioskoPage() {
         (now.flags != null && now.flags !== baseline.flags) ||
         (now.catalogo != null && now.catalogo !== baseline.catalogo)
       )
-      if (changed) pendingReload = true
-      if (pendingReload && canReload()) {
-        window.location.reload()
-      }
+      if (changed) markPending()
+      applyReloadIfPossible()
     }
+
+    // Salida manual de fullscreen: si el usuario sale del modo
+    // inmersivo y hay un reload pendiente, aplicarlo inmediatamente
+    // (siempre que el resto de condiciones de canReload se cumplan).
+    // El listener convive con el otro useEffect de fullscreen: ambos
+    // leen el mismo evento y no interfieren entre sí.
+    const onFsChangeAutoUpdate = () => {
+      const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement)
+      if (!inFs) applyReloadIfPossible()
+    }
+    document.addEventListener('fullscreenchange', onFsChangeAutoUpdate)
+    document.addEventListener('webkitfullscreenchange', onFsChangeAutoUpdate)
 
     // Snapshot inicial inmediato y después polling periódico.
     tick()
@@ -4113,6 +4211,8 @@ export default function KioskoPage() {
       cancelled = true
       if (intervalId) clearInterval(intervalId)
       events.forEach(e => window.removeEventListener(e, bump))
+      document.removeEventListener('fullscreenchange', onFsChangeAutoUpdate)
+      document.removeEventListener('webkitfullscreenchange', onFsChangeAutoUpdate)
     }
   }, [autoUpdate, autoUpdatePollDebug, slug])
 
