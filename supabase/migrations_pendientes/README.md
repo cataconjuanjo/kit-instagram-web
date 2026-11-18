@@ -32,3 +32,12 @@ Cada migración consta de tres archivos:
   si el bucket aún no permite ese MIME, la API responde 415 amistoso
   "Formato no admitido todavía" en lugar de 500. Sin la migración,
   PDF/PNG/JPEG siguen funcionando con normalidad.
+
+- `relax_historico_mensual_stock_compras.up.sql` — libera las 4
+  columnas `valor_stock_bodega / stock_inicial_valor /
+  stock_final_valor / compras_total` de `historico_mensual` a
+  NULL (DROP NOT NULL + DROP DEFAULT) y rellena con NULL las filas
+  donde las cuatro valgan 0 (= "Sin dato" heredado del default).
+  El código ya trata `null` y `todos-a-0` como "Sin dato" con la
+  misma regla, por lo que funciona antes y después de aplicar la
+  migración.

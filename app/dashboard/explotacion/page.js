@@ -34,6 +34,12 @@ import { descargarWorkbook } from '../../lib/excelSommDownload'
 import { readDesglose } from '../../lib/cierreDesglose'
 import { calcularConsumoMP } from '../../lib/consumoMP'
 import { imputarParametros, getPct, normalizarPct } from '../../lib/imputacionBodega'
+import {
+  EXTRAS_KEYS,
+  extrasHistoricoPayload,
+  formatComaEs,
+  leerExtrasHistorico,
+} from '../../lib/historicoExtras'
 
 async function apiFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -701,6 +707,13 @@ function ExplotacionContent() {
     copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '',
   })
   const [historico, setHistorico] = useState([])
+  // Extras históricos (4 columnas de historico_mensual: stock inicial/final
+  // valor, compras_total, valor_stock_bodega). Strings con coma decimal
+  // en los inputs; se convierten con parseComaEs al guardar.
+  const [extrasHistorico, setExtrasHistorico] = useState({
+    valor_stock_bodega: '', stock_inicial_valor: '',
+    stock_final_valor: '',  compras_total: '',
+  })
   const [datosVino, setDatosVino] = useState(null)
   // Fuente del desglose para la sugerencia de "Consumo calculado".
   // Viene del mismo endpoint que usa el panel Cierre mensual, que
@@ -827,6 +840,27 @@ function ExplotacionContent() {
         setBancarios({ comisiones_datafono: '', mantenimiento_datafono: '', resto_comisiones: '' })
         setCanales({ copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '' })
       }
+
+      // Precarga los 4 extras históricos (stock inicial/final, compras,
+      // valor_stock_bodega) desde la fila de historico_mensual del mismo
+      // periodo. leerExtrasHistorico aplica la regla "4-a-0-o-NULL ≡ Sin
+      // dato", así que una fila heredada con los 4 a 0 llega al form
+      // como campos vacíos (y el usuario puede ir rellenándolos).
+      const [anioStr, mesStr] = periodo.split('-')
+      const { data: filaHist } = await supabase
+        .from('historico_mensual')
+        .select('valor_stock_bodega, stock_inicial_valor, stock_final_valor, compras_total')
+        .eq('restaurante_id', restaurante.id)
+        .eq('anio', parseInt(anioStr, 10))
+        .eq('mes', parseInt(mesStr, 10))
+        .maybeSingle()
+      const extras = leerExtrasHistorico(filaHist || {})
+      setExtrasHistorico({
+        valor_stock_bodega:  formatComaEs(extras.valor_stock_bodega),
+        stock_inicial_valor: formatComaEs(extras.stock_inicial_valor),
+        stock_final_valor:   formatComaEs(extras.stock_final_valor),
+        compras_total:       formatComaEs(extras.compras_total),
+      })
 
       // A3: distinguir "sin fila" de "query fallida". Antes, cualquier error
       // (RLS, red) silenciaba y marcaba cierreExiste=false, mostrando el banner
@@ -1017,6 +1051,11 @@ function ExplotacionContent() {
       ingresos: num(facturacion),
       consumo_mp: num(consumoMp),
       origen: 'manual',
+      // 4 extras (stock inicial/final, compras, valor_stock_bodega).
+      // extrasHistoricoPayload OMITE las claves vacías: compatible con
+      // la BD antes (NOT NULL DEFAULT 0) y después (NULL permitido) de
+      // aplicar `relax_historico_mensual_stock_compras.up.sql`.
+      ...extrasHistoricoPayload(extrasHistorico),
     }
     if (!esSomm) {
       historicoPayload.gastos_fijos =
@@ -1256,6 +1295,79 @@ function ExplotacionContent() {
                   {aplicandoCierre ? 'Aplicando…' : 'Usar valores del cierre'}
                 </button>
               </div>
+            )}
+          </div>
+        </section>
+
+        {/* Histórico mensual — extras manuales (stock + compras).
+            Se guardan como columnas propias de `historico_mensual`
+            (NOT NULL DEFAULT 0 antes de la migración; NULL permitido
+            después). Vacío/0 en los cuatro ≡ "Sin dato".
+            El Cierre mensual usa estos datos para comparar con el
+            mismo mes del año anterior cuando no hay cierre firmado. */}
+        <section className={styles.panel}>
+          <div className={styles.panelHead}>
+            <h2 className={styles.panelTitle}>Histórico del mes (stock y compras)</h2>
+            <p className={styles.panelSub} style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+              Datos manuales para comparar con años anteriores. Déjalos vacíos si todavía no los tienes.
+              Coma decimal española (p. ej. 1.234,56).
+            </p>
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.formGrid}>
+              <label className={styles.label}>
+                Stock inicial (€)
+                <input
+                  className={styles.input}
+                  type="text"
+                  inputMode="decimal"
+                  value={extrasHistorico.stock_inicial_valor}
+                  onChange={e => setExtrasHistorico(prev => ({ ...prev, stock_inicial_valor: e.target.value }))}
+                  placeholder="0,00"
+                />
+              </label>
+              <label className={styles.label}>
+                Stock final (€)
+                <input
+                  className={styles.input}
+                  type="text"
+                  inputMode="decimal"
+                  value={extrasHistorico.stock_final_valor}
+                  onChange={e => setExtrasHistorico(prev => ({ ...prev, stock_final_valor: e.target.value }))}
+                  placeholder="0,00"
+                />
+              </label>
+              <label className={styles.label}>
+                Compras del mes (€, neto)
+                <input
+                  className={styles.input}
+                  type="text"
+                  inputMode="decimal"
+                  value={extrasHistorico.compras_total}
+                  onChange={e => setExtrasHistorico(prev => ({ ...prev, compras_total: e.target.value }))}
+                  placeholder="0,00"
+                />
+              </label>
+              <label className={styles.label}>
+                Valor de bodega al cierre (€)
+                <input
+                  className={styles.input}
+                  type="text"
+                  inputMode="decimal"
+                  value={extrasHistorico.valor_stock_bodega}
+                  onChange={e => setExtrasHistorico(prev => ({ ...prev, valor_stock_bodega: e.target.value }))}
+                  placeholder="0,00"
+                />
+                <small style={{ color: '#888', marginTop: 4, display: 'block', fontSize: 11 }}>
+                  Normalmente coincide con &ldquo;Stock final&rdquo;; el campo existe por histórico.
+                </small>
+              </label>
+            </div>
+            {EXTRAS_KEYS.every(k => !extrasHistorico[k]) && (
+              <p style={{ marginTop: 10, fontSize: 12, color: '#8b8278', fontStyle: 'italic' }}>
+                Sin dato — rellena al menos uno de los cuatro campos y el Cierre mensual podrá
+                comparar con el mismo mes del año anterior.
+              </p>
             )}
           </div>
         </section>

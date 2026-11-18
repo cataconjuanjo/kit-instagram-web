@@ -1,6 +1,52 @@
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from './cierreDesglose.js'
 import { calcularRatios, diasDelMes } from './ratiosCierre.js'
 import { conciliarCompras } from './conciliacionCompras.js'
+import {
+  leerExtrasHistorico,
+  tieneHistoricoExtras,
+  ratiosHistoricos,
+  coincideMesHistorico,
+} from './historicoExtras.js'
+
+/**
+ * Construye las filas "Histórico mes del año anterior" que se inyectan
+ * al final de la hoja "Ratios" del cierre mensual. Devuelve siempre
+ * texto plano (nunca fórmulas): "Sin dato" cuando la fila de
+ * historico_mensual no tiene extras utilizables, cuando la fila no
+ * corresponde exactamente al (año-1, mes) del cierre exportado, o
+ * cuando no se pasa fila alguna.
+ *
+ * La guarda `coincideMesHistorico` es la última red de seguridad: si
+ * aun así la UI pasase una fila obsoleta de otro mes (p. ej. tras un
+ * cambio rápido con los botones ◄ ►), aquí se trata como "Sin dato"
+ * y la hoja Ratios no contiene cifras cruzadas.
+ *
+ * Firma export para poder testearla aislada.
+ */
+export function construirFilasHistoricoPrevYear(mesActual, historicoPrevYear) {
+  if (!historicoPrevYear) return []
+  const [yStr, mStr] = String(mesActual || '').split('-')
+  const y = parseInt(yStr, 10)
+  const m = parseInt(mStr, 10)
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return []
+  const prevYearMesStr = `${y - 1}-${String(m).padStart(2, '0')}`
+  const coincide = coincideMesHistorico(mesActual, historicoPrevYear)
+  const extras   = coincide ? leerExtrasHistorico(historicoPrevYear) : {}
+  const hayDato  = coincide && tieneHistoricoExtras(historicoPrevYear)
+  const rh = hayDato
+    ? ratiosHistoricos({
+        extras,
+        consumo_mp: Number(historicoPrevYear.consumo_mp),
+        dias: diasDelMes(prevYearMesStr),
+      })
+    : { rotacion: null, cobertura_dias: null, consumo_vs_compras: null }
+  const texto = (v) => (hayDato && v != null) ? v : 'Sin dato'
+  return [
+    { concepto: `Histórico ${prevYearMesStr} · Rotación`,          valor: texto(rh.rotacion) },
+    { concepto: `Histórico ${prevYearMesStr} · Cobertura (días)`,  valor: texto(rh.cobertura_dias) },
+    { concepto: `Histórico ${prevYearMesStr} · Consumo / compras`, valor: texto(rh.consumo_vs_compras) },
+  ]
+}
 
 /**
  * excelSomm.js — Construye SPECS de workbook para las 3 exportaciones del
@@ -284,7 +330,11 @@ const COLS_CIERRE_VINOS = [
   { header: 'Tiene coste',       key: 'tiene_coste',    width: 10 },
 ]
 
-export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm = false, facturasLibro = [] }) {
+export function construirCierreWorkbook({
+  datos, mes, restauranteNombre,
+  esSomm = false, facturasLibro = [],
+  historicoPrevYear = null,
+}) {
   const slug = slugRestaurante(restauranteNombre)
   const filename = `${slug}-cierre-${mes}.xlsx`
 
@@ -366,7 +416,17 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm 
   // allí. El layout del Desglose se congela en el commit anterior y los
   // números de fila usados aquí dependen de él.
   const sheetRatios = construirSheetRatios(datos, mes)
-  if (sheetRatios) sheets.push(sheetRatios)
+  if (sheetRatios) {
+    // Si viene la fila de historico_mensual del mismo mes del año
+    // anterior, añadimos 3 filas de ratios históricos a la hoja Ratios.
+    // Texto plano, sin fórmulas; "Sin dato" cuando no hay extras.
+    const filasHistoricas = construirFilasHistoricoPrevYear(mes, historicoPrevYear)
+    if (filasHistoricas && filasHistoricas.length > 0) {
+      sheetRatios.rows.push({ concepto: '' })   // separador
+      sheetRatios.rows.push(...filasHistoricas)
+    }
+    sheets.push(sheetRatios)
+  }
 
   // Hoja "Conciliacion" (F3): compara compras_netas del cierre con la
   // suma de importes del Libro de Compras del mismo mes. Se añade

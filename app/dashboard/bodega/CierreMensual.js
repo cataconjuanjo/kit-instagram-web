@@ -14,8 +14,15 @@ import {
 import { formatoMoneda } from '../../lib/formatoEs'
 import { margenTrasMerma } from '../../lib/margenBodega'
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from '../../lib/cierreDesglose'
-import { calcularRatios } from '../../lib/ratiosCierre'
+import { calcularRatios, diasDelMes } from '../../lib/ratiosCierre'
 import { conciliarCompras } from '../../lib/conciliacionCompras'
+import {
+  leerExtrasHistorico,
+  tieneHistoricoExtras,
+  ratiosHistoricos,
+  coincideMesHistorico,
+  tieneDatosExportables,
+} from '../../lib/historicoExtras'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -170,7 +177,7 @@ function DataRow({ label, value, strong, dim, color, vari, variTitle, variDir })
 
 // ── PDF ────────────────────────────────────────────────────────────────────────
 
-async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = []) {
+async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [], historicoPrevYear = null) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const PW = 210, ML = 14, MR = 14, CW = PW - ML - MR
@@ -369,6 +376,33 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [])
     [100, 52, 30]
   )
 
+  // Histórico año anterior. Si el usuario introdujo los extras manuales
+  // (stock inicial/final, compras, consumo), mostramos los 3 ratios
+  // históricos. Cuando no hay dato → "Sin dato" (siempre con ascii()
+  // para evitar que pdfjs rompa caracteres no ASCII).
+  if (historicoPrevYear) {
+    if (y > 220) { doc.addPage(); y = 14 }
+    sep()
+    hdr(`Historico ${mesLabel(prevYearMes(mes))}`, 10)
+    const extrasPY = leerExtrasHistorico(historicoPrevYear)
+    const hayDato  = tieneHistoricoExtras(historicoPrevYear)
+    const rh       = ratiosHistoricos({
+      extras: extrasPY,
+      consumo_mp: Number(historicoPrevYear.consumo_mp),
+      dias: diasDelMes(prevYearMes(mes)),
+    })
+    const txt = (v, fn) => (hayDato && v != null) ? fn(v) : ascii('Sin dato')
+    tabla(
+      ['Ratio historico', 'Valor', 'Nota'],
+      [
+        ['Rotacion',          txt(rh.rotacion,         v => pdfNum(v, 2)), ''],
+        ['Cobertura (dias)', txt(rh.cobertura_dias,   v => pdfNum(v, 1)), ''],
+        ['Consumo / compras', txt(rh.consumo_vs_compras, v => pdfPct(v)), ''],
+      ],
+      [100, 52, 30],
+    )
+  }
+
   // Desglose del cierre (v1). Snapshots antiguos no lo tienen: se omite.
   const desg = readDesglose(datos)
   if (desg) {
@@ -450,17 +484,21 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [])
 
 // ── Excel ──────────────────────────────────────────────────────────────────────
 
-async function generarExcel(datos, mes, restaurante, facturasLibro = []) {
+async function generarExcel(datos, mes, restaurante, facturasLibro = [], historicoPrevYear = null) {
   // Delegamos en la spec pura de app/lib/excelSomm.js, que ya incluye
   // la hoja Vinos (informe.por_vino con TOTAL en fórmulas SUM) y el
   // Resumen económico. ExcelJS vía dynamic import.
   // esSomm omite "Total gastos" y "Resultado neto bodega" del resumen
   // y añade "Margen tras merma"; también omite la hoja Gastos.
   // facturasLibro (F3): se añade la hoja "Conciliacion" en el workbook.
+  // historicoPrevYear: fila de historico_mensual del mismo mes del año
+  // anterior; si viene, añadimos filas "Histórico año anterior" a la
+  // hoja Ratios (texto plano "Sin dato" si no hay extras).
   const spec = construirCierreWorkbook({
     datos, mes, restauranteNombre: restaurante?.nombre,
     esSomm: esPerfilSomm(restaurante),
     facturasLibro,
+    historicoPrevYear,
   })
   await descargarWorkbook(spec)
 }
@@ -491,11 +529,34 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   // Facturas del Libro de Compras del mes — lectura directa de la tabla
   // libro_compras (jsonb). Se usa sólo para conciliar; nunca se escribe.
   const [facturasLibro, setFacturasLibro] = useState(null)
+  // Fila de historico_mensual del MISMO MES del año anterior. Se usa
+  // en la comparativa cuando `modoComparar === 'anio_anterior'` para
+  // añadir rotación/cobertura/consumo-vs-compras calculadas desde los
+  // extras manuales (stock inicial/final, compras_total).
+  //
+  //   historicoPrevYear = null  → aún cargando (o modo != anio_anterior).
+  //   historicoPrevYear = {...} → fila cargada para ESTE mes concreto.
+  //
+  // Se recarga en un useEffect propio con deps [restauranteId, mes,
+  // modoComparar] y cancelación (ignora respuestas obsoletas si el mes
+  // cambió mientras la query estaba en vuelo). Guarda defensiva adicional
+  // en UI/PDF/Excel con `coincideMesHistorico`.
+  const [historicoPrevYear, setHistoricoPrevYear] = useState(null)
+  const [loadingHistorico, setLoadingHistorico] = useState(false)
 
-  const cargar = useCallback(async () => {
+  // Carga datos del mes actual + mes anterior (MoM) + libro_compras.
+  // Devuelve un token de cancelación (array con flag) para que el caller
+  // pueda invalidar la respuesta si el usuario cambia de mes antes de
+  // que llegue el resultado.
+  const cargar = useCallback(async (cancelado) => {
     if (!restauranteId || !mes) return
     setLoading(true)
     setError(null)
+    // Reset inmediato de comparadores para no dejar "colgando" los
+    // datos del mes anterior visibles mientras llega el fetch.
+    setEstado(null)
+    setDatosMesAnt(null)
+    setFacturasLibro(null)
     try {
       const [resActual, resAnt, resLibro] = await Promise.all([
         authedFetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${mes}`),
@@ -506,36 +567,49 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           .eq('restaurante_id', restauranteId)
           .eq('periodo', mes),
       ])
+      if (cancelado?.flag) return
       const jsonActual = await resActual.json()
       if (!resActual.ok) throw new Error(jsonActual.error || 'Error al cargar')
+      if (cancelado?.flag) return
       setEstado(jsonActual)
 
       if (resAnt.ok) {
         const jsonAnt = await resAnt.json()
+        if (cancelado?.flag) return
         setDatosMesAnt(jsonAnt.cerrado ? jsonAnt.cierre?.snapshot : jsonAnt.datos)
       } else {
+        if (cancelado?.flag) return
         setDatosMesAnt(null)
       }
 
       // RLS filtra por restaurante; aquí solo preparamos la lista para
       // la conciliación. Si la query falla silenciosamente, usamos [].
+      if (cancelado?.flag) return
       setFacturasLibro(Array.isArray(resLibro?.data) ? resLibro.data : [])
     } catch (e) {
+      if (cancelado?.flag) return
       setError(e.message)
       setEstado(null)
       setDatosMesAnt(null)
       setFacturasLibro(null)
     } finally {
-      setLoading(false)
+      if (!cancelado?.flag) setLoading(false)
     }
   }, [restauranteId, mes])
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => {
+    // Cancelación: cada vez que cambia `mes` se marca la carga anterior
+    // como obsoleta antes de disparar la nueva, impidiendo que una
+    // respuesta tardía pise a la actual.
+    const token = { flag: false }
+    cargar(token)
+    return () => { token.flag = true }
+  }, [cargar])
 
   // ── YoY: fetch perezoso del mes del año anterior, cacheado por `mes` ──
   const cargarYoY = useCallback(async () => {
     if (!restauranteId || !mes) return
-    if (yoyCache[mes]) return   // ya cacheado
+    if (yoyCache[mes]) return   // ya cacheado por mes (keyed), no se refresca
     setLoadingYoY(true)
     try {
       const resYoY = await authedFetch(
@@ -559,6 +633,41 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   useEffect(() => {
     if (modoComparar === 'anio_anterior' && !yoyCache[mes]) cargarYoY()
   }, [modoComparar, mes, yoyCache, cargarYoY])
+
+  // Fetch de la fila `historico_mensual` del MISMO MES del año anterior.
+  // Efecto PROPIO con cancelación — NUNCA cacheado por mes, para evitar
+  // que al volver a un mes ya visitado se muestre la fila de otro mes.
+  // Al cambiar mes/toggle/restaurante reseteamos a null inmediatamente
+  // (el bloque muestra estado "cargando") y la primera respuesta que
+  // llega con `cancelado=false` fija el valor. Si cambió el mes antes
+  // de resolverse, la respuesta obsoleta se descarta.
+  useEffect(() => {
+    if (!restauranteId || !mes) return
+    setHistoricoPrevYear(null)
+    if (modoComparar !== 'anio_anterior') { setLoadingHistorico(false); return }
+    let cancelado = false
+    setLoadingHistorico(true)
+    ;(async () => {
+      try {
+        const [yPrevStr, mPrevStr] = prevYearMes(mes).split('-')
+        const { data: hist } = await supabase
+          .from('historico_mensual')
+          .select('anio, mes, valor_stock_bodega, stock_inicial_valor, stock_final_valor, compras_total, consumo_mp, ingresos')
+          .eq('restaurante_id', restauranteId)
+          .eq('anio', parseInt(yPrevStr, 10))
+          .eq('mes', parseInt(mPrevStr, 10))
+          .maybeSingle()
+        if (cancelado) return
+        setHistoricoPrevYear(hist || {})
+      } catch {
+        if (cancelado) return
+        setHistoricoPrevYear({})
+      } finally {
+        if (!cancelado) setLoadingHistorico(false)
+      }
+    })()
+    return () => { cancelado = true }
+  }, [restauranteId, mes, modoComparar])
 
   const cerrado = estado?.cerrado ?? false
   const datos   = cerrado ? estado?.cierre?.snapshot : estado?.datos
@@ -714,18 +823,42 @@ export default function CierreMensual({ restauranteId, restaurante }) {
     }
   }
 
+  // Sanitiza la fila histórica justo antes de exportar: si el usuario
+  // acaba de cambiar de mes y aún no llegó el fetch, pasa null; si la
+  // fila que hay en memoria no corresponde al (anio-1, mes) del cierre
+  // que se está exportando, también pasa null (coincideMesHistorico).
+  // Así el PDF/Excel nunca cuelan datos de otro mes.
+  function historicoSeguroParaExportar() {
+    if (loadingHistorico) return null
+    if (!coincideMesHistorico(mes, historicoPrevYear)) return null
+    return historicoPrevYear
+  }
+
   async function exportarPDF() {
     if (!datos) return
+    if (!tieneDatosExportables(datos)) {
+      setError('Este mes aún no tiene datos para exportar.')
+      return
+    }
     setExportandoPDF(true)
-    try { await generarPDF(datos, datosMesAnt, mes, restaurante, facturasLibro || []) }
+    try { await generarPDF(datos, datosMesAnt, mes, restaurante, facturasLibro || [], historicoSeguroParaExportar()) }
     catch (e) { setError(e.message) }
     finally { setExportandoPDF(false) }
   }
 
   async function exportarExcel() {
     if (!datos) return
+    if (!tieneDatosExportables(datos)) {
+      // La spec de construirCierreWorkbook devuelve `{ empty: true }`
+      // cuando informe.por_vino está vacío, y descargarWorkbook retorna
+      // en silencio sin descargar. En la UI anterior el botón parecía
+      // no hacer nada. Avisamos antes de llamar al generador; no se
+      // cambia el comportamiento interno del generador.
+      setError('Este mes aún no tiene datos para exportar.')
+      return
+    }
     setExportandoXLS(true)
-    try { await generarExcel(datos, mes, restaurante, facturasLibro || []) }
+    try { await generarExcel(datos, mes, restaurante, facturasLibro || [], historicoSeguroParaExportar()) }
     catch (e) { setError(e.message) }
     finally { setExportandoXLS(false) }
   }
@@ -786,16 +919,31 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           )}
         </div>
         <div className={styles.actionRow} style={{ alignItems: 'flex-end', gap: 8 }}>
-          {datos && !loading && (
-            <>
-              <button className={styles.ghost} onClick={exportarPDF} disabled={exportandoPDF} style={{ fontSize: 12 }}>
-                {exportandoPDF ? 'Generando…' : 'PDF'}
-              </button>
-              <button className={styles.ghost} onClick={exportarExcel} disabled={exportandoXLS} style={{ fontSize: 12 }}>
-                {exportandoXLS ? 'Generando…' : 'Excel'}
-              </button>
-            </>
-          )}
+          {datos && !loading && (() => {
+            // Gate de exportación: si el mes aún no tiene vinos (p. ej.
+            // un mes futuro sin movimientos), los generadores existentes
+            // devuelven spec vacía y la descarga nunca ocurre. Lo
+            // anunciamos con un tooltip en el botón y además bloqueamos
+            // el click mientras el histórico se está cargando, para que
+            // no se exporte un PDF/Excel con "Histórico" de otro mes.
+            const sinDatos      = !tieneDatosExportables(datos)
+            const waitHistorico = modoComparar === 'anio_anterior' && loadingHistorico
+            const tooltipSin    = sinDatos ? 'Este mes aún no tiene datos para exportar.' : ''
+            const tooltipWait   = waitHistorico ? 'Esperando datos del histórico del año anterior…' : ''
+            const tip           = tooltipSin || tooltipWait
+            const disabledPdf   = exportandoPDF || sinDatos || waitHistorico
+            const disabledXls   = exportandoXLS || sinDatos || waitHistorico
+            return (
+              <>
+                <button className={styles.ghost} onClick={exportarPDF} disabled={disabledPdf} title={tip} style={{ fontSize: 12 }}>
+                  {exportandoPDF ? 'Generando…' : 'PDF'}
+                </button>
+                <button className={styles.ghost} onClick={exportarExcel} disabled={disabledXls} title={tip} style={{ fontSize: 12 }}>
+                  {exportandoXLS ? 'Generando…' : 'Excel'}
+                </button>
+              </>
+            )
+          })()}
           {cerrado && (
             <span style={{ fontSize: 12, color: '#4A8C6F' }}>
               Cerrado {new Date(estado.cierre.cerrado_en).toLocaleDateString('es-ES')}
@@ -819,6 +967,21 @@ export default function CierreMensual({ restauranteId, restaurante }) {
 
       {!loading && !datos && !error && (
         <p className={styles.empty}>Sin datos para {mesLabel(mes)}.</p>
+      )}
+
+      {!loading && datos && !tieneDatosExportables(datos) && (
+        <p style={{
+          color: '#b15a00', fontSize: 13, padding: '6px 10px',
+          background: 'rgba(245,158,11,0.08)',
+          border: '1px solid rgba(245,158,11,0.25)',
+          borderRadius: 6,
+        }}>
+          Este mes aún no tiene datos para exportar. La hoja de vinos del Excel
+          y las tablas del PDF se construyen a partir del detalle por vino del
+          mes (informe · por_vino); si no hay ventas o movimientos registrados,
+          los generadores devuelven una exportación vacía y la descarga no se
+          dispara.
+        </p>
       )}
 
       {!loading && datos && (
@@ -1036,6 +1199,67 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                   )}
                   {tarjeta('Dif. inventario %',pctRatio(r.diferencia_inventario_pct), motivoRatio(f, 'diferencia_inv'))}
                 </div>
+              </div>
+            )
+          })()}
+
+          {/* Histórico año anterior: rotación / cobertura / consumo-compras
+              calculados desde los extras manuales de historico_mensual
+              (stock inicial/final, compras_total, consumo_mp). Solo aparece
+              cuando el usuario está comparando con el año anterior.
+              Guarda defensiva doble:
+                - loadingHistorico: mientras llega el fetch, no se intenta
+                  pintar ratios (evita flash de datos del mes anterior al
+                  cambiar con ◄ ►).
+                - coincideMesHistorico(mes, row): si la fila responde a
+                  otro (anio, mes), se trata como "Sin dato" en vez de
+                  mostrar datos cruzados. */}
+          {modoComparar === 'anio_anterior' && (() => {
+            const coincide = coincideMesHistorico(mes, historicoPrevYear)
+            const extras   = coincide ? leerExtrasHistorico(historicoPrevYear) : {}
+            const hayDato  = coincide && tieneHistoricoExtras(historicoPrevYear)
+            const rh = hayDato
+              ? ratiosHistoricos({
+                  extras,
+                  consumo_mp: Number(historicoPrevYear.consumo_mp),
+                  dias: diasDelMes(prevYearMes(mes)),
+                })
+              : { rotacion: null, cobertura_dias: null, consumo_vs_compras: null }
+            const tarjetaHist = (titulo, valor) => (
+              <div style={{
+                flex: '1 1 160px', minWidth: 140,
+                padding: '10px 12px', borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.02)',
+              }}>
+                <div style={{ fontSize: 10.5, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.55, marginBottom: 4 }}>{titulo}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, fontStyle: valor === 'Sin dato' ? 'italic' : 'normal', opacity: valor === 'Sin dato' ? 0.55 : 1 }}>
+                  {valor}
+                </div>
+              </div>
+            )
+            return (
+              <div style={{ marginTop: 16, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 10 }}>
+                  Histórico {mesLabel(prevYearMes(mes))}
+                </p>
+                {loadingHistorico && (
+                  <p style={{ fontSize: 12, color: '#8b8278', fontStyle: 'italic', marginBottom: 10 }}>
+                    Cargando histórico…
+                  </p>
+                )}
+                {!loadingHistorico && !hayDato && (
+                  <p style={{ fontSize: 12, color: '#8b8278', fontStyle: 'italic', marginBottom: 10 }}>
+                    Sin dato — introduce stock y compras del año anterior en Explotación para activar esta comparativa.
+                  </p>
+                )}
+                {!loadingHistorico && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {tarjetaHist('Rotación hist.',       hayDato && rh.rotacion != null ? numDec(rh.rotacion, 2) : 'Sin dato')}
+                    {tarjetaHist('Cobertura hist. (d)', hayDato && rh.cobertura_dias != null ? numDec(rh.cobertura_dias, 1) : 'Sin dato')}
+                    {tarjetaHist('Consumo / compras',    hayDato && rh.consumo_vs_compras != null ? pctRatio(rh.consumo_vs_compras) : 'Sin dato')}
+                  </div>
+                )}
               </div>
             )
           })()}
