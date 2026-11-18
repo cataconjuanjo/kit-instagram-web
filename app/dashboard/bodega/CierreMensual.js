@@ -14,8 +14,13 @@ import {
 import { formatoMoneda } from '../../lib/formatoEs'
 import { margenTrasMerma } from '../../lib/margenBodega'
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from '../../lib/cierreDesglose'
-import { calcularRatios } from '../../lib/ratiosCierre'
+import { calcularRatios, diasDelMes } from '../../lib/ratiosCierre'
 import { conciliarCompras } from '../../lib/conciliacionCompras'
+import {
+  leerExtrasHistorico,
+  tieneHistoricoExtras,
+  ratiosHistoricos,
+} from '../../lib/historicoExtras'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -170,7 +175,7 @@ function DataRow({ label, value, strong, dim, color, vari, variTitle, variDir })
 
 // ── PDF ────────────────────────────────────────────────────────────────────────
 
-async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = []) {
+async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [], historicoPrevYear = null) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const PW = 210, ML = 14, MR = 14, CW = PW - ML - MR
@@ -369,6 +374,33 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [])
     [100, 52, 30]
   )
 
+  // Histórico año anterior. Si el usuario introdujo los extras manuales
+  // (stock inicial/final, compras, consumo), mostramos los 3 ratios
+  // históricos. Cuando no hay dato → "Sin dato" (siempre con ascii()
+  // para evitar que pdfjs rompa caracteres no ASCII).
+  if (historicoPrevYear) {
+    if (y > 220) { doc.addPage(); y = 14 }
+    sep()
+    hdr(`Historico ${mesLabel(prevYearMes(mes))}`, 10)
+    const extrasPY = leerExtrasHistorico(historicoPrevYear)
+    const hayDato  = tieneHistoricoExtras(historicoPrevYear)
+    const rh       = ratiosHistoricos({
+      extras: extrasPY,
+      consumo_mp: Number(historicoPrevYear.consumo_mp),
+      dias: diasDelMes(prevYearMes(mes)),
+    })
+    const txt = (v, fn) => (hayDato && v != null) ? fn(v) : ascii('Sin dato')
+    tabla(
+      ['Ratio historico', 'Valor', 'Nota'],
+      [
+        ['Rotacion',          txt(rh.rotacion,         v => pdfNum(v, 2)), ''],
+        ['Cobertura (dias)', txt(rh.cobertura_dias,   v => pdfNum(v, 1)), ''],
+        ['Consumo / compras', txt(rh.consumo_vs_compras, v => pdfPct(v)), ''],
+      ],
+      [100, 52, 30],
+    )
+  }
+
   // Desglose del cierre (v1). Snapshots antiguos no lo tienen: se omite.
   const desg = readDesglose(datos)
   if (desg) {
@@ -450,17 +482,21 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [])
 
 // ── Excel ──────────────────────────────────────────────────────────────────────
 
-async function generarExcel(datos, mes, restaurante, facturasLibro = []) {
+async function generarExcel(datos, mes, restaurante, facturasLibro = [], historicoPrevYear = null) {
   // Delegamos en la spec pura de app/lib/excelSomm.js, que ya incluye
   // la hoja Vinos (informe.por_vino con TOTAL en fórmulas SUM) y el
   // Resumen económico. ExcelJS vía dynamic import.
   // esSomm omite "Total gastos" y "Resultado neto bodega" del resumen
   // y añade "Margen tras merma"; también omite la hoja Gastos.
   // facturasLibro (F3): se añade la hoja "Conciliacion" en el workbook.
+  // historicoPrevYear: fila de historico_mensual del mismo mes del año
+  // anterior; si viene, añadimos filas "Histórico año anterior" a la
+  // hoja Ratios (texto plano "Sin dato" si no hay extras).
   const spec = construirCierreWorkbook({
     datos, mes, restauranteNombre: restaurante?.nombre,
     esSomm: esPerfilSomm(restaurante),
     facturasLibro,
+    historicoPrevYear,
   })
   await descargarWorkbook(spec)
 }
@@ -491,6 +527,12 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   // Facturas del Libro de Compras del mes — lectura directa de la tabla
   // libro_compras (jsonb). Se usa sólo para conciliar; nunca se escribe.
   const [facturasLibro, setFacturasLibro] = useState(null)
+  // Fila de historico_mensual del MISMO MES del año anterior. Se usa
+  // en la comparativa cuando `modoComparar === 'anio_anterior'` para
+  // añadir rotación/cobertura/consumo-vs-compras calculadas desde los
+  // extras manuales (stock inicial/final, compras_total).
+  //   null cargando/ausente; {} = fila existe pero vacía ("Sin dato").
+  const [historicoPrevYear, setHistoricoPrevYear] = useState(null)
 
   const cargar = useCallback(async () => {
     if (!restauranteId || !mes) return
@@ -548,8 +590,21 @@ export default function CierreMensual({ restauranteId, restaurante }) {
       } else {
         setYoyCache(c => ({ ...c, [mes]: { datos: null, cerrado: false } }))
       }
+      // Lectura paralela de historico_mensual del mismo mes del año
+      // anterior. Protegida por RLS; si no hay fila (o no hay permiso),
+      // queda {} y la UI lo renderiza como "Sin dato".
+      const [yPrevStr, mPrevStr] = prevYearMes(mes).split('-')
+      const { data: hist } = await supabase
+        .from('historico_mensual')
+        .select('valor_stock_bodega, stock_inicial_valor, stock_final_valor, compras_total, consumo_mp, ingresos')
+        .eq('restaurante_id', restauranteId)
+        .eq('anio', parseInt(yPrevStr, 10))
+        .eq('mes', parseInt(mPrevStr, 10))
+        .maybeSingle()
+      setHistoricoPrevYear(hist || {})
     } catch {
       setYoyCache(c => ({ ...c, [mes]: { datos: null, cerrado: false } }))
+      setHistoricoPrevYear({})
     } finally {
       setLoadingYoY(false)
     }
@@ -717,7 +772,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   async function exportarPDF() {
     if (!datos) return
     setExportandoPDF(true)
-    try { await generarPDF(datos, datosMesAnt, mes, restaurante, facturasLibro || []) }
+    try { await generarPDF(datos, datosMesAnt, mes, restaurante, facturasLibro || [], historicoPrevYear) }
     catch (e) { setError(e.message) }
     finally { setExportandoPDF(false) }
   }
@@ -725,7 +780,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   async function exportarExcel() {
     if (!datos) return
     setExportandoXLS(true)
-    try { await generarExcel(datos, mes, restaurante, facturasLibro || []) }
+    try { await generarExcel(datos, mes, restaurante, facturasLibro || [], historicoPrevYear) }
     catch (e) { setError(e.message) }
     finally { setExportandoXLS(false) }
   }
@@ -1035,6 +1090,51 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                     r.cobertura_parcial ? `Mes en curso · ${r.meta?.dias_cobertura ?? '?'} días transcurridos` : null,
                   )}
                   {tarjeta('Dif. inventario %',pctRatio(r.diferencia_inventario_pct), motivoRatio(f, 'diferencia_inv'))}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Histórico año anterior: rotación / cobertura / consumo-compras
+              calculados desde los extras manuales de historico_mensual
+              (stock inicial/final, compras_total, consumo_mp). Solo aparece
+              cuando el usuario está comparando con el año anterior y la
+              fila tiene dato — con los 4 extras a 0/NULL muestra "Sin dato". */}
+          {modoComparar === 'anio_anterior' && historicoPrevYear != null && (() => {
+            const extras = leerExtrasHistorico(historicoPrevYear)
+            const hayDato = tieneHistoricoExtras(historicoPrevYear)
+            const rh = ratiosHistoricos({
+              extras,
+              consumo_mp: Number(historicoPrevYear.consumo_mp),
+              dias: diasDelMes(prevYearMes(mes)),
+            })
+            const tarjetaHist = (titulo, valor) => (
+              <div style={{
+                flex: '1 1 160px', minWidth: 140,
+                padding: '10px 12px', borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.02)',
+              }}>
+                <div style={{ fontSize: 10.5, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.55, marginBottom: 4 }}>{titulo}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, fontStyle: valor === 'Sin dato' ? 'italic' : 'normal', opacity: valor === 'Sin dato' ? 0.55 : 1 }}>
+                  {valor}
+                </div>
+              </div>
+            )
+            return (
+              <div style={{ marginTop: 16, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 10 }}>
+                  Histórico {mesLabel(prevYearMes(mes))}
+                </p>
+                {!hayDato && (
+                  <p style={{ fontSize: 12, color: '#8b8278', fontStyle: 'italic', marginBottom: 10 }}>
+                    Sin dato — introduce stock y compras del año anterior en Explotación para activar esta comparativa.
+                  </p>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {tarjetaHist('Rotación hist.',       hayDato && rh.rotacion != null ? numDec(rh.rotacion, 2) : 'Sin dato')}
+                  {tarjetaHist('Cobertura hist. (d)', hayDato && rh.cobertura_dias != null ? numDec(rh.cobertura_dias, 1) : 'Sin dato')}
+                  {tarjetaHist('Consumo / compras',    hayDato && rh.consumo_vs_compras != null ? pctRatio(rh.consumo_vs_compras) : 'Sin dato')}
                 </div>
               </div>
             )
