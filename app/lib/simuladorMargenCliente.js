@@ -14,6 +14,11 @@
 
 import { supabase } from '../supabase'
 import { esRelacionInexistente } from './eventosBodega'
+// Fase E-2: `limpiarSupuestos` vive ahora en el lib puro (sin 'use
+// client') para que los tests puedan importarlo sin arrastrar supabase.
+// Se re-exporta aquí para mantener la API pública del cliente.
+import { limpiarSupuestos as _limpiar } from './simuladorMargen'
+export const limpiarSupuestos = _limpiar
 
 /**
  * Lee los supuestos del restaurante. Devuelve:
@@ -71,17 +76,3 @@ export async function guardarSupuestos(restauranteId, supuestos) {
   return { ok: true, falta_tabla: false, error: null }
 }
 
-export function limpiarSupuestos(s) {
-  const out = {}
-  const claves = [
-    'materiales', 'suministros', 'otros',
-    'beneficio_objetivo', 'ventas_previstas_fijo',
-  ]
-  for (const k of claves) {
-    const v = s?.[k]
-    if (v === null || v === undefined || v === '') continue
-    const n = typeof v === 'number' ? v : Number(String(v).replace(/\./g, '').replace(/,/g, '.'))
-    if (Number.isFinite(n)) out[k] = n
-  }
-  return out
-}

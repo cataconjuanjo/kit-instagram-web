@@ -13,6 +13,12 @@ import {
 } from '../../lib/yoyCierre'
 import { formatoMoneda } from '../../lib/formatoEs'
 import { margenTrasMerma } from '../../lib/margenBodega'
+import {
+  cargarLogoPdf,
+  formatPeriodoPdfEs,
+  pintarCabecera,
+  pintarPiesEnTodas,
+} from '../../lib/pdfEstilos'
 import { readDesglose, CATEGORIAS_SALIDA_SIN_VENTA } from '../../lib/cierreDesglose'
 import { calcularRatios, diasDelMes } from '../../lib/ratiosCierre'
 import { conciliarCompras } from '../../lib/conciliacionCompras'
@@ -235,7 +241,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     rows.forEach((row, ri) => {
-      if (y > 270) { doc.addPage(); y = 14 }
+      if (y > 270) { y = nuevaPagina() }
       if (ri % 2 === 1) {
         doc.setFillColor(252, 252, 252)
         doc.rect(ML, y, CW, ROW_H, 'F')
@@ -259,19 +265,32 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
     return `${p >= 0 ? '+' : ''}${p}%`
   }
 
-  // Cabecera
-  doc.setFillColor(30, 30, 30)
-  doc.rect(0, 0, PW, 22, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.setTextColor(255, 255, 255)
-  doc.text(ascii(restaurante?.nombre || 'Restaurante'), ML, 10)
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.text(ascii(`Cierre mensual de bodega · ${mesLabel(mes)}`), ML, 17)
-  y = 28
+  // Cabecera Carta Viva (Fase E): banda burdeos + logo isotipo + pie
+  // "Página X de N" en todas las páginas. Las cifras del cuerpo
+  // siguen idénticas (test de invariancia en pdfCierreMensualInvariante).
+  const logoCv = cargarLogoPdf()
+  function pintarCabeceraCv() {
+    pintarCabecera(doc, {
+      W: PW, margin: ML,
+      restauranteNombre: restaurante?.nombre || 'Restaurante',
+      periodoEs:         formatPeriodoPdfEs(mes),
+      subtitulo:         'Cierre mensual de bodega',
+      logo:              logoCv,
+    })
+  }
+  function nuevaPagina() {
+    doc.addPage()
+    pintarCabeceraCv()
+    return 34
+  }
+  pintarCabeceraCv()
+  y = 34
 
-  sub(`${datos.partes_incluidos} partes · ${datos.desde} → ${datos.hasta}${datos.borradores_excluidos > 0 ? ` · ${datos.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
+  // El carácter "→" NO existe en WinAnsi (CP1252), la fuente estándar
+  // de jsPDF-helvetica. Si llegara, jsPDF reencoda la línea en UTF-16
+  // y aparecen bytes nulos intercalados en el stream. Usamos " a "
+  // (letra "a"), consistente con las fechas ISO del resto del PDF.
+  sub(`${datos.partes_incluidos} partes · ${datos.desde} a ${datos.hasta}${datos.borradores_excluidos > 0 ? ` · ${datos.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
   sep()
 
   hdr('Ventas', 10)
@@ -353,7 +372,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
   const ratios = calcularRatios({ datos, desglose: readDesglose(datos) })
   const pdfPct = (v) => (v == null || !Number.isFinite(Number(v))) ? '-' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(v) * 100) + ' %'
   const pdfNum = (v, dec = 2) => (v == null || !Number.isFinite(Number(v))) ? '-' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(Number(v))
-  if (y > 230) { doc.addPage(); y = 14 }
+  if (y > 230) { y = nuevaPagina() }
   sep()
   hdr('Ratios del mes', 10)
   tabla(
@@ -381,7 +400,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
   // históricos. Cuando no hay dato → "Sin dato" (siempre con ascii()
   // para evitar que pdfjs rompa caracteres no ASCII).
   if (historicoPrevYear) {
-    if (y > 220) { doc.addPage(); y = 14 }
+    if (y > 220) { y = nuevaPagina() }
     sep()
     hdr(`Historico ${mesLabel(prevYearMes(mes))}`, 10)
     const extrasPY = leerExtrasHistorico(historicoPrevYear)
@@ -406,7 +425,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
   // Desglose del cierre (v1). Snapshots antiguos no lo tienen: se omite.
   const desg = readDesglose(datos)
   if (desg) {
-    if (y > 220) { doc.addPage(); y = 14 }
+    if (y > 220) { y = nuevaPagina() }
     sep()
     hdr('Desglose del cierre', 10)
 
@@ -441,7 +460,7 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
     facturasLibro,
     mes,
   })
-  if (y > 230) { doc.addPage(); y = 14 }
+  if (y > 230) { y = nuevaPagina() }
   sep()
   hdr('Conciliacion de compras', 10)
   const etiqConcil = {
@@ -470,15 +489,15 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
     sub(`${concil.meta.sin_fecha} factura(s) del Libro sin fecha explicita (se cuentan en el mes ${concil.meta.mes}).`)
   }
 
-  const totalPags = doc.getNumberOfPages()
-  for (let p = 1; p <= totalPags; p++) {
-    doc.setPage(p)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(160, 160, 160)
-    doc.text(ascii(`Carta Viva · ${new Date().toLocaleDateString('es-ES')} · Pag. ${p}/${totalPags}`), PW / 2, 292, { align: 'center' })
-  }
-
+  // Fase E-3: un único pie por página, el de pdfEstilos, con la
+  // fecha de generación integrada en el lado izquierdo para no
+  // duplicar información (antes convivían este pie antiguo centrado
+  // + el de pintarPie → dos textos de pie por página).
+  const fechaGen = new Date().toLocaleDateString('es-ES')
+  pintarPiesEnTodas(doc, {
+    W: PW,
+    textoIzda: `Carta Viva · Cierre mensual · ${fechaGen}`,
+  })
   doc.save(`cierre-mensual-${mes}.pdf`)
 }
 

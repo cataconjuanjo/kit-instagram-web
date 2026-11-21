@@ -563,7 +563,7 @@ function construirSheetCierre({ datosVino }) {
 //
 // Devuelve null si no hay snapshot o si no hay ventas/coste
 // (mes sin datos → omitida, patrón de construirSheetCanalesVenta).
-function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler }) {
+function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler, supuestos = null }) {
   if (!datosVino) return null
   const d = datosVino
   const ventasNeto = Number(d.ventas_neto)
@@ -583,43 +583,165 @@ function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler }) {
   const personalBodega = Number.isFinite(Number(totalPersonal)) ? Number(totalPersonal) : null
   const alquilerBodega = Number.isFinite(Number(totalAlquiler)) ? Number(totalAlquiler) : null
 
-  // Filas 1-based: header en 1, filas de datos empiezan en 2.
-  // Las fórmulas de %MP real y multiplicador real se calculan en vivo
-  // referenciando las celdas de ventas y coste (sin "=" en el builder,
-  // como el resto de hojas).
+  // Valores de referencia de las celdas SEMILLA (los únicos "datos" no
+  // derivados). Todo lo demás se computa a partir de estos — así, al
+  // abrir el Excel, Excel recalcula las fórmulas y obtiene el MISMO
+  // resultado que cacheamos (no divergencia por redondeos intermedios).
+  const B2 = r2(ventasNeto)   // celda B2: VENTAS DEL MES
+  const B3 = r2(costeMp)      // celda B3: Coste ventas teórico
+  const B5 = B2 > 0 ? B3 / B2 : null                 // = B3/B2 (ratio, precisión completa)
+  const B6 = B5 !== null ? 1 - B5 : null             // = 1-B5
+
   const rows = []
-  rows.push({ concepto: 'VENTAS DEL MES',               valor: r2(ventasNeto) })             // fila 2
-  rows.push({ concepto: 'Coste ventas teórico',         valor: r2(costeMp) })                 // fila 3
-  rows.push({ concepto: 'Margen bruto real',            valor: r2(margen) })                  // fila 4
-  // % MP real = coste/ventas ; fórmula viva
+  rows.push({ concepto: 'VENTAS DEL MES',            valor: B2 })                             // fila 2
+  rows.push({ concepto: 'Coste ventas teórico',      valor: B3 })                             // fila 3
+  rows.push({ concepto: 'Margen bruto real',         valor: { formula: 'B2-B3', result: B2 - B3 } })// fila 4
   rows.push({
     concepto: '% materia prima real',
-    valor: ventasNeto > 0
-      ? { formula: 'B3/B2', result: r2((costeMp / ventasNeto) * 100) / 100, format: FMT_PCT }
-      : null,
-  })                                                                                           // fila 5
-  // % margen real = 1 − B5 ; fórmula viva (devuelve ratio para FMT_PCT)
+    valor: B5 !== null ? { formula: 'B3/B2', result: B5, format: FMT_PCT } : null,
+  })                                                                                            // fila 5
   rows.push({
     concepto: '% margen real',
-    valor: ventasNeto > 0
-      ? { formula: '1-B5', result: r2(1 - (costeMp / ventasNeto)), format: FMT_PCT }
-      : null,
-  })                                                                                           // fila 6
-  rows.push({ concepto: '',                             valor: '' })                           // fila 7 (separador)
+    valor: B6 !== null ? { formula: '1-B5', result: B6, format: FMT_PCT } : null,
+  })                                                                                            // fila 6
+  rows.push({ concepto: '', valor: '' })                                                        // fila 7
 
-  rows.push({ concepto: 'GASTOS MENSUALES DE BODEGA',   valor: '' })                           // fila 8
-  rows.push({ concepto: 'Personal (imputado a bodega)', valor: personalBodega })               // fila 9
-  rows.push({ concepto: 'Alquiler (imputado a bodega)', valor: alquilerBodega })               // fila 10
-  rows.push({ concepto: 'Roturas + invitaciones + cocina + cata (coste)', valor: r2(roturas) })// fila 11
-
-  // Suma de gastos "reales" que el informe conoce. Materiales,
-  // suministros, otros y beneficio objetivo NO salen aquí: dependen
-  // de supuestos manuales fuera del alcance de esta ruta.
-  const gastosReales = (personalBodega || 0) + (alquilerBodega || 0) + roturas
+  rows.push({ concepto: 'GASTOS MENSUALES DE BODEGA', valor: '' })                              // fila 8
+  rows.push({ concepto: 'Personal (imputado a bodega)', valor: personalBodega })                // fila 9
+  rows.push({ concepto: 'Alquiler (imputado a bodega)', valor: alquilerBodega })                // fila 10
+  rows.push({ concepto: 'Roturas + invitaciones + cocina + cata (coste)', valor: roturas })    // fila 11
   rows.push({
     concepto: 'TOTAL gastos reales de bodega (sin supuestos manuales)',
-    valor: { formula: 'SUM(B9:B11)', result: r2(gastosReales) },
-  })                                                                                           // fila 12
+    // Fórmula viva con result obtenido sumando EXACTAMENTE lo que Excel
+    // sumaría: las celdas B9:B11 ya almacenadas (que no están r2'd aquí).
+    valor: {
+      formula: 'SUM(B9:B11)',
+      result: (personalBodega || 0) + (alquilerBodega || 0) + roturas,
+    },
+  })                                                                                            // fila 12
+
+  // ── Bloque de supuestos (Fase E) ─────────────────────────────────
+  // Si `simulador_margen_bodega` tiene fila para el restaurante, añade
+  // margen mínimo, % MP máx, multiplicador mínimo y veredicto por
+  // puntos. Si no hay supuestos, nota "Sin supuestos guardados".
+  if (supuestos && hayAlgunSupuesto(supuestos)) {
+    rows.push({ concepto: '', valor: '' })                                                      // fila 13
+    rows.push({ concepto: 'SUPUESTOS DEL SIMULADOR (guardados)', valor: '' })                   // fila 14
+    const materiales   = supNum(supuestos.materiales)
+    const suministros  = supNum(supuestos.suministros)
+    const otros        = supNum(supuestos.otros)
+    const beneficio    = supNum(supuestos.beneficio_objetivo)
+    const ventasFijo   = supNum(supuestos.ventas_previstas_fijo)
+    rows.push({ concepto: 'Materiales (copas, sacacorchos…)',  valor: materiales })             // fila 15
+    rows.push({ concepto: 'Suministros (gases, mantenimiento…)', valor: suministros })          // fila 16
+    rows.push({ concepto: 'Otros gastos (inmovilizado, etc.)', valor: otros })                  // fila 17
+    rows.push({ concepto: 'Beneficio neto objetivo mensual',   valor: beneficio })              // fila 18
+    // Fila 19 — ORIGEN de las ventas previstas, deja claro al usuario
+    // de dónde vienen los datos del mes y evita que pase inadvertido
+    // que las ventas pueden estar "congeladas" de un mes anterior:
+    //   · con fijo: valor literal, concepto "(fijadas manualmente)"
+    //   · sin fijo: fórmula viva =B2 → siempre las ventas del mes
+    //     del informe; si el usuario edita B2 en Excel, B19 (y por
+    //     tanto B22) se recalculan.
+    if (ventasFijo != null) {
+      rows.push({
+        concepto: 'Ventas previstas (fijadas manualmente)',
+        valor: ventasFijo,
+      })                                                                                          // fila 19
+    } else {
+      rows.push({
+        concepto: 'Ventas previstas (ventas del mes del informe)',
+        valor: ventasNeto > 0 ? { formula: 'B2', result: B2 } : null,
+      })                                                                                          // fila 19
+    }
+    // B20: TOTAL gastos (fórmula). SUM(B9:B11) + B15 + B16 + B17.
+    rows.push({                                                                                   // fila 20
+      concepto: 'TOTAL gastos (reales + supuestos)',
+      valor: {
+        formula: 'B12+B15+B16+B17',
+        result: (personalBodega || 0) + (alquilerBodega || 0) + roturas
+                + (materiales || 0) + (suministros || 0) + (otros || 0),
+      },
+    })
+    // B21: margen bruto necesario = TOTAL gastos + beneficio.
+    rows.push({                                                                                   // fila 21
+      concepto: 'Margen bruto necesario',
+      valor: { formula: 'B20+B18', result: null },
+    })
+    // Ventas previstas efectivas: fórmula viva =B19. Mantiene la
+    // cadena de referencias: si cambia B19, cambian B22/B23/B24/B25.
+    const ventasEfect = ventasFijo != null ? ventasFijo : (ventasNeto > 0 ? ventasNeto : null)
+    rows.push({                                                                                   // fila 22
+      concepto: 'Ventas previstas efectivas',
+      valor: ventasEfect != null ? { formula: 'B19', result: ventasEfect } : null,
+    })
+    // B23: % margen mínimo = B21/B22.
+    rows.push({                                                                                   // fila 23
+      concepto: '% margen mínimo',
+      valor: ventasEfect && ventasEfect > 0
+        ? { formula: 'B21/B22', result: null, format: FMT_PCT }
+        : null,
+    })
+    // B24: % materia prima máx = 1 − B23.
+    rows.push({                                                                                   // fila 24
+      concepto: '% materia prima máx.',
+      valor: ventasEfect && ventasEfect > 0
+        ? { formula: '1-B23', result: null, format: FMT_PCT }
+        : null,
+    })
+    // B25: multiplicador mínimo = 1 / B24 (si B24 > 0).
+    rows.push({                                                                                   // fila 25
+      concepto: 'Multiplicador mínimo',
+      valor: ventasEfect && ventasEfect > 0
+        ? { formula: '1/B24', result: null }
+        : null,
+    })
+    // Veredicto por puntos: % margen real − % margen mínimo.
+    // Fórmula "1-B5-B23": pasa por los ratios almacenados. Excel la
+    // recalcula si el usuario edita gastos/supuestos.
+    rows.push({                                                                                   // fila 26
+      concepto: 'Diferencia vs mínimo (pts de margen)',
+      valor: ventasEfect && ventasEfect > 0 && B5 !== null
+        ? { formula: '(1-B5)-B23', result: null, format: FMT_PCT }
+        : null,
+    })
+
+    // Ahora calculamos todos los `result` con precisión completa y los
+    // volcamos en las filas (valor actualizado). El veredicto textual
+    // "Cubre / No cubre" lo dejamos en la fila siguiente.
+    const totalGastosConSupuestos = (personalBodega || 0) + (alquilerBodega || 0) + roturas
+                                   + (materiales || 0) + (suministros || 0) + (otros || 0)
+    const margenNecesario = totalGastosConSupuestos + (beneficio || 0)
+    const pctMargenMinimo = ventasEfect && ventasEfect > 0 ? margenNecesario / ventasEfect : null
+    const pctMpMax        = pctMargenMinimo !== null ? 1 - pctMargenMinimo : null
+    const multMin         = pctMpMax !== null && pctMpMax > 0 ? 1 / pctMpMax : null
+    const pctMargenReal   = B6
+    const diffPts         = (pctMargenReal !== null && pctMargenMinimo !== null)
+      ? pctMargenReal - pctMargenMinimo : null
+    // Escribe los result (no tocamos las fórmulas; las fórmulas siguen vivas).
+    const findRow = (concepto) => rows.find(r => r.concepto === concepto)
+    const asignarResult = (concepto, result) => {
+      const row = findRow(concepto)
+      if (row && row.valor && typeof row.valor === 'object' && row.valor.formula) {
+        row.valor = { ...row.valor, result }
+      }
+    }
+    asignarResult('Margen bruto necesario',        margenNecesario)
+    asignarResult('% margen mínimo',               pctMargenMinimo)
+    asignarResult('% materia prima máx.',          pctMpMax)
+    asignarResult('Multiplicador mínimo',          multMin)
+    asignarResult('Diferencia vs mínimo (pts de margen)', diffPts)
+
+    rows.push({
+      concepto: 'Veredicto',
+      valor: diffPts !== null
+        ? (diffPts >= 0 ? 'Cubre el margen mínimo' : 'No cubre el margen mínimo')
+        : '',
+    })
+  } else {
+    rows.push({ concepto: '', valor: '' })
+    rows.push({ concepto: 'Sin supuestos guardados (el usuario no los ha fijado en el simulador)', valor: '' })
+  }
 
   return {
     name: 'Simulador',
@@ -630,6 +752,17 @@ function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler }) {
     rows,
     freezeHeader: true,
   }
+}
+
+function hayAlgunSupuesto(s) {
+  if (!s || typeof s !== 'object') return false
+  const claves = ['materiales', 'suministros', 'otros', 'beneficio_objetivo', 'ventas_previstas_fijo']
+  return claves.some(k => supNum(s[k]) !== null)
+}
+function supNum(v) {
+  if (v === null || v === undefined || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
 }
 
 // ── Entrypoint ─────────────────────────────────────────────────────────────
@@ -661,6 +794,11 @@ export function construirInformeEconomicoWorkbook({
   // % imputable a bodega por concepto (ver app/lib/imputacionBodega.js).
   // Default {} ≡ 100 % en todo ≡ comportamiento histórico.
   imputacion_pct = {},
+  // Fase E: supuestos guardados del simulador de margen (tabla
+  // simulador_margen_bodega). Opcional — si la tabla no existe o el
+  // restaurante no tiene fila, se pasa null y la hoja Simulador
+  // muestra sólo lo real, igual que en Fase D.
+  supuestos = null,
 }) {
   const slug = slugRestaurante(restauranteNombre)
   const filename = `informe-economico-${slug}-${periodo}.xlsx`
@@ -702,11 +840,14 @@ export function construirInformeEconomicoWorkbook({
   const sheetCierre = construirSheetCierre({ datosVino })
   if (sheetCierre) sheets.push(sheetCierre)
 
-  // Fase D: hoja Simulador (foto del mes, sin supuestos manuales).
+  // Fase D/E: hoja Simulador. En Fase E se pueden pasar `supuestos`
+  // (desde simulador_margen_bodega) para completar el bloque con
+  // margen mínimo, % MP máx, multiplicador y veredicto.
   const sheetSim = construirSheetSimulador({
     datosVino,
     totalPersonal: tp,
     totalAlquiler: ta,
+    supuestos,
   })
   if (sheetSim) sheets.push(sheetSim)
 
