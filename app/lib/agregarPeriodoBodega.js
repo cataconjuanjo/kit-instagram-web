@@ -1,4 +1,5 @@
 import { fetchAllPages, chunkArray } from './fetchAllPages.js'
+import { esColumnaInexistente } from './eventosBodega.js'
 
 /**
  * agregarPeriodoBodega — Agregación de ventas de sala por periodo.
@@ -65,14 +66,43 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
 
   // Líneas con datos de vino — paginado + chunking en .in() para no reventar
   // la URL (PostgREST ≈100 ids por .in()) ni cortar a 1000 filas.
+  // Fase F: intentamos incluir `vinos.iva_pct`. Si la columna aún
+  // no existe (SQL pendiente), capturamos 42703/PGRST204 y
+  // reintentamos SIN esa columna → cada `l.vino.iva_pct` queda
+  // undefined y el agregador cae al IVA global para todos los vinos.
+  const SELECT_CON_IVA = '*, vino:vinos(id, nombre, coste_medio_pmp, coste_compra, iva_pct)'
+  const SELECT_SIN_IVA = '*, vino:vinos(id, nombre, coste_medio_pmp, coste_compra)'
   const lineas = []
+  let ivaColumnaDisponible = true
   for (const chunk of chunkArray(parteIds, 100)) {
-    const chunkRows = await fetchAllPages(() =>
-      supabase.from('partes_servicio_lineas')
-        .select('*, vino:vinos(id, nombre, coste_medio_pmp, coste_compra)')
-        .in('parte_id', chunk)
-    )
-    lineas.push(...chunkRows)
+    let rows
+    if (ivaColumnaDisponible) {
+      try {
+        rows = await fetchAllPages(() =>
+          supabase.from('partes_servicio_lineas')
+            .select(SELECT_CON_IVA)
+            .in('parte_id', chunk)
+        )
+      } catch (err) {
+        if (esColumnaInexistente(err)) {
+          ivaColumnaDisponible = false
+          rows = await fetchAllPages(() =>
+            supabase.from('partes_servicio_lineas')
+              .select(SELECT_SIN_IVA)
+              .in('parte_id', chunk)
+          )
+        } else {
+          throw err
+        }
+      }
+    } else {
+      rows = await fetchAllPages(() =>
+        supabase.from('partes_servicio_lineas')
+          .select(SELECT_SIN_IVA)
+          .in('parte_id', chunk)
+      )
+    }
+    lineas.push(...rows)
   }
 
   const lineasConParte = lineas.map(l => ({ ...l, parte: parteMap[l.parte_id] }))
@@ -212,16 +242,20 @@ export function _agruparLineas(
     if (!vinoMap[vid]) {
       const v      = l.vino || {}
       const coste  = r4(Number(v.coste_medio_pmp) || Number(v.coste_compra) || 0)
+      // Fase F: IVA del vino si viene del JOIN; si no (columna aún
+      // no aplicada o valor NULL), null → fallback al global.
+      const ivaVino = (v.iva_pct !== null && v.iva_pct !== undefined && Number.isFinite(Number(v.iva_pct)))
+        ? Number(v.iva_pct)
+        : null
       vinoMap[vid] = {
         vino_id: vid, nombre: v.nombre || vid,
         uds: 0, copas: 0, ingresos: 0,
         tiene_coste: coste > 0, coste_unitario: coste > 0 ? coste : null,
-        // Fase D: contadores separados para VENTA, imprescindibles
-        // para el multiplicador por vino (coste de lo vendido, sin
-        // mezclar invitaciones/rotura/cocina cuyos euros no están en
-        // v.ingresos).
         _uds_venta:   0,
         _copas_venta: 0,
+        // null = usa iva_venta_pct global del restaurante (invariancia
+        // garantizada si todos los vinos están así).
+        _iva_vino: ivaVino,
       }
     }
     if (esCopa) {
@@ -309,14 +343,21 @@ export function _agruparLineas(
       coste_total = r2(coste_bot_vendidas + coste_copas_vendidas)
     }
     // ingresos del parte son brutos (con IVA). Neto = brutos / (1+iva).
-    const ingresos_neto = v.ingresos > 0 ? r2(v.ingresos / (1 + ivaPct / 100)) : 0
+    // Fase F: usa v._iva_vino si el vino lo tiene propio; fallback al
+    // ivaPct global del restaurante. Invariancia: si _iva_vino es
+    // null para TODOS los vinos, el resultado es idéntico al previo.
+    const ivaDelVino = (v._iva_vino !== null && v._iva_vino !== undefined) ? v._iva_vino : ivaPct
+    const ingresos_neto = v.ingresos > 0 ? r2(v.ingresos / (1 + ivaDelVino / 100)) : 0
     if (ingresos_neto > 0 && coste_total !== null) {
       margen_bruto = r2(ingresos_neto - coste_total)
       if (coste_total > 0) multiplicador = r2(ingresos_neto / coste_total)
     }
-    // Drop internal accumulators del shape público (empiezan por "_").
-    const { _uds_venta: _u, _copas_venta: _c, ...pub } = v
-    void _u; void _c  // sin warning de no-unused
+    // Drop internal accumulators del shape público (empiezan por "_"),
+    // pero expone `iva_pct` del vino (si existía) como clave pública
+    // para que consumidores (Excel, simulador) sepan qué IVA se aplicó.
+    const { _uds_venta: _u, _copas_venta: _c, _iva_vino, ...pub } = v
+    void _u; void _c
+    const iva_pct_publico = _iva_vino  // null cuando usa el global
     return {
       ...pub,
       margen_pct,
@@ -325,6 +366,7 @@ export function _agruparLineas(
       coste_total,
       margen_bruto,
       multiplicador,
+      iva_pct: iva_pct_publico,   // null = usó el global
     }
   }).sort((a, b) => b.ingresos - a.ingresos)
 
