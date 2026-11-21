@@ -275,3 +275,37 @@ export function esRelacionInexistente(err) {
   if (!msg) return false
   return REL_INEXISTENTE_MSG_FRAGMENTS.some(f => msg.includes(f))
 }
+
+/**
+ * Detecta si un error de Supabase/PostgREST corresponde a COLUMNA
+ * ausente — devuelve true cuando el SELECT referenció un campo que
+ * aún no existe en la tabla. Mismo estilo que `esRelacionInexistente`
+ * pero para errores de columna.
+ *
+ * Códigos y mensajes cubiertos:
+ *   - `42703` → Postgres "undefined_column".
+ *   - `PGRST204` → PostgREST, column not found in schema cache.
+ *   - Fallback por mensaje: "column ... does not exist", "could not
+ *     find the ... column", "column not found".
+ *
+ * Caso de uso Fase F: `vinos.iva_pct` opcional. El SELECT se reintenta
+ * sin la columna si falla con este error → fallback al IVA global.
+ */
+const COL_INEXISTENTE_CODES = new Set(['42703', 'PGRST204'])
+
+export function esColumnaInexistente(err) {
+  if (!err) return false
+  if (typeof err.code === 'string' && COL_INEXISTENTE_CODES.has(err.code)) return true
+  const msg = String(err.message || err.error || err.hint || '').toLowerCase()
+  if (!msg) return false
+  // Patrones canónicos:
+  //   - Postgres nativo: 'column "x" does not exist'
+  //   - PostgREST schema cache: 'could not find the "x" column of "y" in the schema cache'
+  // Importante: NO confundir con errores de relación (42P01) que
+  // también dicen "does not exist". Por eso exigimos la palabra
+  // "column" en el patrón 1 y el patrón 2 es literal.
+  if (msg.includes('column') && msg.includes('does not exist')) return true
+  if (msg.includes('column') && msg.includes('not found'))      return true
+  if (msg.includes('could not find') && msg.includes('column')) return true
+  return false
+}

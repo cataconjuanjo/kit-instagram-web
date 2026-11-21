@@ -10,6 +10,7 @@ import {
   calcularResultadoExplotacion,
 } from '../../../lib/sommExplotacion'
 import { imputarParametros } from '../../../lib/imputacionBodega'
+import { esRelacionInexistente } from '../../../lib/eventosBodega'
 import {
   PDF_COLORS,
   cargarLogoPdf,
@@ -85,6 +86,39 @@ export async function GET(req) {
       supabaseAdmin.from('presupuesto_mensual').select('*').eq('restaurante_id', restauranteId)
         .eq('anio', parseInt(periodo.slice(0, 4))).eq('mes', parseInt(periodo.slice(5))).maybeSingle(),
     ])
+
+    // Fase F: eventos del mes (grupos/maridajes NO incluidos en el TPV).
+    // Línea informativa separada: NO suma a ventas ni al P&L (ni
+    // ventas_neto ni resultado cambian). Si la tabla no existe (SQL
+    // pendiente), `eventosInfo` queda null y no se pinta.
+    const mesStart = `${periodo}-01`
+    const [yStr, mStr] = periodo.split('-')
+    const yNum = parseInt(yStr, 10), mNum = parseInt(mStr, 10)
+    const mesNext = mNum === 12 ? `${yNum + 1}-01-01` : `${yStr}-${String(mNum + 1).padStart(2, '0')}-01`
+    let eventosInfo = null
+    try {
+      const { data: eventos, error: errEv } = await supabaseAdmin
+        .from('eventos_bodega')
+        .select('tipo, importe_neto, incluido_en_tpv')
+        .eq('restaurante_id', restauranteId)
+        .gte('fecha', mesStart)
+        .lt('fecha', mesNext)
+      if (errEv) {
+        if (!esRelacionInexistente(errEv)) {
+          console.error('[informe-mensual] eventos_bodega error:', errEv.message)
+        }
+      } else {
+        const noTpv = (eventos || []).filter(e => !e.incluido_en_tpv)
+        if (noTpv.length > 0) {
+          eventosInfo = {
+            n:            noTpv.length,
+            importe_neto: Math.round(noTpv.reduce((s, e) => s + (Number(e.importe_neto) || 0), 0) * 100) / 100,
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[informe-mensual] eventos_bodega excepción:', e?.message)
+    }
 
     // Calcular P&L. Imputamos ANTES de agregar: con imputacion_pct
     // ausente o {} (columna no aplicada, o usuario sin tocar los %),
@@ -258,6 +292,25 @@ export async function GET(req) {
     doc.setFontSize(10)
     doc.text(formatPct(resultado.pctResultado), W - margin, y, { align: 'right' })
     y += 16
+
+    // Fase F — línea informativa de eventos (no incluidos en ventas).
+    // Se pinta solo si hay al menos 1 evento NO incluido en TPV; nunca
+    // suma al P&L ni al resultado. Si la tabla eventos_bodega no existe
+    // o no hay eventos, eventosInfo es null y este bloque se omite.
+    if (eventosInfo) {
+      y += 4
+      line('EVENTOS (NO INCLUIDOS EN VENTAS)', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
+      y += 6
+      hrule(y)
+      y += 6
+      row(`${eventosInfo.n} evento${eventosInfo.n === 1 ? '' : 's'} del mes`, formatEur(eventosInfo.importe_neto), y)
+      y += 7
+      line(
+        ascii('Importe neto informativo. No suma a ventas ni al P&L (los eventos marcados como ya facturados por el TPV no se cuentan aquí).'),
+        margin, y, { size: 7, color: [100, 100, 100] },
+      )
+      y += 10
+    }
 
     // Break-Even
     line('PUNTO DE EQUILIBRIO', margin, y, { size: 8, bold: true, color: PDF_COLORS.wine })
