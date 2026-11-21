@@ -636,10 +636,24 @@ function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler, supu
     rows.push({ concepto: 'Suministros (gases, mantenimiento…)', valor: suministros })          // fila 16
     rows.push({ concepto: 'Otros gastos (inmovilizado, etc.)', valor: otros })                  // fila 17
     rows.push({ concepto: 'Beneficio neto objetivo mensual',   valor: beneficio })              // fila 18
-    rows.push({                                                                                   // fila 19
-      concepto: 'Ventas previstas (sobrescrito manual)',
-      valor: ventasFijo,
-    })
+    // Fila 19 — ORIGEN de las ventas previstas, deja claro al usuario
+    // de dónde vienen los datos del mes y evita que pase inadvertido
+    // que las ventas pueden estar "congeladas" de un mes anterior:
+    //   · con fijo: valor literal, concepto "(fijadas manualmente)"
+    //   · sin fijo: fórmula viva =B2 → siempre las ventas del mes
+    //     del informe; si el usuario edita B2 en Excel, B19 (y por
+    //     tanto B22) se recalculan.
+    if (ventasFijo != null) {
+      rows.push({
+        concepto: 'Ventas previstas (fijadas manualmente)',
+        valor: ventasFijo,
+      })                                                                                          // fila 19
+    } else {
+      rows.push({
+        concepto: 'Ventas previstas (ventas del mes del informe)',
+        valor: ventasNeto > 0 ? { formula: 'B2', result: B2 } : null,
+      })                                                                                          // fila 19
+    }
     // B20: TOTAL gastos (fórmula). SUM(B9:B11) + B15 + B16 + B17.
     rows.push({                                                                                   // fila 20
       concepto: 'TOTAL gastos (reales + supuestos)',
@@ -654,10 +668,13 @@ function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler, supu
       concepto: 'Margen bruto necesario',
       valor: { formula: 'B20+B18', result: null },
     })
-    // Ventas previstas efectivas: si hay fijo manual, se usa; si no, la
-    // precarga coge ventas_neto del mes.
+    // Ventas previstas efectivas: fórmula viva =B19. Mantiene la
+    // cadena de referencias: si cambia B19, cambian B22/B23/B24/B25.
     const ventasEfect = ventasFijo != null ? ventasFijo : (ventasNeto > 0 ? ventasNeto : null)
-    rows.push({ concepto: 'Ventas previstas efectivas', valor: ventasEfect })                   // fila 22
+    rows.push({                                                                                   // fila 22
+      concepto: 'Ventas previstas efectivas',
+      valor: ventasEfect != null ? { formula: 'B19', result: ventasEfect } : null,
+    })
     // B23: % margen mínimo = B21/B22.
     rows.push({                                                                                   // fila 23
       concepto: '% margen mínimo',

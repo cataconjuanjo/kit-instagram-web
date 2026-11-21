@@ -137,6 +137,34 @@ export function calcularSimuladorMargen(entrada) {
   }
 }
 
+// ── Payload de supuestos para persistir ───────────────────────────────
+
+/**
+ * Limpia un objeto de supuestos para el upsert en
+ * `simulador_margen_bodega`. Deja fuera claves vacías/null/undefined,
+ * convierte strings es-ES con coma decimal a Number. Solo las 5 claves
+ * reconocidas pasan al JSON de la tabla.
+ *
+ * Expuesto desde el lib puro (fase E-2) para poder testearlo sin
+ * cargar `simuladorMargenCliente.js` (que es 'use client' + supabase).
+ * `simuladorMargenCliente.js` re-exporta esta misma función para
+ * no cambiar su API pública.
+ */
+export function limpiarSupuestos(s) {
+  const out = {}
+  const claves = [
+    'materiales', 'suministros', 'otros',
+    'beneficio_objetivo', 'ventas_previstas_fijo',
+  ]
+  for (const k of claves) {
+    const v = s?.[k]
+    if (v === null || v === undefined || v === '') continue
+    const n = typeof v === 'number' ? v : Number(String(v).replace(/\./g, '').replace(/,/g, '.'))
+    if (Number.isFinite(n)) out[k] = n
+  }
+  return out
+}
+
 // ── Normalización del snapshot ────────────────────────────────────────
 
 /**

@@ -370,14 +370,30 @@ export default function SimuladorMargenBodega({
     if (!restauranteId) return
     setGuardando(true)
     setPersistError(null)
+    // Fase E-2: materiales/suministros/otros/beneficio son 100 %
+    // manuales → se guardan tal cual (si quedan vacíos, limpiarSupuestos
+    // los descarta del upsert).
     const payload = {
       materiales:         form.materiales,
       suministros:        form.suministros,
       otros:              form.otros,
       beneficio_objetivo: form.beneficio_objetivo,
-      // Sólo persiste ventas_previstas si el usuario la fijó (distinta de la precalculada).
-      ventas_previstas_fijo: form.ventas_previstas,
     }
+    // ventas_previstas es PRECARGABLE: su valor por defecto es
+    // ventas_neto del mes de referencia. Solo se persiste como
+    // "fijo manual" si:
+    //   (a) el usuario ha editado el campo en esta sesión (overrides)
+    //   (b) ya había un fijo guardado y el usuario no lo ha restablecido
+    // Un valor precargado del mes NUNCA se congela → al cambiar de
+    // mes de referencia, ventas_previstas sigue al nuevo snapshot.
+    const editadoEnSesion     = overrides.ventas_previstas !== undefined
+    const yaGuardadoFijo      = supuestosGuardados?.ventas_previstas_fijo != null
+    if (editadoEnSesion || yaGuardadoFijo) {
+      payload.ventas_previstas_fijo = form.ventas_previstas
+    }
+    // Para los demás precargables (personal, alquiler, roturas) hoy
+    // no persisten en la tabla; si en el futuro se añaden, aplicar
+    // el mismo criterio editadoEnSesion || yaGuardadoFijo.
     const r = await guardarSupuestos(restauranteId, payload)
     setFaltaTabla(r.falta_tabla)
     setPersistError(r.error)
