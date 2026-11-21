@@ -228,6 +228,10 @@ function DashboardHome() {
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [tareasOcultas, setTareasOcultas] = useState([])
+  // G: hay conteo inicial cerrado? null = aún no sabemos (loading);
+  // true/false tras consulta. Si false, el checklist muestra un
+  // ítem pendiente "Hacer conteo inicial" con enlace directo.
+  const [conteoInicialHecho, setConteoInicialHecho] = useState(null)
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [etiquetaDia, setEtiquetaDia] = useState('hoy')
   const [radarAcciones, setRadarAcciones] = useState([])
@@ -614,6 +618,28 @@ function DashboardHome() {
   }
 
   // Polling tras pago exitoso: espera a que el webhook actualice subscription_status
+  // G: ¿hay conteo inicial cerrado? Un sondeo barato con count:'exact',
+  // head:true (no trae filas). Si falla (tabla no accesible), se deja
+  // como null y el ítem del checklist no aparece. Solo perfilBodega
+  // lo necesita en el checklist; para los demás perfiles, el ítem
+  // "Completar margen, proveedor y stock" ya existe.
+  useEffect(() => {
+    if (!restaurante?.id) return
+    let vivo = true
+    supabase
+      .from('conteos_inventario')
+      .select('id', { count: 'exact', head: true })
+      .eq('restaurante_id', restaurante.id)
+      .eq('tipo', 'inicial')
+      .eq('estado', 'cerrado')
+      .then(({ count, error }) => {
+        if (!vivo) return
+        if (error) { setConteoInicialHecho(null); return }
+        setConteoInicialHecho((count || 0) > 0)
+      })
+    return () => { vivo = false }
+  }, [restaurante?.id])
+
   useEffect(() => {
     if (!checkoutOk || !restaurante) return
     if (restaurante.subscription_status !== 'pending') return
@@ -720,12 +746,20 @@ function DashboardHome() {
     ? [
         { id: 'bodega_vinos', titulo: 'Cargar referencias de bodega', texto: 'Importa o crea los vinos con stock inicial, precio y datos principales.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
         { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestión.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
+        // G: conteo inicial. Se muestra DESPUÉS de cargar vinos y
+        // ANTES de los partes reales — así el usuario entiende el
+        // orden correcto de activación de la bodega.
+        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock. Los partes cerrados antes del conteo tampoco se reaplican.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || conteoInicialHecho === true },
       ]
     : [
         { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio visible antes de publicar.', href: '/dashboard/vinos?importar=1', autoHide: () => cartaPublicable },
         { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
         { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
         { id: 'bodega', titulo: 'Completar margen, proveedor y stock', texto: 'Coste, proveedor y stock actual convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 },
+        // G: conteo inicial para perfiles no-bodega que también
+        // tienen bodega como feature (sumiller, acompañado). Si el
+        // perfil no tiene bodega, autoHide ya oculta por `feature`.
+        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || conteoInicialHecho === true },
         { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => cartaPublicada },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
