@@ -41,6 +41,14 @@ function eur(valor) {
   const n = Number(valor) || 0
   return n ? `${n.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : ''
 }
+// G: costes UNITARIOS con 2 decimales (p. ej. 8,50 EUR). Los totales
+// agregados siguen con 0 decimales (función eur() de arriba).
+function eurUnit(valor) {
+  const n = Number(valor) || 0
+  return n
+    ? `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`
+    : ''
+}
 
 function lineaCarta(vino) {
   return [
@@ -184,7 +192,7 @@ export default function ConstructorCarta() {
           if (modoSalida === 'interna') {
             const control = [
               vino.proveedor ? `Proveedor: ${vino.proveedor}` : 'Proveedor pendiente',
-              vino.coste_compra ? `Coste: ${eur(vino.coste_compra)}` : 'Coste pendiente',
+              vino.coste_compra ? `Coste: ${eurUnit(vino.coste_compra)}` : 'Coste pendiente',
               vino.stock !== '' && vino.stock != null ? `Stock: ${vino.stock}` : '',
               vino.stock_minimo ? `Mínimo: ${vino.stock_minimo}` : '',
             ].filter(Boolean).join(' | ')
@@ -382,7 +390,7 @@ export default function ConstructorCarta() {
                           const precio = [vino.precio_copa ? `Copa ${eur(vino.precio_copa)}` : '', vino.precio_botella ? `Botella ${eur(vino.precio_botella)}` : ''].filter(Boolean).join(' / ')
                           const detalle = [vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' - ')
                           const control = modoSalida === 'interna'
-                            ? [vino.proveedor && `Proveedor ${vino.proveedor}`, vino.coste_compra && `Coste ${eur(vino.coste_compra)}`, vino.stock !== '' && vino.stock != null && `Stock ${vino.stock}`, vino.stock_minimo && `Min ${vino.stock_minimo}`].filter(Boolean).join(' | ')
+                            ? [vino.proveedor && `Proveedor ${vino.proveedor}`, vino.coste_compra && `Coste ${eurUnit(vino.coste_compra)}`, vino.stock !== '' && vino.stock != null && `Stock ${vino.stock}`, vino.stock_minimo && `Min ${vino.stock_minimo}`].filter(Boolean).join(' | ')
                             : ''
                           return (
                             <article key={vino.tempId} className={styles.exportWineRow}>
