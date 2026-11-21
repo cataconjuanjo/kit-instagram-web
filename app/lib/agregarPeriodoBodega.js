@@ -16,7 +16,7 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
   // Ajustes económicos del restaurante
   const { data: settings } = await supabase
     .from('restaurant_economic_settings')
-    .select('fuente_ventas, copas_por_botella, ml_por_copa, merma_copa_pct')
+    .select('fuente_ventas, copas_por_botella, ml_por_copa, merma_copa_pct, iva_venta_pct')
     .eq('restaurante_id', restaurante_id)
     .single()
 
@@ -25,6 +25,10 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
     ? Number(settings.copas_por_botella)
     : (settings?.ml_por_copa > 0 ? Math.round(750 / settings.ml_por_copa) : 5)
   const merraPct = Number(settings?.merma_copa_pct) || 0
+  // IVA venta del vino para netear ingresos por vino (Fase D). Default 10 %
+  // si falta la columna o el valor. No afecta a ventas_neto (ya se neteaba
+  // antes en calcularMesBodega con su propio ivaPct).
+  const ivaPct = Number(settings?.iva_venta_pct) > 0 ? Number(settings.iva_venta_pct) : 10
 
   const meta = { restaurante_id, desde, hasta, fuente_usada: 'parte', b8_pendiente: false }
 
@@ -75,13 +79,21 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
 
   return {
     meta: { ...meta, partes_incluidos: cerrados.length, borradores_excluidos: borradores },
-    ..._agruparLineas(lineasConParte, { copas_por_botella: copasXBotella, merma_copa_pct: merraPct }),
+    ..._agruparLineas(lineasConParte, {
+      copas_por_botella: copasXBotella,
+      merma_copa_pct:    merraPct,
+      iva_venta_pct:     ivaPct,
+    }),
   }
 }
 
 // ── Función pura exportada para tests ─────────────────────────────────────────
-export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct = 0 } = {}) {
+export function _agruparLineas(
+  lineas,
+  { copas_por_botella = 5, merma_copa_pct = 0, iva_venta_pct = 10 } = {},
+) {
   const copasVendibles = r4(copas_por_botella * (1 - merma_copa_pct / 100))
+  const ivaPct = Number(iva_venta_pct) || 10
   let ingresos_venta    = 0
   let botellas_vendidas = 0
   let copas_total       = 0
@@ -204,6 +216,12 @@ export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct =
         vino_id: vid, nombre: v.nombre || vid,
         uds: 0, copas: 0, ingresos: 0,
         tiene_coste: coste > 0, coste_unitario: coste > 0 ? coste : null,
+        // Fase D: contadores separados para VENTA, imprescindibles
+        // para el multiplicador por vino (coste de lo vendido, sin
+        // mezclar invitaciones/rotura/cocina cuyos euros no están en
+        // v.ingresos).
+        _uds_venta:   0,
+        _copas_venta: 0,
       }
     }
     if (esCopa) {
@@ -212,8 +230,12 @@ export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct =
       vinoMap[vid].uds     += cantidad
     }
     // Solo ingresos de ventas (no invitaciones ni consumos)
-    if (l.tipo === 'venta_botella' || l.tipo === 'venta_copa') {
-      vinoMap[vid].ingresos += ingreso
+    if (l.tipo === 'venta_botella') {
+      vinoMap[vid].ingresos    += ingreso
+      vinoMap[vid]._uds_venta  += cantidad
+    } else if (l.tipo === 'venta_copa') {
+      vinoMap[vid].ingresos    += ingreso
+      vinoMap[vid]._copas_venta += copas
     }
 
     // — Por día/turno —
@@ -234,21 +256,76 @@ export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct =
     }
   }
 
-  // Margen por vino (solo si tiene_coste y tiene ingresos)
-  // Copa: coste = (copas / copas_por_botella) × coste_unitario
+  // Margen por vino (solo si tiene_coste y tiene ingresos).
+  // Copa: coste = (copas / copas_por_botella) × coste_unitario.
+  //
+  // Fase D (aditivo): enriquecemos cada vino con claves orientadas al
+  // simulador de margen. Las ya existentes (uds, copas, ingresos,
+  // tiene_coste, coste_unitario, margen_pct) se MANTIENEN con la
+  // misma semántica para no romper cierres antiguos ni la hoja Vinos
+  // del Excel (que las lee por nombre).
+  //
+  // Claves nuevas (todas pueden ser null cuando la info falta —
+  // "Sin dato", nunca 0 inventado):
+  //   ingresos_neto  = ingresos (brutos del parte) sin IVA del mes
+  //   coste_total    = coste de las botellas vendidas + coste de las
+  //                    copas vendidas (prorrateado por copasVendibles)
+  //   margen_bruto   = ingresos_neto − coste_total
+  //   multiplicador  = ingresos_neto / coste_total (null si coste = 0)
+  //   uds_botella    = alias de `uds` por claridad en el consumidor
+  //   pvp_neto_botella = ingresos_neto_botella_promedio / uds_botella
+  //                      (solo informativo; null si uds = 0 o no hay
+  //                      ingresos_botella; copas tienen coste prorrateado
+  //                      y pvp propio, no se promedian aquí).
+  //
+  // iva_pct viene del scope exterior (ivaPct del snapshot).
   const porVino = Object.values(vinoMap).map(v => {
+    // margen_pct (clave ORIGINAL, no la toco): sigue usando v.uds +
+    // v.copas enteros, lo que incluye invitaciones/consumos en el
+    // coste. Cualquier cierre antiguo que la lea sigue viendo lo mismo.
     let margen_pct = null
     if (v.tiene_coste && v.ingresos > 0) {
       const coste_botellas = r2(v.coste_unitario * v.uds)
       const coste_copas    = v.copas > 0 && copasVendibles > 0
         ? r2((v.copas / copasVendibles) * v.coste_unitario)
         : 0
-      const coste_total = r2(coste_botellas + coste_copas)
-      margen_pct = coste_total > 0
-        ? Math.round(((v.ingresos - coste_total) / v.ingresos) * 100)
+      const coste_total_legacy = r2(coste_botellas + coste_copas)
+      margen_pct = coste_total_legacy > 0
+        ? Math.round(((v.ingresos - coste_total_legacy) / v.ingresos) * 100)
         : null
     }
-    return { ...v, margen_pct }
+    // ── Claves NUEVAS (Fase D) ────────────────────────────────────
+    // coste_total y multiplicador se calculan SOLO sobre lo vendido
+    // (venta_botella + venta_copa). Invitaciones/rotura no van en
+    // v.ingresos, así que tampoco su coste debe mezclarse aquí.
+    let coste_total   = null
+    let margen_bruto  = null
+    let multiplicador = null
+    if (v.tiene_coste) {
+      const coste_bot_vendidas = r2(v.coste_unitario * v._uds_venta)
+      const coste_copas_vendidas = v._copas_venta > 0 && copasVendibles > 0
+        ? r2((v._copas_venta / copasVendibles) * v.coste_unitario)
+        : 0
+      coste_total = r2(coste_bot_vendidas + coste_copas_vendidas)
+    }
+    // ingresos del parte son brutos (con IVA). Neto = brutos / (1+iva).
+    const ingresos_neto = v.ingresos > 0 ? r2(v.ingresos / (1 + ivaPct / 100)) : 0
+    if (ingresos_neto > 0 && coste_total !== null) {
+      margen_bruto = r2(ingresos_neto - coste_total)
+      if (coste_total > 0) multiplicador = r2(ingresos_neto / coste_total)
+    }
+    // Drop internal accumulators del shape público (empiezan por "_").
+    const { _uds_venta: _u, _copas_venta: _c, ...pub } = v
+    void _u; void _c  // sin warning de no-unused
+    return {
+      ...pub,
+      margen_pct,
+      uds_botella:   pub.uds,
+      ingresos_neto,
+      coste_total,
+      margen_bruto,
+      multiplicador,
+    }
   }).sort((a, b) => b.ingresos - a.ingresos)
 
   const botellas_equivalentes = r2(copas_total / copasVendibles)

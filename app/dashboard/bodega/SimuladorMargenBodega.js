@@ -26,6 +26,7 @@ import {
   calcularSimuladorMargen,
   compararConReal,
   precargarDesdeSnapshot,
+  vinosBajoMultiplicador,
 } from '../../lib/simuladorMargen'
 import { cargarSupuestos, guardarSupuestos } from '../../lib/simuladorMargenCliente'
 import {
@@ -486,6 +487,12 @@ export default function SimuladorMargenBodega({
 
       <TarjetasResultado resultado={resultado} />
       <Comparativa resultado={resultado} comparativa={comparativa} />
+      {resultado?.multiplicador_minimo != null && (
+        <VinosBajoMinimo
+          snapshotMes={snapshotMes}
+          multiplicadorMinimo={resultado.multiplicador_minimo}
+        />
+      )}
       <ExplicacionDidactica />
 
       <div style={estilos.botones}>
@@ -498,6 +505,13 @@ export default function SimuladorMargenBodega({
           </span>
         )}
       </div>
+
+      <p style={estilos.enlaceCruzado}>
+        ¿Buscas el multiplicador a fijar en carta?{' '}
+        <a href="/dashboard/precios-somm" style={estilos.enlaceInterno}>
+          Ver también el multiplicador en Motor de Precios →
+        </a>
+      </p>
     </section>
   )
 }
@@ -630,11 +644,64 @@ function Comparativa({ resultado, comparativa }) {
             : 'Sin dato'}</strong>
           {comparativa.multiplicador_medio_real != null && (
             <small style={estilos.notaMult}>
-              {' '}(media simple del catálogo, sin ponderar por ventas: no disponemos de uds vendidas por vino en el snapshot del mes)
+              {' '}{comparativa.multiplicador_fuente === 'ponderado_ventas_mes'
+                ? '(ponderado por ventas del mes)'
+                : '(media simple del catálogo, sin ponderar por ventas: el mes aún no tiene partes con ventas por vino)'}
             </small>
           )}
         </li>
       </ul>
+    </div>
+  )
+}
+
+function VinosBajoMinimo({ snapshotMes, multiplicadorMinimo }) {
+  const [verTodos, setVerTodos] = useState(false)
+  const lista = useMemo(
+    () => vinosBajoMultiplicador(snapshotMes, multiplicadorMinimo),
+    [snapshotMes, multiplicadorMinimo],
+  )
+  if (lista === null) {
+    return (
+      <div style={estilos.hint}>
+        Sin dato de ventas por vino en este mes (el cierre todavía no lo
+        incluye). La lista de vinos por debajo del multiplicador mínimo
+        aparecerá al cerrar el mes o cuando el agregador tenga partes.
+      </div>
+    )
+  }
+  if (lista.length === 0) {
+    return (
+      <div style={estilos.ok}>
+        Ningún vino vendido este mes está por debajo del multiplicador
+        mínimo ({multiplicadorMinimo?.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×).
+      </div>
+    )
+  }
+  const limite = 10
+  const mostrados = verTodos ? lista : lista.slice(0, limite)
+  return (
+    <div style={estilos.bajoMinimo}>
+      <h4 style={estilos.bajoMinimoTitulo}>
+        {lista.length} vino{lista.length === 1 ? '' : 's'} por debajo del multiplicador mínimo
+      </h4>
+      <ul style={estilos.ulBajoMinimo}>
+        {mostrados.map(v => (
+          <li key={v.vino_id}>
+            <strong>{v.nombre}</strong>
+            {' · '}mult{' '}
+            <strong>{v.multiplicador.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×</strong>
+            {' · '}{v.uds_botella || 0} bot {v.copas > 0 ? `+ ${v.copas} copas` : ''}
+            {' · '}margen extra si cumple mínimo:{' '}
+            <strong>{formatoMoneda(v.impacto, { decimales: 2 })}</strong>
+          </li>
+        ))}
+      </ul>
+      {lista.length > limite && (
+        <button type="button" onClick={() => setVerTodos(v => !v)} style={estilos.btnVerTodos}>
+          {verTodos ? `Ver menos (top ${limite})` : `Ver los ${lista.length} vinos`}
+        </button>
+      )}
     </div>
   )
 }
@@ -744,4 +811,21 @@ const estilos = {
     cursor: 'pointer',
   },
   detalleEuros: { marginTop: 6, color: '#6b6258', lineHeight: 1.55 },
+  bajoMinimo: {
+    marginTop: 14, padding: '12px 14px',
+    border: '1px solid #ead9ca', borderRadius: 8, background: '#fff',
+  },
+  bajoMinimoTitulo: { margin: '0 0 8px', fontSize: 14, color: '#7B1E3B' },
+  ulBajoMinimo:     { margin: 0, paddingLeft: 20, lineHeight: 1.65, fontSize: 13, color: '#2a211c' },
+  btnVerTodos: {
+    marginTop: 10, padding: '4px 10px', fontSize: 12, color: '#7B1E3B',
+    background: 'transparent', border: '1px solid #ead9ca', borderRadius: 4,
+    cursor: 'pointer',
+  },
+  ok: {
+    marginTop: 14, padding: '10px 12px', fontSize: 13, color: '#2f6049',
+    background: '#f0f7f3', border: '1px solid #c3d9ce', borderRadius: 6,
+  },
+  enlaceCruzado: { marginTop: 14, fontSize: 13, color: '#6b6258' },
+  enlaceInterno: { color: '#7B1E3B', textDecoration: 'underline' },
 }

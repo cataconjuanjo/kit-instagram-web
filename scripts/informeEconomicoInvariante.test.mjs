@@ -78,10 +78,13 @@ describe('informeEconomicoExcel — invarianza del contrato', () => {
   it('orden y nombres de hojas estables', () => {
     const spec = construirInformeEconomicoWorkbook(argsBase())
     const nombres = spec.sheets.map(s => s.name)
-    // Acompañado con datos reales: 7 hojas canónicas.
+    // Acompañado con datos reales: 8 hojas canónicas tras Fase D.
+    // 'Simulador' se añade al final — foto del mes con gastos reales
+    // de bodega y margen bruto real; omitida cuando no hay snapshot.
     assert.deepEqual(nombres, [
       'Resumen', 'Personal', 'Gastos', 'Canales',
       'Canales venta', 'Salidas no-venta', 'Cierre bodega',
+      'Simulador',
     ])
   })
 
