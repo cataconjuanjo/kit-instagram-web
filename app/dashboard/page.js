@@ -77,7 +77,11 @@ function fmtUnidad(tieneCopa, tieneBot, total) {
   return total === 1 ? 'ud.' : 'uds.'
 }
 
-function semanaActualLabel() {
+// G: calcula el rango ROLLING de 7 días TERMINADO AYER (no es la
+// semana ISO en curso ni la semana natural lunes-domingo). Por eso
+// el título de la sección dice "Últimos 7 días" y no "Esta semana",
+// y la etiqueta aclara el periodo exacto.
+function rangoUltimos7DiasLabel() {
   const inicio = haceDiasMadrid(7)
   const fin = haceDiasMadrid(1)
   const [, mI, dI] = inicio.split('-').map(Number)
@@ -908,8 +912,8 @@ function DashboardHome() {
       <div className={styles.wrap}>
         {restaurante && (
           <header className={styles.pageHeader}>
-            <h1 className={styles.pageH1}>Esta semana en {restaurante.nombre || 'tu restaurante'}</h1>
-            <p className={styles.pageSub}>{semanaActualLabel()}. Lo esencial para decidir hoy.</p>
+            <h1 className={styles.pageH1}>Últimos 7 días en {restaurante.nombre || 'tu restaurante'}</h1>
+            <p className={styles.pageSub}>{rangoUltimos7DiasLabel()}. Lo esencial para decidir hoy.</p>
           </header>
         )}
 
