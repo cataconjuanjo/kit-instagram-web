@@ -221,6 +221,11 @@ function AdminPageContent() {
   const [previewRest, setPreviewRest] = useState(null)
   const [previewing, setPreviewing] = useState(false)
   const [mostrarAlta, setMostrarAlta] = useState(false)
+  // G: borrador detectado en localStorage. Si existe, mostramos un
+  // botón "Continuar borrador" dentro del modal de alta. Nunca se
+  // auto-recupera para evitar contaminar con datos de otro
+  // restaurante.
+  const [borradorDisponible, setBorradorDisponible] = useState(null)
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
   const [bajaError, setBajaError] = useState('')
@@ -235,6 +240,13 @@ function AdminPageContent() {
   const [menuAccionesId, setMenuAccionesId] = useState(null)
   const [accionAcceso, setAccionAcceso] = useState(null)
   const [acordeonAlta, setAcordeonAlta] = useState('datos')
+  // G: fecha de caducidad por defecto = hoy + 30 días. Como función
+  // para re-calcular cada vez que se "resetea" el formulario (no
+  // queda congelada al montar el componente, que podría llevar
+  // horas abierta en pestañas).
+  const trialPorDefectoAt = () =>
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
     nombre: '',
     email: '',
@@ -243,7 +255,7 @@ function AdminPageContent() {
     plan: 'pro',
     subscription_status: 'trialing',
     trial_hours_limit: '5',
-    trial_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    trial_expires_at: trialPorDefectoAt(),
   })
 
   const camposAlta = ['nombre', 'email', 'slug']
@@ -264,6 +276,29 @@ function AdminPageContent() {
     window.localStorage.setItem('admin_alta_restaurante_draft', JSON.stringify(nuevoRestaurante))
     setCopiado(true)
     setTimeout(() => setCopiado(false), 1800)
+  }
+
+  // G: recupera el borrador bajo demanda y SIEMPRE re-calcula
+  // `trial_expires_at` a hoy+30 días (no congela la fecha que venía
+  // del borrador antiguo).
+  function continuarBorrador() {
+    if (!borradorDisponible) return
+    setNuevoRestaurante({
+      nombre: borradorDisponible.nombre || '',
+      email: borradorDisponible.email || '',
+      ciudad: borradorDisponible.ciudad || '',
+      slug: borradorDisponible.slug || '',
+      plan: borradorDisponible.plan || 'pro',
+      subscription_status: borradorDisponible.subscription_status || 'trialing',
+      trial_hours_limit: borradorDisponible.trial_hours_limit || '5',
+      trial_expires_at: trialPorDefectoAt(),   // SIEMPRE hoy+30
+    })
+    setBorradorDisponible(null)
+  }
+
+  function descartarBorrador() {
+    try { window.localStorage.removeItem('admin_alta_restaurante_draft') } catch {}
+    setBorradorDisponible(null)
   }
 
   function copiarRestaurante(restaurante) {
@@ -295,9 +330,20 @@ function AdminPageContent() {
       }
 
       setUser(user)
+      // G: NO cargar el borrador automáticamente. En el ensayo se
+      // observó que al abrir "Nuevo restaurante" aparecían datos de
+      // "Araboka" (un borrador antiguo) y, además, la fecha "Caduca
+      // el" venía del pasado porque se recuperaba del borrador.
+      // En su lugar: detectar que hay borrador y mostrar el botón
+      // "Continuar borrador"; el usuario DECIDE si lo recupera. Al
+      // recuperarlo, `trial_expires_at` SIEMPRE se re-calcula a
+      // hoy + 30 días (ignorando el que venía del borrador).
       try {
-        const draft = JSON.parse(window.localStorage.getItem('admin_alta_restaurante_draft') || 'null')
-        if (draft?.nombre || draft?.email || draft?.slug) setNuevoRestaurante(prev => ({ ...prev, ...draft }))
+        const raw = window.localStorage.getItem('admin_alta_restaurante_draft')
+        const draft = raw ? JSON.parse(raw) : null
+        if (draft?.nombre || draft?.email || draft?.slug) {
+          setBorradorDisponible(draft)
+        }
       } catch {}
       const token = await tokenAdmin()
       const restaurantesRes = await fetch('/api/admin/restaurantes', {
@@ -361,14 +407,28 @@ function AdminPageContent() {
     cargarHubLinks(restaurante.id)
   }
 
+  // G: normalizaci\u00f3n de slug mientras el usuario ESCRIBE: min\u00fasculas,
+  // sin acentos, no-alfanum\u00e9ricos \u2192 "-", colapsa dobles "--" pero
+  // NO quita guiones al final (eso har\u00eda que al teclear "ensayo-"
+  // el guion desaparezca y el siguiente car\u00e1cter se pegue, perdiendo
+  // el separador \u2014 bug observado en el ensayo: "ensayo-onboarding"
+  // se guardaba "ensayoonboarding").
   function slugDesdeNombre(nombre) {
     return nombre
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
+      .replace(/[^a-z0-9-]+/g, '-')   // preserva guiones ya presentes
+      .replace(/-{2,}/g, '-')          // colapsa dobles
+      .replace(/^-+/, '')              // SOLO quita guiones iniciales
       .slice(0, 48)
+  }
+
+  // Normalizaci\u00f3n FINAL (al blur o al enviar): la de arriba + strip
+  // de guiones al final. Se aplica una vez el usuario termina de
+  // escribir para dejar el slug en forma can\u00f3nica.
+  function slugFinal(slug) {
+    return String(slug || '').replace(/-+$/, '')
   }
 
   function actualizarCampo(campo, valor) {
@@ -508,8 +568,11 @@ function AdminPageContent() {
         plan: 'pro',
         subscription_status: 'trialing',
         trial_hours_limit: '5',
-        trial_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        trial_expires_at: trialPorDefectoAt(),
       })
+      // G: tras crear, el borrador queda obsoleto → limpiamos.
+      try { window.localStorage.removeItem('admin_alta_restaurante_draft') } catch {}
+      setBorradorDisponible(null)
     } catch (error) {
       setErrorAlta(error.message)
     }
@@ -686,6 +749,23 @@ function AdminPageContent() {
             </div>
           </header>
 
+          {/* G: banner de borrador disponible (solo si existe y el
+              formulario arranca en blanco) */}
+          {borradorDisponible && (
+            <div style={{ margin: '12px 0', padding: '10px 14px', background: '#fff8e8', border: '1px solid #e8d495', borderRadius: 6, fontSize: 13, color: '#6b5620', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span>
+                Hay un borrador guardado de otro intento
+                {borradorDisponible.nombre ? ` (${borradorDisponible.nombre})` : ''}.
+              </span>
+              <button type="button" onClick={continuarBorrador} style={{ padding: '4px 10px', fontSize: 12, fontWeight: 600, color: '#fff', background: '#7B1E3B', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                Continuar borrador
+              </button>
+              <button type="button" onClick={descartarBorrador} style={{ padding: '4px 10px', fontSize: 12, color: '#6b5620', background: 'transparent', border: '1px solid #e8d495', borderRadius: 4, cursor: 'pointer' }}>
+                Descartar
+              </button>
+            </div>
+          )}
+
           <form onSubmit={crearRestaurante}>
             <div className="alta-accordion">
 
@@ -754,8 +834,14 @@ function AdminPageContent() {
                         {estadoCampo('slug') === 'ok' && <i className="alta-check">✓</i>}
                         {estadoCampo('slug') === 'error' && <i className="alta-error">×</i>}
                       </span>
-                      <input value={nuevoRestaurante.slug} onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))} placeholder="casa-pepe" required />
-                      <small>URL pública corta, sin espacios ni acentos</small>
+                      <input
+                        value={nuevoRestaurante.slug}
+                        onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))}
+                        onBlur={e => actualizarCampo('slug', slugFinal(e.target.value))}
+                        placeholder="casa-pepe"
+                        required
+                      />
+                      <small>URL pública corta. Permitido: minúsculas, números y guiones. Sin espacios, acentos ni símbolos.</small>
                     </label>
                   </div>
                 )}
