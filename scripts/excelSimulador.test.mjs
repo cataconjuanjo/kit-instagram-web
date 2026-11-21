@@ -82,8 +82,11 @@ describe("Hoja 'Simulador' — foto del mes con datos REALES", () => {
     assert.equal(rows[0].valor, 9621.82)
     assert.equal(rows[1].concepto, 'Coste ventas teórico')
     assert.equal(rows[1].valor, 4044.12)
+    // Fase E: margen bruto ahora es fórmula viva (B2-B3) con result
+    // precalculado exacto para que Excel recalcule al mismo valor.
     assert.equal(rows[2].concepto, 'Margen bruto real')
-    assert.equal(rows[2].valor, 5577.70)
+    assert.equal(rows[2].valor.formula, 'B2-B3')
+    assert.ok(Math.abs(rows[2].valor.result - 5577.70) < 1e-9)
   })
 
   it('%MP real y %margen real son FÓRMULAS vivas (no empiezan por "=")', () => {

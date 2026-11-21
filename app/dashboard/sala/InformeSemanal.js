@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
+import {
+  cargarLogoPdf,
+  pintarCabecera,
+  pintarPiesEnTodas,
+} from '../../lib/pdfEstilos'
 
 // ── Utilidades de semana ──────────────────────────────────────────────────────
 
@@ -164,7 +169,7 @@ async function generarPDF(informe, semanaAnterior, semana, restaurante) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     rows.forEach((row, ri) => {
-      if (y > 270) { doc.addPage(); y = 14 }
+      if (y > 270) { y = nuevaPagina() }
       if (ri % 2 === 1) {
         doc.setFillColor(252, 252, 252)
         doc.rect(ML, y, CW, ROW_H, 'F')
@@ -182,17 +187,25 @@ async function generarPDF(informe, semanaAnterior, semana, restaurante) {
     y += 4
   }
 
-  // — Cabecera —
-  doc.setFillColor(30, 30, 30)
-  doc.rect(0, 0, PW, 22, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.setTextColor(255, 255, 255)
-  doc.text(restaurante?.nombre || 'Restaurante', ML, 10)
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Informe semanal de vinos · ${labelSemana(semana)}`, ML, 17)
-  y = 28
+  // Cabecera Carta Viva (Fase E): banda burdeos + logo + pie con
+  // "Página X de N" en todas las páginas. Cifras intactas.
+  const logoCv = cargarLogoPdf()
+  function pintarCabeceraCv() {
+    pintarCabecera(doc, {
+      W: PW, margin: ML,
+      restauranteNombre: restaurante?.nombre || 'Restaurante',
+      periodoEs:         labelSemana(semana),
+      subtitulo:         'Informe semanal de vinos',
+      logo:              logoCv,
+    })
+  }
+  function nuevaPagina() {
+    doc.addPage()
+    pintarCabeceraCv()
+    return 34
+  }
+  pintarCabeceraCv()
+  y = 34
 
   sub(`Partes incluidos: ${meta.partes_incluidos}${meta.borradores_excluidos ? ` · ${meta.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
   sep()
@@ -268,6 +281,7 @@ async function generarPDF(informe, semanaAnterior, semana, restaurante) {
   }
 
   const filename = `informe-vinos-${semana.desde}-${semana.hasta}.pdf`
+  pintarPiesEnTodas(doc, { W: PW })
   doc.save(filename)
 }
 

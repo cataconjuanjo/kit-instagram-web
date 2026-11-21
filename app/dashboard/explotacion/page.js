@@ -660,6 +660,19 @@ function ExplotacionContent() {
         .eq('periodo', periodo)
       if (errCompras) throw new Error(errCompras.message || 'No se pudieron cargar las compras del periodo.')
 
+      // Fase E: supuestos guardados del simulador de margen. La tabla
+      // puede no existir (SQL pendiente); en ese caso dejamos null y
+      // la hoja Simulador degrada a "Sin supuestos guardados".
+      let supuestos = null
+      try {
+        const { data: supRow, error: errSup } = await supabase
+          .from('simulador_margen_bodega')
+          .select('supuestos')
+          .eq('restaurante_id', restaurante.id)
+          .maybeSingle()
+        if (!errSup) supuestos = supRow?.supuestos || null
+      } catch { supuestos = null }
+
       const spec = construirInformeEconomicoWorkbook({
         restauranteNombre: restaurante?.nombre_comercial || restaurante?.nombre || restaurante?.slug || 'restaurante',
         periodo,
@@ -697,6 +710,8 @@ function ExplotacionContent() {
         // columnas del Excel se pintan a 100 % → imputado = importe
         // total, idéntico al comportamiento anterior.
         imputacion_pct: imputacionPct,
+        // Fase E: supuestos para la hoja Simulador (null si no hay).
+        supuestos,
       })
       await descargarWorkbook(spec)
     } catch (err) {
