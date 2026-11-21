@@ -135,9 +135,14 @@ export function _agruparLineas(
   // son aditivos al vocabulario original (ver cierreDesglose + snapshot v1).
   // Se mantienen todos los campos preexistentes (uds, ingresos, valor) con
   // la misma semántica para no romper cierres antiguos.
+  //
+  // Fase F-2: añadimos `ingresos_neto` a botella y copa — netos POR LÍNEA
+  // (cada línea se netea con el iva_pct del vino, fallback al global).
+  // Siempre poblado; en el caso "sin IVA mixto" coincide con el reparto
+  // global, en el caso "con IVA mixto" refleja los IVAs distintos.
   const canal = {
-    botella:    { uds: 0, ingresos: 0, coste: 0 },
-    copa:       { uds: 0, copas: 0, ingresos: 0, coste: 0 },
+    botella:    { uds: 0, ingresos: 0, ingresos_neto: 0, coste: 0 },
+    copa:       { uds: 0, copas: 0, ingresos: 0, ingresos_neto: 0, coste: 0 },
     invitacion: { uds: 0, botella_uds: 0, copa_uds: 0, botella_coste: 0, copa_coste: 0 },
     cocina:     { uds: 0, valor: 0, coste: 0 },
     evento:     { uds: 0, valor: 0, coste: 0 },
@@ -145,6 +150,13 @@ export function _agruparLineas(
     rotura:     { uds: 0, coste: 0 },
     cata:       { uds: 0, valor: 0, coste: 0 },
   }
+
+  // Fase F-2: acumulador total de ventas NETAS calculado línea a línea
+  // (solo venta_botella + venta_copa). Se consume en calcularMesBodega
+  // cuando iva_mixto es true. iva_mixto detecta si hay al menos un
+  // vino VENDIDO con iva_pct propio distinto del global.
+  let ingresos_venta_neto_pl = 0
+  let iva_mixto = false
 
   const vinoMap    = {}
   const diaTurnoMap = {}
@@ -172,6 +184,14 @@ export function _agruparLineas(
         : cantidad * costeU
     )
 
+    // Fase F-2: IVA de esta línea = iva_pct del vino (si existe y es
+    // válido) con fallback al global. Si difiere del global → iva_mixto.
+    const _ivaVinoRaw = l.vino?.iva_pct
+    const _tieneIvaPropio = _ivaVinoRaw !== null && _ivaVinoRaw !== undefined && Number.isFinite(Number(_ivaVinoRaw))
+    const ivaLinea = _tieneIvaPropio ? Number(_ivaVinoRaw) : ivaPct
+    if (_tieneIvaPropio && ivaLinea !== ivaPct && esVenta) iva_mixto = true
+    const ingreso_neto_linea = r2(ingreso / (1 + ivaLinea / 100))
+
     // — Canal —
     switch (l.tipo) {
       case 'venta_botella':
@@ -179,14 +199,18 @@ export function _agruparLineas(
         botellas_vendidas += cantidad
         canal.botella.uds      += cantidad
         canal.botella.ingresos += ingreso
+        canal.botella.ingresos_neto += ingreso_neto_linea
         canal.botella.coste    += costeLinea
+        ingresos_venta_neto_pl += ingreso_neto_linea
         break
       case 'venta_copa':
         ingresos_venta    += ingreso
         copas_total       += copas
         canal.copa.copas    += copas
         canal.copa.ingresos += ingreso
+        canal.copa.ingresos_neto += ingreso_neto_linea
         canal.copa.coste    += costeLinea
+        ingresos_venta_neto_pl += ingreso_neto_linea
         break
       case 'invitacion_botella':
         invitaciones_uds              += cantidad
@@ -372,6 +396,10 @@ export function _agruparLineas(
 
   const botellas_equivalentes = r2(copas_total / copasVendibles)
 
+  // Fase F-2: redondeo final de los netos por canal (y el total pl).
+  canal.botella.ingresos_neto = r2(canal.botella.ingresos_neto)
+  canal.copa.ingresos_neto    = r2(canal.copa.ingresos_neto)
+
   return {
     resumen: {
       ingresos_venta:        r2(ingresos_venta),
@@ -381,7 +409,13 @@ export function _agruparLineas(
       invitaciones_uds,
       consumos_uds,
       consumos_valor:        r2(consumos_valor),
+      // Fase F-2: suma línea a línea de los netos (solo venta_botella +
+      // venta_copa). Se consume en calcularMesBodega cuando iva_mixto
+      // es true. En caso contrario, calcularMesBodega usa la fórmula
+      // global (bit-idéntica al comportamiento previo).
+      ingresos_venta_neto_pl: r2(ingresos_venta_neto_pl),
     },
+    iva_mixto,
     por_canal:    canal,
     por_vino:     porVino,
     por_dia_turno: Object.values(diaTurnoMap).sort((a, b) =>
@@ -396,10 +430,12 @@ export function _agruparLineas(
 function emptyAgregacion() {
   return {
     resumen: { ingresos_venta: 0, botellas_vendidas: 0, copas_vendidas: 0,
-               botellas_equivalentes: 0, invitaciones_uds: 0, consumos_uds: 0, consumos_valor: 0 },
+               botellas_equivalentes: 0, invitaciones_uds: 0, consumos_uds: 0, consumos_valor: 0,
+               ingresos_venta_neto_pl: 0 },
+    iva_mixto: false,
     por_canal:    {
-      botella:    { uds: 0, ingresos: 0, coste: 0 },
-      copa:       { uds: 0, copas: 0, ingresos: 0, coste: 0 },
+      botella:    { uds: 0, ingresos: 0, ingresos_neto: 0, coste: 0 },
+      copa:       { uds: 0, copas: 0, ingresos: 0, ingresos_neto: 0, coste: 0 },
       invitacion: { uds: 0, botella_uds: 0, copa_uds: 0, botella_coste: 0, copa_coste: 0 },
       cocina:     { uds: 0, valor: 0, coste: 0 },
       evento:     { uds: 0, valor: 0, coste: 0 },
@@ -631,7 +667,15 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   }
 
   const ventas_bruto     = informe.resumen.ingresos_venta
-  const ventas_neto      = r2(ventas_bruto / (1 + ivaPct / 100))
+  // Fase F-2: si el mes tiene IVA MIXTO (al menos un vino con
+  // iva_pct propio distinto del global), usamos la suma línea-a-línea
+  // calculada en _agruparLineas. Si no, fórmula global histórica
+  // (bit-idéntica al comportamiento previo).
+  const iva_mixto = informe.iva_mixto === true
+  const ventas_neto = iva_mixto
+    ? r2(informe.resumen.ingresos_venta_neto_pl)
+    : r2(ventas_bruto / (1 + ivaPct / 100))
+  const iva_importe = r2(ventas_bruto - ventas_neto)
   const salidas_no_venta = informe.resumen.consumos_valor
   // Ventas netas provenientes de cabeceras de eventos NO-TPV
   // (informativo; NO se suma a ventas_neto).
@@ -873,6 +917,10 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     borradores_excluidos: informe.meta.borradores_excluidos ?? 0,
     b8_pendiente:         informe.meta.b8_pendiente ?? false,
     ventas_bruto, ventas_neto, iva_pct: ivaPct,
+    // Fase F-2: campos aditivos que aparecen en snapshots NUEVOS
+    // (cierres antiguos no los tienen; consumidores deben tolerar
+    // undefined).
+    iva_mixto, iva_importe,
     ventas_eventos_neto,            // informativo; NO suma a ventas_neto
     coste_ventas_teorico, margen_bruto, margen_pct,
     compras_bruto, devoluciones, compras_netas,
