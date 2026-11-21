@@ -1817,6 +1817,15 @@ export default function ControlBodega() {
                 <label className={styles.label}>Stock actual</label>
                 <input className={styles.input} type="number" min="0" value={editando.stock} onChange={e => setEditando({ ...editando, stock: e.target.value })} />
                 <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>Botellas reales ahora mismo.</p>
+                {/* G: aviso bajo el campo Stock. Este valor NO
+                    descuenta ventas hasta que se haga el conteo
+                    inicial en Bodega > Inventario > Conteo. Es solo
+                    texto; el flujo de descuento se mantiene intacto. */}
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b5620', background: '#fff8e8', border: '1px solid #e8d495', borderRadius: 4, padding: '4px 8px' }}>
+                  Este stock no descuenta ventas hasta que hagas el{' '}
+                  <a href="/dashboard/bodega?panel=conteo" style={{ color: '#6b5620', textDecoration: 'underline', fontWeight: 600 }}>conteo inicial</a>
+                  {' '}en Bodega.
+                </p>
               </div>
               <div>
                 <label className={styles.label}>Stock mínimo (aviso)</label>

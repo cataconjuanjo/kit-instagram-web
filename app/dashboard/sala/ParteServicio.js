@@ -198,6 +198,13 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
   const turnosDisponibles = TURNOS.filter(t => !partes.some(p => p.turno === t))
   const hayVentasSinStock = controlStockDesde === null &&
     lineas.some(l => l.tipo === 'venta_botella' || l.tipo === 'venta_copa')
+  // G: nº de partes del restaurante ya CERRADOS antes de hacer el
+  // conteo inicial. Esos partes NO se reaplican al cerrar el conteo
+  // (las salidas registradas allí se pierden a efectos de stock).
+  // Avisamos al usuario para que lo sepa antes de cerrar más partes.
+  const partesYaCerradosSinConteo = controlStockDesde === null
+    ? partes.filter(p => p.estado === 'cerrado').length
+    : 0
 
   if (cargando) return (
     <section className={styles.panel}>
@@ -319,10 +326,27 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
               <p className={styles.sectionText} style={{ marginBottom: 12 }}>Parte cerrado sin líneas.</p>
             )}
 
-            {/* Aviso control_stock_desde NULL */}
+            {/* Aviso control_stock_desde NULL (G: con enlace y
+                nº de partes cerrados sin conteo — que al cerrar el
+                conteo inicial NO se reaplican a stock). */}
             {hayVentasSinStock && (
               <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff8e1', borderRadius: 7, border: '1px solid #ffe082', fontSize: 13, color: '#795548' }}>
-                Las ventas aún no descuentan stock — falta el conteo inicial de bodega.
+                <div>Las ventas aún no descuentan stock — falta el conteo inicial de bodega.</div>
+                {partesYaCerradosSinConteo > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <strong>Atención:</strong> ya hay {partesYaCerradosSinConteo}{' '}
+                    parte{partesYaCerradosSinConteo === 1 ? '' : 's'} cerrado{partesYaCerradosSinConteo === 1 ? '' : 's'}{' '}
+                    antes del conteo. Esas ventas no se descontarán aunque hagas el conteo ahora.
+                  </div>
+                )}
+                <div style={{ marginTop: 6 }}>
+                  <a
+                    href="/dashboard/bodega?panel=conteo"
+                    style={{ color: '#795548', textDecoration: 'underline', fontWeight: 600 }}
+                  >
+                    Hacer conteo inicial →
+                  </a>
+                </div>
               </div>
             )}
 
