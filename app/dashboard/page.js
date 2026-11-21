@@ -1056,7 +1056,16 @@ function DashboardHome() {
                   </div>
                 )}
                 {bajoMinimo.length === 0 && propuestasActivas.length === 0 && (
-                  <p className={styles.decideEmpty}>Todo en orden. Sin avisos activos.</p>
+                  // G: diferenciar restaurante VACÍO (0 vinos
+                  // activos) de restaurante con vinos y sin avisos.
+                  // Antes mostraba "Todo en orden" en un restaurante
+                  // sin cargar vinos, dando falsa sensación de que
+                  // todo iba bien.
+                  <p className={styles.decideEmpty}>
+                    {vinosActivos.length === 0
+                      ? 'Aún no has cargado vinos. Los avisos aparecerán cuando tengas referencias activas.'
+                      : 'Todo en orden. Sin avisos activos.'}
+                  </p>
                 )}
               </div>
             </article>
