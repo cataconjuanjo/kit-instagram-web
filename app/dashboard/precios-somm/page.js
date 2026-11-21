@@ -297,6 +297,18 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
             </span>
           )}
         </div>
+
+        {/* Fase D — enlace cruzado al simulador de margen de bodega. */}
+        <p style={{ marginTop: 14, fontSize: 13, color: '#6b6258' }}>
+          ¿Quieres ver el margen bruto mínimo de bodega y la comparativa
+          con lo real?{' '}
+          <a
+            href="/dashboard/bodega?panel=simulador_margen"
+            style={{ color: '#7B1E3B', textDecoration: 'underline' }}
+          >
+            Ver también el simulador de margen mínimo de bodega →
+          </a>
+        </p>
       </div>
     </section>
   )

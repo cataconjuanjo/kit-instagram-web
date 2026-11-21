@@ -132,7 +132,13 @@ export default function ControlBodega() {
   const [botellas, setBotellas] = useState([])
   const [editando, setEditando] = useState(null)
   const [inlineEdit, setInlineEdit] = useState(null)
-  const [panelAbierto, setPanelAbierto] = useState(null)
+  // Panel abierto: lee ?panel= de la URL para abrir directamente desde
+  // otro sitio (p. ej. el enlace cruzado desde /dashboard/precios-somm).
+  const [panelAbierto, setPanelAbierto] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const sp = new URLSearchParams(window.location.search)
+    return sp.get('panel') || null
+  })
   const [filtroReferencias, setFiltroReferencias] = useState('todos')
   const [busquedaReferencias, setBusquedaReferencias] = useState('')
   const [pedidoRapido, setPedidoRapido] = useState({})

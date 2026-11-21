@@ -274,12 +274,20 @@ describe('construirCierreWorkbook', () => {
     assert.strictEqual(spec.filename, 't-cierre-2026-01.xlsx')
   })
 
+  // Nota (fase D): la lista de hojas creció desde que se escribieron
+  // estos tests. `construirCierreWorkbook` ahora añade Desglose/Ratios/
+  // Conciliacion cuando el snapshot los soporta (F2/F3). Validar el
+  // CONTENIDO (hojas presentes por nombre + sus filas) en lugar del
+  // conteo literal mantiene el test útil sin encadenarlo a cada nueva
+  // hoja opcional del cierre.
   it('devuelve Resumen + Vinos (Gastos opcional si hay datos.gastos)', () => {
     const spec = construirCierreWorkbook({ datos: datosCierre, mes: '2026-01', restauranteNombre: 'X' })
-    assert.strictEqual(spec.sheets.length, 2)   // sin datos.gastos → no hay hoja Gastos
-    assert.strictEqual(spec.sheets[0].name, 'Resumen')
-    assert.strictEqual(spec.sheets[1].name, 'Vinos')
-    assert.strictEqual(spec.sheets[1].rows.length, 2)
+    const nombres = spec.sheets.map(s => s.name)
+    assert.ok(nombres.includes('Resumen'), 'falta hoja Resumen')
+    assert.ok(nombres.includes('Vinos'),   'falta hoja Vinos')
+    assert.equal(nombres.includes('Gastos'), false, 'no debería haber Gastos sin datos.gastos')
+    const sheetVinos = spec.sheets.find(s => s.name === 'Vinos')
+    assert.strictEqual(sheetVinos.rows.length, 2)
   })
 
   it('añade hoja Gastos cuando datos.gastos tiene filas (TOTAL con fórmula y result)', () => {
@@ -291,16 +299,16 @@ describe('construirCierreWorkbook', () => {
       ],
     }
     const spec = construirCierreWorkbook({ datos, mes: '2026-01', restauranteNombre: 'X' })
-    assert.strictEqual(spec.sheets.length, 3)
-    assert.strictEqual(spec.sheets[2].name, 'Gastos')
-    const t = spec.sheets[2].totals
+    const sheetGastos = spec.sheets.find(s => s.name === 'Gastos')
+    assert.ok(sheetGastos, 'falta hoja Gastos')
+    const t = sheetGastos.totals
     assert.strictEqual(t.importe.formula, 'SUM(B2:B3)')
     assert.strictEqual(t.importe.result, 1200)
   })
 
   it('TOTAL de Vinos: fórmula SUM + result precalculado', () => {
     const spec = construirCierreWorkbook({ datos: datosCierre, mes: '2026-01', restauranteNombre: 'X' })
-    const t = spec.sheets[1].totals
+    const t = spec.sheets.find(s => s.name === 'Vinos').totals
     assert.strictEqual(t.nombre, 'TOTAL')
     assert.ok(/^SUM\([A-Z]+2:[A-Z]+3\)$/.test(t.uds.formula))
     assert.strictEqual(t.uds.result,      15)   // 10 + 5

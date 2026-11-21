@@ -544,6 +544,94 @@ function construirSheetCierre({ datosVino }) {
   }
 }
 
+// ── Hoja "Simulador" (Fase D) ──────────────────────────────────────────────
+//
+// Sólo datos REALES del mes: ventas, coste y margen bruto del
+// snapshot + gastos imputados a bodega que el llamador computa
+// (totalPersonal / totalAlquiler ya vienen "a bodega" porque /dashboard/
+// explotacion aplica imputarParametros antes de pasar los totales).
+//
+// Roturas + invitaciones + cocina + cata se leen del por_canal con la
+// misma suma que `app/lib/simuladorMargen.js:precargarDesdeSnapshot`.
+//
+// Los SUPUESTOS del simulador (materiales, suministros, otros,
+// beneficio objetivo, ventas previstas fijas) viven en una tabla
+// aparte (`simulador_margen_bodega`) y no cruzamos el servidor del
+// informe para no complicar la ruta /api/somm/informe-mensual.
+// El usuario los tiene en pantalla cuando los necesita; esta hoja
+// sirve como "foto del mes" y no requiere la tabla.
+//
+// Devuelve null si no hay snapshot o si no hay ventas/coste
+// (mes sin datos → omitida, patrón de construirSheetCanalesVenta).
+function construirSheetSimulador({ datosVino, totalPersonal, totalAlquiler }) {
+  if (!datosVino) return null
+  const d = datosVino
+  const ventasNeto = Number(d.ventas_neto)
+  const costeMp    = Number(d.coste_ventas_teorico)
+  const margen     = Number(d.margen_bruto)
+  if (!(ventasNeto > 0) && !(costeMp > 0) && !(margen > 0)) return null
+
+  const pc = d.informe?.por_canal || {}
+  const roturas = r2(
+    num(pc.rotura?.coste) +
+    num(pc.invitacion?.botella_coste) +
+    num(pc.invitacion?.copa_coste) +
+    num(pc.cocina?.coste) +
+    num(pc.cata?.coste)
+  )
+
+  const personalBodega = Number.isFinite(Number(totalPersonal)) ? Number(totalPersonal) : null
+  const alquilerBodega = Number.isFinite(Number(totalAlquiler)) ? Number(totalAlquiler) : null
+
+  // Filas 1-based: header en 1, filas de datos empiezan en 2.
+  // Las fórmulas de %MP real y multiplicador real se calculan en vivo
+  // referenciando las celdas de ventas y coste (sin "=" en el builder,
+  // como el resto de hojas).
+  const rows = []
+  rows.push({ concepto: 'VENTAS DEL MES',               valor: r2(ventasNeto) })             // fila 2
+  rows.push({ concepto: 'Coste ventas teórico',         valor: r2(costeMp) })                 // fila 3
+  rows.push({ concepto: 'Margen bruto real',            valor: r2(margen) })                  // fila 4
+  // % MP real = coste/ventas ; fórmula viva
+  rows.push({
+    concepto: '% materia prima real',
+    valor: ventasNeto > 0
+      ? { formula: 'B3/B2', result: r2((costeMp / ventasNeto) * 100) / 100, format: FMT_PCT }
+      : null,
+  })                                                                                           // fila 5
+  // % margen real = 1 − B5 ; fórmula viva (devuelve ratio para FMT_PCT)
+  rows.push({
+    concepto: '% margen real',
+    valor: ventasNeto > 0
+      ? { formula: '1-B5', result: r2(1 - (costeMp / ventasNeto)), format: FMT_PCT }
+      : null,
+  })                                                                                           // fila 6
+  rows.push({ concepto: '',                             valor: '' })                           // fila 7 (separador)
+
+  rows.push({ concepto: 'GASTOS MENSUALES DE BODEGA',   valor: '' })                           // fila 8
+  rows.push({ concepto: 'Personal (imputado a bodega)', valor: personalBodega })               // fila 9
+  rows.push({ concepto: 'Alquiler (imputado a bodega)', valor: alquilerBodega })               // fila 10
+  rows.push({ concepto: 'Roturas + invitaciones + cocina + cata (coste)', valor: r2(roturas) })// fila 11
+
+  // Suma de gastos "reales" que el informe conoce. Materiales,
+  // suministros, otros y beneficio objetivo NO salen aquí: dependen
+  // de supuestos manuales fuera del alcance de esta ruta.
+  const gastosReales = (personalBodega || 0) + (alquilerBodega || 0) + roturas
+  rows.push({
+    concepto: 'TOTAL gastos reales de bodega (sin supuestos manuales)',
+    valor: { formula: 'SUM(B9:B11)', result: r2(gastosReales) },
+  })                                                                                           // fila 12
+
+  return {
+    name: 'Simulador',
+    columns: [
+      { header: 'Concepto',  key: 'concepto', width: 50 },
+      { header: 'Valor',     key: 'valor',    width: 18, format: FMT_EUR },
+    ],
+    rows,
+    freezeHeader: true,
+  }
+}
+
 // ── Entrypoint ─────────────────────────────────────────────────────────────
 
 export function construirInformeEconomicoWorkbook({
@@ -613,6 +701,14 @@ export function construirInformeEconomicoWorkbook({
 
   const sheetCierre = construirSheetCierre({ datosVino })
   if (sheetCierre) sheets.push(sheetCierre)
+
+  // Fase D: hoja Simulador (foto del mes, sin supuestos manuales).
+  const sheetSim = construirSheetSimulador({
+    datosVino,
+    totalPersonal: tp,
+    totalAlquiler: ta,
+  })
+  if (sheetSim) sheets.push(sheetSim)
 
   // Metadata a nivel raíz consumida por excelSommDownload.js para
   // pintar el header/footer de impresión con identidad Carta Viva.

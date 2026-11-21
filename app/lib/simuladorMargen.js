@@ -403,11 +403,46 @@ export function compararConReal({
       : null
   }
 
-  // Multiplicador medio real: Σ(pvpNeto × uds) / Σ(coste × uds).
-  // Si el catálogo no trae uds, ponderamos por 1 (media simple).
-  // Si faltan pvpNeto o coste, descartamos la línea.
+  // Multiplicador medio real. Fuentes, en orden de preferencia:
+  //
+  //   1) informe.por_vino del snapshot: ventas por vino del mes.
+  //      Multiplicador PONDERADO por ingresos reales — la medida
+  //      honesta de qué multiplicador estás realizando.
+  //      numer = Σ ingresos_neto; denom = Σ coste_total (sólo lo
+  //      vendido; invitaciones/rotura no cuentan aquí porque están
+  //      fuera de ingresos_neto).
+  //
+  //   2) `catalogo` del parámetro: si el snapshot no trae por_vino
+  //      (cierres antiguos, mes sin ventas), caemos a la media
+  //      del catálogo activo. Como no tenemos uds vendidas por
+  //      vino, es media SIMPLE con unidades=1.
+  //
+  //   3) Nada de lo anterior → null, UI dice "Sin dato".
   let multiplicador_medio_real = null
-  if (Array.isArray(catalogo) && catalogo.length > 0) {
+  let multiplicador_fuente     = 'sin_dato'
+
+  const porVino = Array.isArray(snapshotMes?.informe?.por_vino)
+    ? snapshotMes.informe.por_vino
+    : (Array.isArray(snapshotMes?.por_vino) ? snapshotMes.por_vino : null)
+
+  if (porVino && porVino.length > 0) {
+    let numer = 0
+    let denom = 0
+    for (const v of porVino) {
+      const ing = num(v?.ingresos_neto)
+      const cos = num(v?.coste_total)
+      if (ing > 0 && cos > 0) {
+        numer += ing
+        denom += cos
+      }
+    }
+    if (denom > 0) {
+      multiplicador_medio_real = redondear2(numer / denom)
+      multiplicador_fuente     = 'ponderado_ventas_mes'
+    }
+  }
+
+  if (multiplicador_medio_real === null && Array.isArray(catalogo) && catalogo.length > 0) {
     let numer = 0
     let denom = 0
     for (const v of catalogo) {
@@ -425,7 +460,10 @@ export function compararConReal({
         denom += coste * uds
       }
     }
-    if (denom > 0) multiplicador_medio_real = redondear2(numer / denom)
+    if (denom > 0) {
+      multiplicador_medio_real = redondear2(numer / denom)
+      multiplicador_fuente     = 'media_simple_catalogo'
+    }
   }
 
   const pct_margen_real = pct_materia_prima_real !== null
@@ -457,8 +495,55 @@ export function compararConReal({
     pct_materia_prima_real,
     pct_margen_real,
     multiplicador_medio_real,
+    multiplicador_fuente,  // 'ponderado_ventas_mes' | 'media_simple_catalogo' | 'sin_dato'
     ventas_reales: ventasNeto,
     margen_necesario_a_ritmo_real,
     diferencia_vs_minimo,
   }
+}
+
+// ── Lista "Vinos por debajo del multiplicador mínimo" ─────────────────
+
+/**
+ * Dado el snapshot del mes (con informe.por_vino de la Fase D) y el
+ * multiplicador mínimo necesario, devuelve la lista de vinos VENDIDOS
+ * cuyo multiplicador real está por debajo del mínimo, ordenada por
+ * impacto (margen que dejan de aportar).
+ *
+ * "Impacto" = (multiplicador_minimo − multiplicador_real) × coste_total.
+ * Es el margen bruto extra que generarían si subieran al mínimo.
+ *
+ * Reglas:
+ *   - Solo cuenta venta (ingresos_neto > 0, coste_total > 0, multiplicador > 0).
+ *   - Vinos sin coste o sin ventas: NO aparecen.
+ *   - Si el snapshot no trae por_vino (cierre antiguo) → null
+ *     (la UI muestra "Sin dato").
+ *   - Devuelve TODAS (la UI corta con "ver todos").
+ */
+export function vinosBajoMultiplicador(snapshotMes, multiplicadorMinimo) {
+  if (!Number.isFinite(Number(multiplicadorMinimo)) || multiplicadorMinimo <= 0) return []
+  const porVino = Array.isArray(snapshotMes?.informe?.por_vino)
+    ? snapshotMes.informe.por_vino
+    : (Array.isArray(snapshotMes?.por_vino) ? snapshotMes.por_vino : null)
+  if (!porVino) return null  // cierre antiguo sin por_vino
+  const out = []
+  for (const v of porVino) {
+    const mult = Number(v?.multiplicador)
+    const cos  = Number(v?.coste_total)
+    const ing  = Number(v?.ingresos_neto)
+    if (!(mult > 0) || !(cos > 0) || !(ing > 0)) continue
+    if (mult >= multiplicadorMinimo) continue
+    const impacto = redondear2((multiplicadorMinimo - mult) * cos)
+    out.push({
+      vino_id:       v.vino_id,
+      nombre:        v.nombre || v.vino_id,
+      uds_botella:   v.uds_botella ?? v.uds,
+      copas:         v.copas,
+      multiplicador: redondear2(mult),
+      ingresos_neto: redondear2(ing),
+      coste_total:   redondear2(cos),
+      impacto,
+    })
+  }
+  return out.sort((a, b) => b.impacto - a.impacto)
 }
