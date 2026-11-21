@@ -1344,6 +1344,31 @@ function ExplotacionContent() {
                   Facturación de bodega del periodo, sin IVA. Es el valor que se envía a
                   &ldquo;Histórico y Bonus&rdquo; para los comparativos de facturación.
                 </small>
+                {/* G: línea informativa bajo el campo. Si hay ventas
+                    netas según partes cerrados y difiere del valor
+                    actual (o está vacío), ofrecemos un botón "Usar
+                    este importe" que SOLO rellena el campo del
+                    formulario. El usuario sigue pulsando "Guardar
+                    periodo" para persistir. NO llama a ningún
+                    endpoint ni toca el agregador. Para perfil Somm,
+                    el aviso amber existente más abajo tiene la
+                    misma información con más contexto — este bloque
+                    sirve al resto de perfiles. */}
+                {datosVino && Number(datosVino.ventas_neto) > 0 && !esPerfilSomm(restaurante) && (
+                  <small style={{ color: '#4A6C4F', marginTop: 6, display: 'block', fontSize: 12 }}>
+                    Según partes cerrados del mes:{' '}
+                    <strong>{eur(datosVino.ventas_neto, 2)}</strong>
+                    {Math.abs(Number(datosVino.ventas_neto) - num(facturacion)) > 0.01 && (
+                      <button
+                        type="button"
+                        onClick={() => setFacturacion(String(datosVino.ventas_neto))}
+                        style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: '#4A6C4F', background: 'transparent', border: '1px solid #c3d9ce', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Usar este importe
+                      </button>
+                    )}
+                  </small>
+                )}
               </label>
               {restoIngresosDisponible === false && (
                 <label className={styles.label} title="Pendiente de aplicar el SQL">
