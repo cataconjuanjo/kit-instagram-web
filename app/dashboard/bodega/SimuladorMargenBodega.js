@@ -281,7 +281,38 @@ export default function SimuladorMargenBodega({
     return out
   }, [precarga, supuestosGuardados, overrides])
 
-  const origen = precarga.origen
+  // Origen EFECTIVO de cada campo:
+  //  - Si el usuario ha tocado el campo (overrides[k] !== undefined) →
+  //    "manual (editado)". Es prioritario sobre cualquier precarga.
+  //  - Si el valor sale del supuesto guardado y NO ha sido editado →
+  //    "manual (guardado)". Mantiene la trazabilidad de "lo rellenó
+  //    el usuario en una sesión anterior".
+  //  - Si no hay edit ni guardado y la precarga pura dio un origen
+  //    calculado → ese origen (p. ej. "calculado del mes 2026-10 · ...").
+  //  - Si la precarga dio "manual" y el campo no es precargable → "manual".
+  //  - Si es precargable pero no hay fuente → `CampoNumerico` lo
+  //    pinta como "Sin dato del mes X" al ver que origen === 'manual'
+  //    y precargable=true.
+  const origen = useMemo(() => {
+    const base = { ...precarga.origen }
+    const sg = supuestosGuardados || {}
+    const guardadoClaves = {
+      materiales:          sg.materiales,
+      suministros:         sg.suministros,
+      otros:               sg.otros,
+      beneficio_objetivo:  sg.beneficio_objetivo,
+      ventas_previstas:    sg.ventas_previstas_fijo,
+    }
+    for (const k of Object.keys(base)) {
+      const editado = overrides[k] !== undefined
+      if (editado) {
+        base[k] = 'manual (editado)'
+      } else if (guardadoClaves[k] !== undefined && guardadoClaves[k] !== null) {
+        base[k] = 'manual (guardado)'
+      }
+    }
+    return base
+  }, [precarga.origen, overrides, supuestosGuardados])
 
   const resultado = useMemo(() => calcularSimuladorMargen({
     gastos: {
@@ -304,6 +335,34 @@ export default function SimuladorMargenBodega({
 
   function setCampo(k, v) {
     setOverrides(prev => ({ ...prev, [k]: v }))
+  }
+
+  // Devuelve un campo precargable a su valor del snapshot/parametros
+  // y limpia también el supuesto guardado correspondiente para que la
+  // etiqueta vuelva a decir "calculado del mes X · …".
+  function restablecerCampo(k) {
+    setOverrides(prev => {
+      if (!(k in prev)) return prev
+      const copia = { ...prev }
+      delete copia[k]
+      return copia
+    })
+    // El campo puede venir tambien de supuestosGuardados; lo borro del
+    // estado local y persisto el borrado si hay tabla.
+    if (supuestosGuardados) {
+      const clave = k === 'ventas_previstas' ? 'ventas_previstas_fijo' : k
+      if (supuestosGuardados[clave] != null) {
+        const nuevo = { ...supuestosGuardados, [clave]: null }
+        setSupuestosGuardados(nuevo)
+        if (restauranteId && !faltaTabla) {
+          const payloadLimpio = { ...nuevo }
+          for (const kk of Object.keys(payloadLimpio)) {
+            if (payloadLimpio[kk] === null) delete payloadLimpio[kk]
+          }
+          guardarSupuestos(restauranteId, payloadLimpio).catch(() => {})
+        }
+      }
+    }
   }
 
   async function onGuardar() {
@@ -381,6 +440,7 @@ export default function SimuladorMargenBodega({
               periodo={periodo}
               precargable={CLAVES_PRECARGABLES.has(k)}
               cargando={cargandoSnapshot}
+              onRestablecer={CLAVES_PRECARGABLES.has(k) ? () => restablecerCampo(k) : undefined}
             />
           ))}
         </fieldset>
@@ -404,6 +464,7 @@ export default function SimuladorMargenBodega({
             periodo={periodo}
             precargable
             cargando={cargandoSnapshot}
+            onRestablecer={() => restablecerCampo('ventas_previstas')}
           />
           <div style={estilos.campo}>
             <label htmlFor="sim_mes_ref" style={estilos.label}>Mes de referencia</label>
@@ -448,17 +509,28 @@ function mesAnteriorISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function CampoNumerico({ label, valor, onChange, origen, periodo, precargable, cargando }) {
+function CampoNumerico({
+  label, valor, onChange, origen, periodo, precargable, cargando, onRestablecer,
+}) {
   const id = 'sim_' + label.replace(/[^a-zA-Z0-9]+/g, '_')
-  // Mensaje de origen:
-  //  - Si hay precarga real (origen != 'manual') → "Origen: …"
-  //  - Si es manual Y el campo NO es precargable → "manual" (materiales, etc.)
-  //  - Si es manual PERO el campo SÍ es precargable → no hay fuente para
-  //    el mes: "Sin dato del mes X" (nunca 0 inventado).
-  //  - Si estamos cargando → "cargando…"
+  // Mensaje de origen, en este orden de prioridad:
+  //  1. Si precargable + cargando + sin edit → "cargando datos del mes…"
+  //  2. Si origen = 'manual (editado)' o 'manual (guardado)' → mostrar
+  //     el texto tal cual (sin prefijo "Origen:") en estilo manual.
+  //  3. Si origen es un texto calculado (no empieza por 'manual') →
+  //     "Origen: {origen}" en estilo calc.
+  //  4. Si origen = 'manual' y campo NO precargable → "manual"
+  //     (materiales, suministros, otros, beneficio: siempre teclear).
+  //  5. Si origen = 'manual' y campo SÍ precargable → "Sin dato del
+  //     mes X" (no hay fuente — nunca 0 inventado).
+  const esEditado  = origen === 'manual (editado)'
+  const esGuardado = origen === 'manual (guardado)'
   let texto, estilo
   if (cargando && precargable && origen === 'manual') {
     texto = 'cargando datos del mes…'
+    estilo = estilos.origenManual
+  } else if (esEditado || esGuardado) {
+    texto = origen
     estilo = estilos.origenManual
   } else if (origen && origen !== 'manual') {
     texto = `Origen: ${origen}`
@@ -470,6 +542,10 @@ function CampoNumerico({ label, valor, onChange, origen, periodo, precargable, c
     texto = 'manual'
     estilo = estilos.origenManual
   }
+  // "Restablecer al dato real" solo si el campo es precargable Y el
+  // usuario lo ha editado (o viene guardado), para que un click
+  // devuelva el valor precalculado del mes de referencia.
+  const mostrarReset = precargable && onRestablecer && (esEditado || esGuardado)
   return (
     <div style={estilos.campo}>
       <label htmlFor={id} style={estilos.label}>{label}</label>
@@ -485,7 +561,14 @@ function CampoNumerico({ label, valor, onChange, origen, periodo, precargable, c
         />
         <span style={estilos.sufijo}>€</span>
       </div>
-      <small style={estilo}>{texto}</small>
+      <div style={estilos.origenRow}>
+        <small style={estilo}>{texto}</small>
+        {mostrarReset && (
+          <button type="button" onClick={onRestablecer} style={estilos.btnReset}>
+            Restablecer al dato real
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -522,6 +605,7 @@ function Comparativa({ resultado, comparativa }) {
     return null
   }
   const d = comparativa.diferencia_vs_minimo
+  const puntosFmt = formatearPuntosEs(d.puntos)
   return (
     <div style={{
       ...estilos.comparativa,
@@ -530,13 +614,15 @@ function Comparativa({ resultado, comparativa }) {
     }}>
       <strong style={{ color: d.cubre ? '#2f6049' : '#8a3030' }}>
         {d.cubre
-          ? 'Tu bodega cubre el margen mínimo'
-          : 'Tu bodega NO cubre el margen mínimo'}
+          ? `Tu bodega cubre el margen mínimo (${puntosFmt} pts)`
+          : `No cubre el margen mínimo (${puntosFmt} pts)`}
       </strong>
       <ul style={estilos.ulCmp}>
+        <li>% materia prima real: <strong>{formatoPorcentaje(comparativa.pct_materia_prima_real, 2)}</strong> · % margen real: <strong>{formatoPorcentaje(comparativa.pct_margen_real, 2)}</strong></li>
         <li>Margen bruto real del mes: <strong>{formatoMoneda(comparativa.margen_bruto_real, { decimales: 2 })}</strong></li>
-        <li>% materia prima real: <strong>{formatoPorcentaje(comparativa.pct_materia_prima_real, 2)}</strong></li>
-        <li>Diferencia frente a lo necesario: <strong>{formatoMoneda(d.eur, { decimales: 2 })}</strong> ({d.puntos >= 0 ? '+' : ''}{d.puntos} pts)</li>
+        <li style={estilos.detalleEuros}>
+          A tus ventas previstas de <strong>{formatoMoneda(resultado.ventas_previstas, { decimales: 2 })}</strong>, el margen bruto necesario es <strong>{formatoMoneda(resultado.margen_bruto_necesario, { decimales: 2 })}</strong>; al ritmo real del mes ({formatoMoneda(comparativa.ventas_reales, { decimales: 2 })} de ventas), el margen bruto necesario para cubrir ese % sería <strong>{formatoMoneda(comparativa.margen_necesario_a_ritmo_real, { decimales: 2 })}</strong> y tu margen real es <strong>{formatoMoneda(comparativa.margen_bruto_real, { decimales: 2 })}</strong>.
+        </li>
         <li>
           Multiplicador medio real:{' '}
           <strong>{comparativa.multiplicador_medio_real != null
@@ -551,6 +637,15 @@ function Comparativa({ resultado, comparativa }) {
       </ul>
     </div>
   )
+}
+
+function formatearPuntosEs(n) {
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return '—'
+  const v = Number(n)
+  const abs = Math.abs(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // Signo menos U+2212 para que no se vea como guion fino. "+" explícito
+  // para dejar claro que supera el mínimo.
+  return (v < 0 ? '−' : '+') + abs
 }
 
 function ExplicacionDidactica() {
@@ -642,4 +737,11 @@ const estilos = {
   },
   pie: { fontSize: 12, color: '#8b8278' },
   notaMult: { fontSize: 11, color: '#8b8278', fontStyle: 'italic' },
+  origenRow: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' },
+  btnReset: {
+    padding: '2px 8px', fontSize: 11, fontWeight: 500, color: '#7B1E3B',
+    background: 'transparent', border: '1px solid #ead9ca', borderRadius: 4,
+    cursor: 'pointer',
+  },
+  detalleEuros: { marginTop: 6, color: '#6b6258', lineHeight: 1.55 },
 }

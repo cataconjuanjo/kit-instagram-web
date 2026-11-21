@@ -201,13 +201,16 @@ describe('compararConReal con shape REAL — margen bruto y % MP del mes', () =>
     assert.equal(cmp.pct_materia_prima_real, 42.03)
   })
 
-  it('cubre: real (5.577,70) vs necesario (gastos+beneficio = 1.500) → cubre=true', () => {
+  it('cubre: ventas previstas = ventas reales → veredicto limpio por puntos', () => {
+    // Ventas previstas = ventas reales = 9.621,82 → el escenario
+    // de "comparación a mismo volumen" es el mismo que el "ritmo real".
     const sim = calcularSimuladorMargen({
       gastos: { personal: 1000 }, beneficio_objetivo: 500, ventas_previstas: 9621.82,
     })
     const cmp = compararConReal({ simulacion: sim, snapshotMes })
     assert.equal(cmp.diferencia_vs_minimo.cubre, true)
-    assert.ok(cmp.diferencia_vs_minimo.eur > 0)
+    assert.ok(cmp.diferencia_vs_minimo.puntos > 0)
+    assert.ok(cmp.diferencia_vs_minimo.eur_a_ritmo_real > 0)
   })
 })
 

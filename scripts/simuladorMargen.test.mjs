@@ -280,7 +280,9 @@ describe('compararConReal — diferencia vs mínimo necesario', () => {
     // Real: margen = 1400, %MP = 30, pctMargen real = 70
     assert.equal(cmp.margen_bruto_real, 1400)
     assert.equal(cmp.pct_materia_prima_real, 30)
-    assert.equal(cmp.diferencia_vs_minimo.eur, 900)
+    // Veredicto por PUNTOS (ventas previstas 2000 == ventas reales 2000,
+    // así que el eur_a_ritmo_real coincide con el diferencial naive):
+    assert.equal(cmp.diferencia_vs_minimo.eur_a_ritmo_real, 900)
     assert.equal(cmp.diferencia_vs_minimo.puntos, 45)
     assert.equal(cmp.diferencia_vs_minimo.cubre, true)
   })
@@ -295,7 +297,7 @@ describe('compararConReal — diferencia vs mínimo necesario', () => {
       snapshotMes: { resumen: { ventas_neto: 2000, coste_ventas_teorico: 1000 } },
     })
     // Real: margen = 1000, pctMargen real = 50
-    assert.equal(cmp.diferencia_vs_minimo.eur, -500)
+    assert.equal(cmp.diferencia_vs_minimo.eur_a_ritmo_real, -500)
     assert.equal(cmp.diferencia_vs_minimo.puntos, -25)
     assert.equal(cmp.diferencia_vs_minimo.cubre, false)
   })
@@ -409,8 +411,9 @@ describe('integración — precarga + cálculo + comparación (sin red)', () => 
     // Real: margen = 15000-5940 = 9060; %MP real = 39,6
     assert.equal(cmp.margen_bruto_real, 9060)
     assert.equal(cmp.pct_materia_prima_real, 39.6)
-    // Cubre: margen real (9060) > margen necesario (7085)
+    // Cubre: pctMargen real ≥ pct_margen_minimo (puntos ≥ 0)
     assert.equal(cmp.diferencia_vs_minimo.cubre, true)
-    assert.ok(cmp.diferencia_vs_minimo.eur > 0)
+    assert.ok(cmp.diferencia_vs_minimo.puntos >= 0)
+    assert.ok(cmp.diferencia_vs_minimo.eur_a_ritmo_real > 0)
   })
 })

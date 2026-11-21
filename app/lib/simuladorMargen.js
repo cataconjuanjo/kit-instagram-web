@@ -362,11 +362,22 @@ function redondear2(n) {
  *   {
  *     margen_bruto_real,       // € del mes
  *     pct_materia_prima_real,  // %
+ *     pct_margen_real,         // 100 − pctMP; redondeado a 2 decimales
  *     multiplicador_medio_real,// null si no hay catálogo fiable
+ *     ventas_reales,           // snapshot.ventas_neto (eco, para UI didáctica)
+ *     margen_necesario_a_ritmo_real,
+ *       // Si proyectamos el margen mínimo exigido a las ventas REALES
+ *       // del mes, cuánto habría que generar en € para cubrirlo.
+ *       // Es decir: pct_margen_minimo% × ventas_reales. Sin esto, la UI
+ *       // compararía euros de volúmenes de ventas distintos y daría
+ *       // veredictos contradictorios con los puntos de margen.
  *     diferencia_vs_minimo: {
- *       eur,      // real − necesario (positivo = cubre)
- *       puntos,   // pctMargen real − pctMargen minimo
- *       cubre,    // boolean
+ *       puntos,   // pctMargen real − pctMargen minimo (SÍ es la medida válida)
+ *       cubre,    // boolean: puntos >= 0  (nunca comparar euros de volúmenes
+ *                 // distintos; eso era el bug de la fase C-3)
+ *       eur_a_ritmo_real,
+ *                 // margen_bruto_real − margen_necesario_a_ritmo_real.
+ *                 // Es coherente con "cubre": si puntos ≥ 0, este euros ≥ 0.
  *     } | null,
  *   }
  */
@@ -417,26 +428,37 @@ export function compararConReal({
     if (denom > 0) multiplicador_medio_real = redondear2(numer / denom)
   }
 
+  const pct_margen_real = pct_materia_prima_real !== null
+    ? redondear2(100 - pct_materia_prima_real)
+    : null
+
+  let margen_necesario_a_ritmo_real = null
   let diferencia_vs_minimo = null
   if (
     simulacion
-    && Number.isFinite(simulacion.margen_bruto_necesario)
     && Number.isFinite(simulacion.pct_margen_minimo)
-    && Number.isFinite(margen_bruto_real)
-    && Number.isFinite(pct_materia_prima_real)
+    && Number.isFinite(pct_margen_real)
+    && ventasNeto !== null && ventasNeto > 0
   ) {
-    const pctMargenReal = redondear2(100 - pct_materia_prima_real)
+    // Proyección honesta: a las ventas REALES del mes, cuántos €
+    // habría que generar para cubrir el margen mínimo exigido.
+    margen_necesario_a_ritmo_real =
+      redondear2(simulacion.pct_margen_minimo / 100 * ventasNeto)
+    const puntos = redondear2(pct_margen_real - simulacion.pct_margen_minimo)
     diferencia_vs_minimo = {
-      eur:    redondear2(margen_bruto_real - simulacion.margen_bruto_necesario),
-      puntos: redondear2(pctMargenReal - simulacion.pct_margen_minimo),
-      cubre:  margen_bruto_real >= simulacion.margen_bruto_necesario,
+      puntos,
+      cubre: puntos >= 0,
+      eur_a_ritmo_real: redondear2(margen_bruto_real - margen_necesario_a_ritmo_real),
     }
   }
 
   return {
     margen_bruto_real,
     pct_materia_prima_real,
+    pct_margen_real,
     multiplicador_medio_real,
+    ventas_reales: ventasNeto,
+    margen_necesario_a_ritmo_real,
     diferencia_vs_minimo,
   }
 }
