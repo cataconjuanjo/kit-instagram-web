@@ -32,6 +32,7 @@ import {
   calcularTotalPersonal,
   calcularTotalAlquiler,
 } from '../../lib/sommExplotacion'
+import { imputarParametros } from '../../lib/imputacionBodega'
 import { datosParaPeriodo } from '../../lib/canalesSalidas'
 import { costeBase } from '../../lib/margenMinimo'
 
@@ -43,6 +44,13 @@ const CLAVES_GASTO = [
   { k: 'alquiler',             label: 'Alquiler proporcional de bodega' },
   { k: 'otros',                label: 'Otros gastos (inmovilizado, etc.)' },
 ]
+
+// Campos que PUEDEN precargarse desde snapshot/parametros. Si para
+// un mes no hay fuente, enseñan "Sin dato del mes X" en lugar de
+// "manual" (que se reserva para los realmente sólo-humanos).
+const CLAVES_PRECARGABLES = new Set([
+  'personal', 'alquiler', 'roturas_invitaciones', 'ventas_previstas',
+])
 
 function inputNumerico(v) {
   if (v === null || v === undefined) return ''
@@ -101,11 +109,28 @@ export default function SimuladorMargenBodega({
           return
         }
         setParamsError(null)
-        setParametrosFetched(data ? {
-          total_personal: calcularTotalPersonal(data),
-          total_alquiler: calcularTotalAlquiler(data?.alquileres || []),
-          imputacion_pct: data?.imputacion_pct || null,
-        } : null)
+        if (!data) {
+          // Sin fila para el mes: null → precarga marca "manual" y la
+          // UI muestra "Sin dato del mes X", nunca 0.
+          setParametrosFetched(null)
+          return
+        }
+        // Imitamos EXACTAMENTE el flujo de /dashboard/explotacion:
+        // imputarParametros aplica imputacion_pct por partida sobre
+        // el objeto crudo. Luego calcularTotalPersonal/Alquiler suma
+        // sobre el imputado. El total resultante ya está "a bodega",
+        // por eso marcamos ya_imputado=true en el shape que pasamos
+        // a precargarDesdeSnapshot — para no multiplicar dos veces.
+        const imputado = imputarParametros(data)
+        const totalPersonal = calcularTotalPersonal(imputado).total
+        const totalAlquiler = calcularTotalAlquiler(imputado?.partidas_alquiler || []).total
+        // Convención: null = no hay fila para el mes (Sin dato);
+        // número ≥ 0 = hay fila, aunque sea 0 (0 legítimo).
+        setParametrosFetched({
+          ya_imputado:    true,
+          total_personal: Number.isFinite(totalPersonal) ? totalPersonal : null,
+          total_alquiler: Number.isFinite(totalAlquiler) ? totalAlquiler : null,
+        })
       })
     return () => { vivo = false }
   }, [restauranteId, periodo, parametrosProp])
@@ -353,6 +378,9 @@ export default function SimuladorMargenBodega({
               valor={form[k]}
               onChange={v => setCampo(k, v)}
               origen={origen[k]}
+              periodo={periodo}
+              precargable={CLAVES_PRECARGABLES.has(k)}
+              cargando={cargandoSnapshot}
             />
           ))}
         </fieldset>
@@ -364,12 +392,18 @@ export default function SimuladorMargenBodega({
             valor={form.beneficio_objetivo}
             onChange={v => setCampo('beneficio_objetivo', v)}
             origen={origen.beneficio_objetivo}
+            periodo={periodo}
+            precargable={false}
+            cargando={cargandoSnapshot}
           />
           <CampoNumerico
             label="Ventas mensuales previstas (sin IVA)"
             valor={form.ventas_previstas}
             onChange={v => setCampo('ventas_previstas', v)}
             origen={origen.ventas_previstas}
+            periodo={periodo}
+            precargable
+            cargando={cargandoSnapshot}
           />
           <div style={estilos.campo}>
             <label htmlFor="sim_mes_ref" style={estilos.label}>Mes de referencia</label>
@@ -414,8 +448,28 @@ function mesAnteriorISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function CampoNumerico({ label, valor, onChange, origen }) {
+function CampoNumerico({ label, valor, onChange, origen, periodo, precargable, cargando }) {
   const id = 'sim_' + label.replace(/[^a-zA-Z0-9]+/g, '_')
+  // Mensaje de origen:
+  //  - Si hay precarga real (origen != 'manual') → "Origen: …"
+  //  - Si es manual Y el campo NO es precargable → "manual" (materiales, etc.)
+  //  - Si es manual PERO el campo SÍ es precargable → no hay fuente para
+  //    el mes: "Sin dato del mes X" (nunca 0 inventado).
+  //  - Si estamos cargando → "cargando…"
+  let texto, estilo
+  if (cargando && precargable && origen === 'manual') {
+    texto = 'cargando datos del mes…'
+    estilo = estilos.origenManual
+  } else if (origen && origen !== 'manual') {
+    texto = `Origen: ${origen}`
+    estilo = estilos.origenCalc
+  } else if (precargable) {
+    texto = `Sin dato del mes ${periodo || '—'}`
+    estilo = estilos.origenManual
+  } else {
+    texto = 'manual'
+    estilo = estilos.origenManual
+  }
   return (
     <div style={estilos.campo}>
       <label htmlFor={id} style={estilos.label}>{label}</label>
@@ -431,11 +485,7 @@ function CampoNumerico({ label, valor, onChange, origen }) {
         />
         <span style={estilos.sufijo}>€</span>
       </div>
-      {origen && (
-        <small style={origen === 'manual' ? estilos.origenManual : estilos.origenCalc}>
-          {origen === 'manual' ? 'manual' : `Origen: ${origen}`}
-        </small>
-      )}
+      <small style={estilo}>{texto}</small>
     </div>
   )
 }

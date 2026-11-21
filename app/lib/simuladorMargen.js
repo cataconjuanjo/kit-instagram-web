@@ -137,21 +137,66 @@ export function calcularSimuladorMargen(entrada) {
   }
 }
 
+// ── Normalización del snapshot ────────────────────────────────────────
+
+/**
+ * Extrae los campos del snapshot con tolerancia a dos shapes:
+ *   - Forma REAL del repo (calcularMesBodega): ventas_neto en raíz,
+ *     informe.por_canal.
+ *   - Forma legacy "resumen" que algunos tests antiguos usaban:
+ *     resumen.ventas_neto, por_canal en raíz.
+ *
+ * Devuelve siempre el shape normalizado o nulls cuando la fuente no
+ * aporta. NO inventa 0 cuando no hay dato (null).
+ */
+export function normalizarSnapshot(snapshotMes) {
+  if (!snapshotMes || typeof snapshotMes !== 'object') {
+    return { ventas_neto: null, coste_ventas_teorico: null, margen_bruto: null, por_canal: null, periodo: null }
+  }
+  const resumen  = snapshotMes.resumen  || null
+  const por_canal = snapshotMes.informe?.por_canal ?? snapshotMes.por_canal ?? null
+  const periodo  = snapshotMes.mes || snapshotMes.periodo || null
+  const ventas_neto         = pickNumber(snapshotMes.ventas_neto, resumen?.ventas_neto)
+  const coste_ventas_teorico = pickNumber(snapshotMes.coste_ventas_teorico, resumen?.coste_ventas_teorico)
+  const margen_bruto        = pickNumber(snapshotMes.margen_bruto, resumen?.margen_bruto)
+  return { ventas_neto, coste_ventas_teorico, margen_bruto, por_canal, periodo }
+}
+
+function pickNumber(...candidatos) {
+  for (const c of candidatos) {
+    if (c === undefined || c === null) continue
+    const n = typeof c === 'number' ? c : Number(c)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
 // ── Precarga desde datos reales ───────────────────────────────────────
 
 /**
- * Dado un snapshot/agregado de un mes (la forma de
- * `agregarPeriodoBodega` / `calcularMesBodega`) y `parametros_
- * explotacion` con su imputacion_pct, devuelve los valores
- * sugeridos para el simulador y su origen.
+ * Dado un snapshot/agregado de un mes (la forma REAL devuelta por
+ * `calcularMesBodega` / endpoint `/api/cierres-mes`) y
+ * `parametros_explotacion` con su imputacion_pct, devuelve los
+ * valores sugeridos para el simulador y su origen.
+ *
+ * Shape del snapshot (verificado en preview Casa Marisma 2026-10):
+ *   {
+ *     mes, desde, hasta,
+ *     ventas_bruto, ventas_neto, iva_pct,
+ *     coste_ventas_teorico, margen_bruto, margen_pct,
+ *     informe: { por_canal: { botella, copa, invitacion: {botella_coste, copa_coste},
+ *                             cocina: {coste}, rotura: {coste}, cata: {coste},
+ *                             evento, maridaje }, ... },
+ *     ...
+ *   }
+ *
+ * Toleramos AMBAS formas para no romper tests antiguos ni usos
+ * server-side: si `resumen` existe, se usa; si no, leemos la raíz
+ * y `informe.por_canal`.
  *
  * Entrada:
  *   {
- *     snapshotMes: {
- *       por_canal: { botella, copa, invitacion, cocina, cata, ...},
- *       resumen:   { ventas_neto?, ingresos_venta?, ... },
- *       periodo:   'YYYY-MM',
- *     } | null,
+ *     snapshotMes: snapshot | null,
  *     parametros: {
  *       total_personal, total_alquiler,
  *       imputacion_pct: { personal?, alquileres?, ... },  // % a bodega
@@ -188,10 +233,11 @@ export function precargarDesdeSnapshot({
   referencia = 'mes',
   mesesUsados = 1,
 } = {}) {
+  const snap = normalizarSnapshot(snapshotMes)
   const origenMes =
     referencia === 'media_n'
       ? `media de ${mesesUsados} meses`
-      : `calculado del mes ${snapshotMes?.periodo || '—'}`
+      : `calculado del mes ${snap.periodo || '—'}`
 
   const valores = {
     personal: null,
@@ -214,23 +260,50 @@ export function precargarDesdeSnapshot({
     ventas_previstas: 'manual',
   }
 
-  // Personal y alquiler imputados a bodega
+  // Personal y alquiler imputados a bodega. Dos modos:
+  //   a) Compat: `imputacion_pct.personal|alquileres` = número → se
+  //      multiplica el total crudo. Lo usan los tests que tratan
+  //      imputación a nivel de bloque (100/50/0/null).
+  //   b) Nuevo flujo: el llamador ya aplica `imputarParametros` (per
+  //      partida) + `calcularTotalPersonal/Alquiler` y pasa el total
+  //      imputado; en ese caso debe marcar `ya_imputado: true` para
+  //      que NO volvamos a multiplicar.
+  //
+  // NUNCA mostramos 0 como "sin dato": si `total_personal` no es
+  // un número válido, el campo queda null y el origen "manual".
   if (parametros) {
-    const pctP = pctImputacion(parametros.imputacion_pct?.personal)
-    const pctA = pctImputacion(parametros.imputacion_pct?.alquileres)
-    if (Number.isFinite(num(parametros.total_personal)) && pctP !== null) {
-      valores.personal = redondear2(num(parametros.total_personal) * pctP / 100)
-      origen.personal = `${origenMes} · imputación ${pctP}%`
-    }
-    if (Number.isFinite(num(parametros.total_alquiler)) && pctA !== null) {
-      valores.alquiler = redondear2(num(parametros.total_alquiler) * pctA / 100)
-      origen.alquiler = `${origenMes} · imputación ${pctA}%`
+    const yaImputado = parametros.ya_imputado === true
+    const totalP = numeroValido(parametros.total_personal)
+    const totalA = numeroValido(parametros.total_alquiler)
+    if (yaImputado) {
+      if (totalP !== null) {
+        valores.personal = redondear2(totalP)
+        origen.personal  = `${origenMes} · imputado a bodega`
+      }
+      if (totalA !== null) {
+        valores.alquiler = redondear2(totalA)
+        origen.alquiler  = `${origenMes} · imputado a bodega`
+      }
+    } else {
+      const pctP = pctImputacion(parametros.imputacion_pct?.personal)
+      const pctA = pctImputacion(parametros.imputacion_pct?.alquileres)
+      if (totalP !== null && pctP !== null) {
+        valores.personal = redondear2(totalP * pctP / 100)
+        origen.personal = `${origenMes} · imputación ${pctP}%`
+      }
+      if (totalA !== null && pctA !== null) {
+        valores.alquiler = redondear2(totalA * pctA / 100)
+        origen.alquiler = `${origenMes} · imputación ${pctA}%`
+      }
     }
   }
 
-  // Roturas, invitaciones, cocina, cata — coste sin ingreso
-  if (snapshotMes?.por_canal) {
-    const pc = snapshotMes.por_canal
+  // Roturas, invitaciones, cocina, cata — coste sin ingreso.
+  // Si el snapshot está presente pero todos los canales son 0, el
+  // resultado es 0 LEGÍTIMO (hay dato, dice que no hubo nada). Si el
+  // snapshot falta, queda null → "Sin dato".
+  if (snap.por_canal) {
+    const pc = snap.por_canal
     const r  = num(pc.rotura?.coste)
     const iB = num(pc.invitacion?.botella_coste)
     const iC = num(pc.invitacion?.copa_coste)
@@ -242,14 +315,21 @@ export function precargarDesdeSnapshot({
       `${origenMes} · rotura+invitacion+cocina+cata`
   }
 
-  // Ventas previstas: ventas_neto si existe; no inventamos nada
-  const ventasNeto = snapshotMes?.resumen?.ventas_neto
-  if (Number.isFinite(num(ventasNeto)) && num(ventasNeto) > 0) {
-    valores.ventas_previstas = redondear2(num(ventasNeto))
+  // Ventas previstas: ventas_neto del snapshot si existe (incluye 0
+  // legítimo). Si no hay snapshot, null → "Sin dato".
+  if (snap.ventas_neto !== null && snap.ventas_neto > 0) {
+    valores.ventas_previstas = redondear2(snap.ventas_neto)
     origen.ventas_previstas = `${origenMes} · ventas_neto`
   }
 
   return { valores, origen }
+}
+
+function numeroValido(v) {
+  if (v === null || v === undefined || v === '') return null
+  const n = typeof v === 'number' ? v : Number(v)
+  if (!Number.isFinite(n)) return null
+  return n
 }
 
 function pctImputacion(v) {
@@ -295,14 +375,21 @@ export function compararConReal({
   snapshotMes = null,
   catalogo   = null,
 } = {}) {
-  const ventasNeto = num(snapshotMes?.resumen?.ventas_neto)
-  const costeMp    = num(snapshotMes?.resumen?.coste_ventas_teorico)
+  const snap = normalizarSnapshot(snapshotMes)
+  const ventasNeto = snap.ventas_neto
+  const costeMp    = snap.coste_ventas_teorico
 
   let margen_bruto_real = null
   let pct_materia_prima_real = null
-  if (ventasNeto > 0) {
-    margen_bruto_real      = redondear2(ventasNeto - costeMp)
-    pct_materia_prima_real = redondear2((costeMp / ventasNeto) * 100)
+  if (ventasNeto !== null && ventasNeto > 0) {
+    // Preferimos margen_bruto ya calculado por el agregador (con sus
+    // redondeos de cuadre); si no viene, lo derivamos.
+    margen_bruto_real = snap.margen_bruto !== null
+      ? redondear2(snap.margen_bruto)
+      : redondear2(ventasNeto - (costeMp ?? 0))
+    pct_materia_prima_real = costeMp !== null
+      ? redondear2((costeMp / ventasNeto) * 100)
+      : null
   }
 
   // Multiplicador medio real: Σ(pvpNeto × uds) / Σ(coste × uds).
