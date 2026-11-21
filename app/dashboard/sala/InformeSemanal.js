@@ -270,18 +270,15 @@ async function generarPDF(informe, semanaAnterior, semana, restaurante) {
     tabla(['Fecha', 'Turno', 'Líneas', 'Ingresos'], diaFilas, [40, 40, 30, 72])
   }
 
-  // — Pie —
-  const totalPags = doc.getNumberOfPages()
-  for (let p = 1; p <= totalPags; p++) {
-    doc.setPage(p)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(160, 160, 160)
-    doc.text(`Carta Viva · ${new Date().toLocaleDateString('es-ES')} · Pág. ${p}/${totalPags}`, PW / 2, 292, { align: 'center' })
-  }
-
+  // Fase E-3: un único pie por página (pdfEstilos) con fecha de
+  // generación integrada; retirado el pie antiguo centrado para no
+  // duplicar información.
+  const fechaGen = new Date().toLocaleDateString('es-ES')
   const filename = `informe-vinos-${semana.desde}-${semana.hasta}.pdf`
-  pintarPiesEnTodas(doc, { W: PW })
+  pintarPiesEnTodas(doc, {
+    W: PW,
+    textoIzda: `Carta Viva · Informe semanal · ${fechaGen}`,
+  })
   doc.save(filename)
 }
 

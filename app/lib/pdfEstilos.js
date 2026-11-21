@@ -181,15 +181,24 @@ export function pintarCabecera(doc, {
 
 /**
  * Pinta pie de página (una vez, en la página activa).
- * Texto: izquierda "Carta Viva · Informe económico", derecha
- * "Página X de N". Siempre con el mismo formato.
+ * Texto: izquierda `textoIzda` (default "Carta Viva · Informe
+ * económico"), derecha "Página X de N". Siempre un único pie por
+ * página — no se repite ni se mezcla con otros estilos.
+ *
+ * El llamador puede componer `textoIzda` con información propia
+ * (p. ej. "Carta Viva · Cierre mensual · 21/11/2026") para integrar
+ * una sola línea de pie, evitando los pies duplicados que había
+ * antes de adoptar pdfEstilos.
  */
-export function pintarPie(doc, { W, pagina, totalPaginas, yBottom = 287 }) {
+export function pintarPie(doc, { W, pagina, totalPaginas, yBottom = 287, textoIzda } = {}) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...PDF_COLORS.textDark)
   // Helvetica estándar de jsPDF soporta WinAnsi (incluye tildes y ñ).
-  doc.text('Carta Viva · Informe económico', 18, yBottom)
+  // Si el llamador manda caracteres fuera de WinAnsi (p. ej. flechas
+  // "→"), jsPDF cambia el stream a UTF-16 e introduce bytes nulos
+  // intercalados. Ver la nota en ascii() de los callers.
+  doc.text(textoIzda || 'Carta Viva · Informe económico', 18, yBottom)
   doc.text(
     `Página ${pagina} de ${totalPaginas}`,
     W - 18, yBottom,
@@ -202,15 +211,18 @@ export function pintarPie(doc, { W, pagina, totalPaginas, yBottom = 287 }) {
  * con `Página X de N` correcto. Se llama una sola vez justo antes
  * de serializar el PDF (`doc.output`). Mantiene la página actual
  * al terminar.
+ *
+ * `textoIzda` opcional se propaga a cada página (mismo texto en
+ * todas) — típicamente "Carta Viva · <contexto> · <fecha gen>".
  */
-export function pintarPiesEnTodas(doc, { W }) {
+export function pintarPiesEnTodas(doc, { W, textoIzda } = {}) {
   const total = typeof doc.getNumberOfPages === 'function'
     ? doc.getNumberOfPages()
     : (doc.internal?.getNumberOfPages?.() ?? 1)
   const current = doc.internal?.getCurrentPageInfo?.()?.pageNumber ?? total
   for (let i = 1; i <= total; i++) {
     doc.setPage(i)
-    pintarPie(doc, { W, pagina: i, totalPaginas: total })
+    pintarPie(doc, { W, pagina: i, totalPaginas: total, textoIzda })
   }
   // Restaura la página activa.
   doc.setPage(current)

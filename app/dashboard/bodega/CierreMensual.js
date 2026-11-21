@@ -286,7 +286,11 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
   pintarCabeceraCv()
   y = 34
 
-  sub(`${datos.partes_incluidos} partes · ${datos.desde} → ${datos.hasta}${datos.borradores_excluidos > 0 ? ` · ${datos.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
+  // El carácter "→" NO existe en WinAnsi (CP1252), la fuente estándar
+  // de jsPDF-helvetica. Si llegara, jsPDF reencoda la línea en UTF-16
+  // y aparecen bytes nulos intercalados en el stream. Usamos " a "
+  // (letra "a"), consistente con las fechas ISO del resto del PDF.
+  sub(`${datos.partes_incluidos} partes · ${datos.desde} a ${datos.hasta}${datos.borradores_excluidos > 0 ? ` · ${datos.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
   sep()
 
   hdr('Ventas', 10)
@@ -485,18 +489,15 @@ async function generarPDF(datos, datosAnt, mes, restaurante, facturasLibro = [],
     sub(`${concil.meta.sin_fecha} factura(s) del Libro sin fecha explicita (se cuentan en el mes ${concil.meta.mes}).`)
   }
 
-  const totalPags = doc.getNumberOfPages()
-  for (let p = 1; p <= totalPags; p++) {
-    doc.setPage(p)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(160, 160, 160)
-    doc.text(ascii(`Carta Viva · ${new Date().toLocaleDateString('es-ES')} · Pag. ${p}/${totalPags}`), PW / 2, 292, { align: 'center' })
-  }
-
-  // Fase E: pie "Página X de N" en todas las páginas con el formato
-  // del PDF del informe económico.
-  pintarPiesEnTodas(doc, { W: PW })
+  // Fase E-3: un único pie por página, el de pdfEstilos, con la
+  // fecha de generación integrada en el lado izquierdo para no
+  // duplicar información (antes convivían este pie antiguo centrado
+  // + el de pintarPie → dos textos de pie por página).
+  const fechaGen = new Date().toLocaleDateString('es-ES')
+  pintarPiesEnTodas(doc, {
+    W: PW,
+    textoIzda: `Carta Viva · Cierre mensual · ${fechaGen}`,
+  })
   doc.save(`cierre-mensual-${mes}.pdf`)
 }
 
