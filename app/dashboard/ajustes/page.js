@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { etiquetaActividadReal } from '../../lib/actividadReal'
@@ -458,19 +458,31 @@ export default function AjustesHub() {
                   <span className={styles.badge}>{item.pendiente ? 'Pendiente' : 'Listo'}</span>
                 </div>
               )
+              // `.itemStack` es `display: grid` y antes de FASE I cada
+              // ítem era un <a>/<Link> grid-child directo, blockificado
+              // por el grid y estirado al 100 % de la columna. Al añadir
+              // el botón "Marcar como hecho" necesitamos agrupar enlace
+              // + botón; si envolvemos con un <div> plano, el <a>
+              // interior vuelve a ser inline (defecto del user-agent),
+              // y la cabecera flex se colapsa a min-content → tira de
+              // ~15 px. Solución: el grid-child es SIEMPRE el <a>/<Link>
+              // (sigue blockificado). El botón se añade como SIGUIENTE
+              // grid-child vía Fragment con key — mantiene el gap de 10 px
+              // del grid y el ancho completo en ambos. Aceptamos la
+              // separación visual de 10 px (coincide con el resto de
+              // componentes de la página).
               const Enlace = item.href.startsWith('#') ? (
                 <a href={item.href} className={styles.itemCard}>{Head}</a>
               ) : (
                 <Link href={item.href} target={item.href.startsWith('/') ? undefined : '_blank'} className={styles.itemCard}>{Head}</Link>
               )
-              if (!item.confirmable) return <div key={item.titulo}>{Enlace}</div>
-              // Ítem confirmable: enlace + botón "Marcar como hecho" /
-              // "Desmarcar". Nunca mezclamos botón dentro de <a> para
-              // no romper accesibilidad / clic.
+              if (!item.confirmable) {
+                return <Fragment key={item.titulo}>{Enlace}</Fragment>
+              }
               return (
-                <div key={item.titulo}>
+                <Fragment key={item.titulo}>
                   {Enlace}
-                  <div style={{ marginTop: 6 }}>
+                  <div style={{ marginTop: -4, display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       type="button"
                       className={styles.ghost}
@@ -482,7 +494,7 @@ export default function AjustesHub() {
                         : (item.pendiente ? 'Marcar como hecho' : 'Desmarcar')}
                     </button>
                   </div>
-                </div>
+                </Fragment>
               )
             })}
           </div>
