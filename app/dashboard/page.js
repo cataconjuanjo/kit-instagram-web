@@ -18,6 +18,7 @@ import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationRea
 import { fetchAllPages } from '../lib/fetchAllPages'
 import { formatoMoneda } from '../lib/formatoEs'
 import { margenBrutoPct } from '../lib/wineEconomics'
+import { estadoConteoInicial } from '../lib/conteoInicial'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -228,10 +229,14 @@ function DashboardHome() {
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [tareasOcultas, setTareasOcultas] = useState([])
-  // G: hay conteo inicial cerrado? null = aún no sabemos (loading);
-  // true/false tras consulta. Si false, el checklist muestra un
-  // ítem pendiente "Hacer conteo inicial" con enlace directo.
-  const [conteoInicialHecho, setConteoInicialHecho] = useState(null)
+  // G: estado del conteo inicial para el checklist.
+  //   'hecho'       → no mostrar el paso (auto-hide).
+  //   'pendiente'   → mostrar.
+  //   null/'desconocido' → no mostrar (política "nunca avisar con
+  //                 dato desconocido" — preferimos ocultar antes que
+  //                 insistir por error sobre un restaurante que ya
+  //                 hizo su conteo).
+  const [estadoConteoIni, setEstadoConteoIni] = useState(null)
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [etiquetaDia, setEtiquetaDia] = useState('hoy')
   const [radarAcciones, setRadarAcciones] = useState([])
@@ -618,31 +623,41 @@ function DashboardHome() {
   }
 
   // Polling tras pago exitoso: espera a que el webhook actualice subscription_status
-  // G: ¿hay conteo inicial cerrado? La fuente de verdad canónica es
-  // `restaurant_economic_settings.control_stock_desde` — la MISMA
-  // que consulta Bodega > Conteo para decidir "Primer conteo
-  // pendiente" (ver app/api/conteos/route.js:34 y
-  // app/dashboard/bodega/ConteoInventario.js:196). Cuando el
-  // propietario cierra el conteo inicial, el backend fija este
-  // timestamp; mientras siga NULL, el conteo está pendiente.
+  // G: ¿se hizo ya el conteo inicial? Usamos el MISMO endpoint que
+  // Bodega > Conteo (`GET /api/conteos`). La consulta directa a
+  // `restaurant_economic_settings` desde el cliente devolvía `data=null`
+  // en el preview (probable RLS del cliente que no deja leer esa
+  // tabla, aunque la columna sí la ve el admin via service_role del
+  // endpoint). El endpoint pasa por `requireRestaurantAccess` y
+  // devuelve tanto `control_stock_desde` como la lista de `conteos`
+  // del restaurante — lógica de decisión en `lib/conteoInicial.js`.
   //
-  // La query previa (G) consultaba `conteos_inventario` directamente
-  // con tipo/estado — podía devolver 0 por diferencias de schema o
-  // RLS y dejaba el ítem visible aunque el conteo estuviera hecho.
+  // Si el admin ha cambiado de restaurante vía `?restaurante_id=…`,
+  // ese ID YA es el `restaurante.id` (el cargar() del dashboard lee
+  // ese query param al traer el restaurante — línea 507-509). Por
+  // tanto llamar al endpoint con `restaurante.id` respeta el
+  // restaurante activo tanto para propietarios como para admin.
   useEffect(() => {
     if (!restaurante?.id) return
     let vivo = true
-    supabase
-      .from('restaurant_economic_settings')
-      .select('control_stock_desde')
-      .eq('restaurante_id', restaurante.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    ;(async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess?.session?.access_token || ''
+        const res = await fetch(`/api/conteos?restaurante_id=${restaurante.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         if (!vivo) return
-        if (error) { setConteoInicialHecho(null); return }
-        // control_stock_desde != null → conteo inicial hecho.
-        setConteoInicialHecho(data?.control_stock_desde != null)
-      })
+        if (!res.ok) { setEstadoConteoIni(null); return }
+        const body = await res.json().catch(() => null)
+        if (!vivo) return
+        const estado = estadoConteoInicial(body)
+        // 'desconocido' → null (no se muestra el paso); otros → el string.
+        setEstadoConteoIni(estado === 'desconocido' ? null : estado)
+      } catch {
+        if (vivo) setEstadoConteoIni(null)
+      }
+    })()
     return () => { vivo = false }
   }, [restaurante?.id])
 
@@ -755,7 +770,7 @@ function DashboardHome() {
         // G: conteo inicial. Se muestra DESPUÉS de cargar vinos y
         // ANTES de los partes reales — así el usuario entiende el
         // orden correcto de activación de la bodega.
-        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock. Los partes cerrados antes del conteo tampoco se reaplican.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || conteoInicialHecho === true },
+        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock. Los partes cerrados antes del conteo tampoco se reaplican.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || estadoConteoIni !== 'pendiente' },
       ]
     : [
         { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio visible antes de publicar.', href: '/dashboard/vinos?importar=1', autoHide: () => cartaPublicable },
@@ -765,7 +780,7 @@ function DashboardHome() {
         // G: conteo inicial para perfiles no-bodega que también
         // tienen bodega como feature (sumiller, acompañado). Si el
         // perfil no tiene bodega, autoHide ya oculta por `feature`.
-        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || conteoInicialHecho === true },
+        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || estadoConteoIni !== 'pendiente' },
         { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => cartaPublicada },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
