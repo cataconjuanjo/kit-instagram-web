@@ -379,6 +379,8 @@ export default function SimuladorCartas() {
   const [vinos, setVinos] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [catalogo, setCatalogo] = useState([])
+  const [catalogoListo, setCatalogoListo] = useState(false)
+  const [catalogoCargando, setCatalogoCargando] = useState(false)
   const [restauranteId, setRestauranteId] = useState('')
   const [proveedorId, setProveedorId] = useState('')
   const [escenario, setEscenario] = useState('optimizado')
@@ -459,6 +461,31 @@ export default function SimuladorCartas() {
         setVinos([])
       }
       setLoading(false)
+
+      // Cargar el catálogo completo en segundo plano tras la primera
+      // pintura. Hasta que termine, "Generar simulación" y "Guardar
+      // propuestas" quedan desactivados.
+      setCatalogoCargando(true)
+      try {
+        const catRes = await fetch('/api/admin/proveedores?scope=full', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const catData = await catRes.json()
+        if (catRes.ok) {
+          const favoritosLocales = leerFavoritosLocales()
+          setCatalogo((catData.vinos || []).map(vino => ({
+            ...vino,
+            favorito: vino.favorito || favoritosLocales.has(String(vino.id)),
+          })))
+          setCatalogoListo(true)
+        } else {
+          setError(catData.error || 'No se pudo cargar el catálogo de proveedores.')
+        }
+      } catch (error) {
+        setError(error.message || 'No se pudo cargar el catálogo de proveedores.')
+      } finally {
+        setCatalogoCargando(false)
+      }
     }
 
     cargar()
@@ -475,34 +502,9 @@ export default function SimuladorCartas() {
     return () => { cancelado = true }
   }, [restauranteId])
 
-  // Al elegir proveedor, cargamos su catálogo bajo demanda.
-  useEffect(() => {
-    if (!proveedorId) return
-    let cancelado = false
-    ;(async () => {
-      const token = await tokenAdmin()
-      try {
-        const res = await fetch(`/api/admin/proveedores?proveedor_id=${encodeURIComponent(proveedorId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'No se pudo cargar el catálogo del proveedor.')
-        if (cancelado) return
-        const favoritosLocales = leerFavoritosLocales()
-        const nuevos = (data.vinos || []).map(vino => ({
-          ...vino,
-          favorito: vino.favorito || favoritosLocales.has(String(vino.id)),
-        }))
-        setCatalogo(actuales => {
-          const sinEste = (actuales || []).filter(v => String(v.proveedor_id) !== String(proveedorId))
-          return [...sinEste, ...nuevos]
-        })
-      } catch (error) {
-        if (!cancelado) setError(error.message || 'No se pudo cargar el catálogo del proveedor.')
-      }
-    })()
-    return () => { cancelado = true }
-  }, [proveedorId])
+  // El catálogo completo ya se carga en segundo plano tras la primera
+  // pintura (ver useEffect de inicio). No necesitamos recargar por
+  // proveedor; filtramos sobre el catálogo en memoria.
 
   const proveedoresPorId = useMemo(() => {
     return proveedores.reduce((acc, proveedor) => {
@@ -921,8 +923,8 @@ export default function SimuladorCartas() {
           <button type="button" className="sim-btn sim-btn-ghost" onClick={() => window.print()} disabled={!simulacionEditada}>
             PDF
           </button>
-          <button type="button" className="sim-btn sim-btn-primary" onClick={guardarPropuestas} disabled={!simulacionEditada || guardando}>
-            {guardando ? 'Guardando...' : 'Guardar propuestas'}
+          <button type="button" className="sim-btn sim-btn-primary" onClick={guardarPropuestas} disabled={!simulacionEditada || guardando || !catalogoListo}>
+            {guardando ? 'Guardando...' : (!catalogoListo ? 'Esperando catálogo…' : 'Guardar propuestas')}
           </button>
         </div>
       </header>
@@ -973,11 +975,22 @@ export default function SimuladorCartas() {
           </div>
 
           <div className="sim-sidebar-block">
-            <button type="button" className="sim-btn sim-btn-primary sim-btn-full" onClick={generar}>
-              Generar simulación
+            <button
+              type="button"
+              className="sim-btn sim-btn-primary sim-btn-full"
+              onClick={generar}
+              disabled={!catalogoListo}
+              title={!catalogoListo ? 'Esperando a que cargue el catálogo del fondo común para proponer altas…' : ''}
+            >
+              {catalogoListo ? 'Generar simulación' : 'Cargando catálogo…'}
             </button>
           </div>
 
+          {!catalogoListo && (
+            <div className="sim-sidebar-alert sim-sidebar-alert-info">
+              Cargando catálogo del fondo común… las altas aparecerán en unos segundos.
+            </div>
+          )}
           {error ? <div className="sim-sidebar-alert sim-sidebar-alert-error">{error}</div> : null}
           {status ? <div className="sim-sidebar-alert sim-sidebar-alert-ok">{status}</div> : null}
         </aside>

@@ -1074,7 +1074,7 @@ export default function RestauranteWorkspace() {
                 )}
 
                 {consultoriaFase1.consultor?.diagnostic && (
-                  <div className={`consultant-plan${planConsultorOpen ? ' is-expanded' : ''}`}>
+                  <div className={`consultant-plan is-historic${planConsultorOpen ? ' is-expanded' : ''}`}>
                     <div className="consultant-plan-head">
                       <div>
                         <button

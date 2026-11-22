@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { normalizarCamposVino } from '../../../lib/normalizarVino.js'
 import { construirMapaDenominaciones } from '../../../lib/normalizarDenominacion.js'
+import { agregarConteos } from '../../../lib/proveedoresConteos.js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -234,9 +235,21 @@ export async function GET(req) {
     }
 
     if (scope === 'lite') {
-      // No cargamos vinos: la UI puede pintar la lista de proveedores
-      // inmediatamente y cargar el catálogo bajo demanda.
-      return Response.json({ ...base, vinos: [], scope: 'lite' })
+      // No descargamos las filas del catálogo, pero sí devolvemos los
+      // recuentos para que el encabezado y los badges por proveedor no
+      // aparezcan en 0. Pedimos únicamente dos columnas (payload mínimo)
+      // y agregamos con el helper centralizado.
+      const filasConteo = await seleccionarTodo(
+        supabase
+          .from('proveedor_catalogo_vinos')
+          .select('proveedor_id, coste_estimado')
+      )
+      return Response.json({
+        ...base,
+        vinos: [],
+        scope: 'lite',
+        conteos: agregarConteos(filasConteo),
+      })
     }
 
     let vinosQuery = supabase

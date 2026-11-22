@@ -254,6 +254,7 @@ function ProveedoresPageContent() {
   const [user, setUser] = useState(null)
   const [proveedores, setProveedores] = useState([])
   const [vinos, setVinos] = useState([])
+  const [conteosCatalogo, setConteosCatalogo] = useState(null)
   const [proveedorForm, setProveedorForm] = useState(proveedorInicial)
   const [vinoForm, setVinoForm] = useState(vinoInicial)
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState('')
@@ -331,6 +332,9 @@ function ProveedoresPageContent() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'No se pudieron cargar proveedores.')
     setProveedores(data.proveedores || [])
+    // Conteos globales del catálogo (sin descargar filas). Los usamos en el
+    // encabezado y en los badges por proveedor para no mostrar 0.
+    setConteosCatalogo(data.conteos || null)
     const primerProveedor = data.proveedores?.[0]?.id || ''
     setVinoForm(actual => ({
       ...actual,
@@ -484,19 +488,33 @@ function ProveedoresPageContent() {
 
   const proveedorImportacion = vinoForm.proveedor_id || proveedorSeleccionado || proveedores[0]?.id || ''
 
-  const conteoPorProveedor = useMemo(() => (
-    vinos.reduce((acc, vino) => {
+  // FASE J2-fix: conteos del catálogo completo vienen del API (scope=lite)
+  // para que el encabezado y los badges por proveedor no muestren 0 cuando
+  // no hemos cargado todas las filas al cliente. Si `conteosCatalogo` llega
+  // del API lo usamos; si no (todavía cargando), caemos a contar lo que haya
+  // en memoria (modo compatible con el flujo anterior).
+  const conteoPorProveedor = useMemo(() => {
+    if (conteosCatalogo?.porProveedor) return conteosCatalogo.porProveedor
+    return vinos.reduce((acc, vino) => {
       acc[vino.proveedor_id] = (acc[vino.proveedor_id] || 0) + 1
       return acc
     }, {})
-  ), [vinos])
+  }, [vinos, conteosCatalogo])
 
   const metricas = useMemo(() => {
+    if (conteosCatalogo) {
+      return {
+        total: conteosCatalogo.total,
+        conCoste: conteosCatalogo.conCoste,
+        sinCoste: conteosCatalogo.sinPrecio,
+        proveedoresConCatalogo: proveedores.filter(p => (conteosCatalogo.porProveedor?.[p.id] || 0) > 0).length,
+      }
+    }
     const conCoste = vinos.filter(vino => numeroCoste(vino.coste_estimado) > 0).length
     const sinCoste = vinos.length - conCoste
     const proveedoresConCatalogo = proveedores.filter(proveedor => conteoPorProveedor[proveedor.id] > 0).length
-    return { conCoste, sinCoste, proveedoresConCatalogo }
-  }, [vinos, proveedores, conteoPorProveedor])
+    return { total: vinos.length, conCoste, sinCoste, proveedoresConCatalogo }
+  }, [vinos, proveedores, conteoPorProveedor, conteosCatalogo])
 
   const resumenPrecioFiltrado = useMemo(() => {
     const costes = vinosFiltrados
@@ -1092,7 +1110,7 @@ function ProveedoresPageContent() {
             </div>
             <div className="consult-summary">
               <strong>{proveedores.length}</strong><span>proveedores</span>
-              <strong>{vinos.length}</strong><span>referencias</span>
+              <strong>{metricas.total ?? vinos.length}</strong><span>referencias</span>
               <strong>{metricas.conCoste}</strong><span>con coste</span>
               <strong>{metricas.sinCoste}</strong><span>sin precio</span>
             </div>

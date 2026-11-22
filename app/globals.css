@@ -14451,6 +14451,15 @@ a.supplier-btn-primary {
   color: #176b3c;
 }
 
+.sim-sidebar-alert-info {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--ink-muted, #555);
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 /* ── Main area ── */
 
 .sim-main {
@@ -18240,3 +18249,34 @@ a.supplier-btn-primary {
   #ws-informe { display: block !important; }
 }
 
+
+/* FASE J2-fix: el plan consultor es histórico (foto de otra fecha con
+   otra fórmula). Lo atenuamos visualmente para que no choque con la
+   puntuación actual del encabezado de la ficha. */
+.consultant-plan.is-historic {
+  color: var(--ink-muted, #666);
+  background: rgba(0, 0, 0, 0.015);
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+.consultant-plan.is-historic .consultant-plan-dateline {
+  color: var(--ink-muted, #555);
+  font-weight: 650;
+  font-style: normal;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.consultant-plan.is-historic h4,
+.consultant-plan.is-historic h5,
+.consultant-plan.is-historic strong,
+.consultant-plan.is-historic .consultant-plan-status strong {
+  color: var(--ink-muted, #666);
+  font-weight: 650;
+}
+.consultant-plan.is-historic p,
+.consultant-plan.is-historic span,
+.consultant-plan.is-historic small,
+.consultant-plan.is-historic em {
+  color: var(--ink-muted, #777);
+}
