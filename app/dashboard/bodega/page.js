@@ -1650,7 +1650,12 @@ export default function ControlBodega() {
                     </td>
                   )
                 }
-                const eurCell = v => v ? eur(v) : <span className={bStyles.tdEmpty}>—</span>
+                // G2: costes y PVP UNITARIOS a 2 decimales (es-ES).
+                // Antes usaba `eur(v)` (0 decimales) → 8,50 € se veía
+                // como "9 €" en las columnas Coste € / PVP bot. € /
+                // PVP copa €. `eurDetalle` ya está definido arriba
+                // (línea 45) para precisamente este caso.
+                const eurCell = v => v ? eurDetalle(v) : <span className={bStyles.tdEmpty}>—</span>
                 const saldoCopas = Number(botellaMap[vino.id]?.copas_restantes ?? 0)
                 const saldoTxt = Number.isInteger(saldoCopas)
                   ? String(saldoCopas)
@@ -1688,7 +1693,10 @@ export default function ControlBodega() {
                     {!vistaSimple && (
                       <td className={bStyles.tdPvpSug}>
                         {preciosSug ? (
-                          <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)}</span>
+                          // G2: PVP sugerido unitario a 2 decimales
+                          // (la columna hermana de copa, línea 1703,
+                          // ya usa eurDetalle).
+                          <span className={bStyles.pvpSugValor}>{eurDetalle(preciosSug.botella)}</span>
                         ) : <span className={bStyles.tdEmpty}>—</span>}
                       </td>
                     )}
@@ -1794,7 +1802,7 @@ export default function ControlBodega() {
             onClose={() => !guardando && setEditando(null)}
             eyebrow="Control de bodega"
             title={`Editar ${editando.nombre}`}
-            description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eur(editando.precio_botella)}`}
+            description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eurDetalle(editando.precio_botella)}`}
             footer={
               <>
                 <button type="button" className={styles.ghost} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
