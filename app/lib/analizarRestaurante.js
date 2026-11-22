@@ -46,8 +46,12 @@ export function ticketReferencia(restaurante, platosActivos) {
   return { valor: null, fuente: 'no disponible', ticketEsEstimado: true }
 }
 
+// Formato enriquecido del mapa de precios. La ficha lo necesita porque
+// renderiza `gama.vinosDetalle.map(...)`, `gama.delta`, `gama.objetivoNumero`
+// y `reequilibrio.movimientos`. El Radar sólo usa `desajustes.length`, así
+// que este formato es superset del anterior y lo sustituye en el motor.
 export function mapaPrecios(vinosConPrecio, ticket) {
-  if (!ticket) return { gamas: [], desajustes: [], base: 'sin_ticket' }
+  if (!ticket) return { gamas: [], desajustes: [], referencias: null, reequilibrio: null, base: 'sin_ticket' }
   const total = vinosConPrecio.length
   const referencias = {
     actual: total,
@@ -71,34 +75,83 @@ export function mapaPrecios(vinosConPrecio, ticket) {
     { id: 'muy_alta', label: 'Muy alta',   objetivo: 15, min: tAlta,    max: tMuyAlta },
     { id: 'premium',  label: 'Premium',    objetivo:  5, min: tMuyAlta, max: Infinity },
   ]
-  const gamas = rangos.map(rango => {
-    const vinos = vinosConPrecio.filter(v => {
-      const precio = decimal(v.precio_botella)
-      return rango.max === Infinity ? precio >= rango.min : precio >= rango.min && precio < rango.max
-    })
+  const totalObjetivo = referencias.estado === 'equilibrada' ? total : referencias.ideal
+  const objetivosPorGama = rangos.map(r => Math.round((r.objetivo / 100) * totalObjetivo))
+  const ajusteObjetivo = totalObjetivo - objetivosPorGama.reduce((s, v) => s + v, 0)
+  objetivosPorGama[1] = Math.max(0, objetivosPorGama[1] + ajusteObjetivo)
+
+  const gamas = rangos.map((rango, index) => {
+    const vinos = vinosConPrecio
+      .filter(v => {
+        const precio = decimal(v.precio_botella)
+        return rango.max === Infinity ? precio >= rango.min : precio >= rango.min && precio < rango.max
+      })
+      .sort((a, b) => decimal(a.precio_botella) - decimal(b.precio_botella))
+    const objetivoNumero = objetivosPorGama[index]
+    const delta = vinos.length - objetivoNumero
     const real = pct(vinos.length, total)
     return {
       ...rango,
       vinos: vinos.length,
+      vinosDetalle: vinos.map(v => ({
+        id: v.id,
+        nombre: v.nombre,
+        bodega: v.bodega,
+        tipo: v.tipo,
+        region: v.region,
+        precio: decimal(v.precio_botella),
+        coste: decimal(v.coste_compra),
+      })),
       real,
+      objetivoNumero,
+      delta,
       diferencia: real - rango.objetivo,
       rangoTexto: rango.max === Infinity
         ? `>${Math.round(rango.min)}`
         : rango.min === 0
           ? `hasta ${Math.round(rango.max)}`
-          : `${Math.round(rango.min)}–${Math.round(rango.max)}`,
+          : `${Math.round(rango.min)}-${Math.round(rango.max)}`,
     }
   })
+
+  const sobrantes = gamas.filter(g => g.delta > 0).map(g => ({ label: g.label, cantidad: g.delta }))
+  const faltantes = gamas.filter(g => g.delta < 0).map(g => ({ label: g.label, cantidad: Math.abs(g.delta) }))
+  const movimientos = []
+  let surplus = 0
+  let deficit = 0
+  while (surplus < sobrantes.length && deficit < faltantes.length) {
+    const cantidad = Math.min(sobrantes[surplus].cantidad, faltantes[deficit].cantidad)
+    movimientos.push({
+      cantidad,
+      desde: sobrantes[surplus].label,
+      hacia: faltantes[deficit].label,
+      texto: `Sustituir ${cantidad} ref. de ${sobrantes[surplus].label.toLowerCase()} por ${cantidad} ref. de ${faltantes[deficit].label.toLowerCase()}`,
+    })
+    sobrantes[surplus].cantidad -= cantidad
+    faltantes[deficit].cantidad -= cantidad
+    if (sobrantes[surplus].cantidad === 0) surplus++
+    if (faltantes[deficit].cantidad === 0) deficit++
+  }
+  const reequilibrio = {
+    totalObjetivo,
+    quitarTotal: Math.max(0, total - totalObjetivo),
+    agregarTotal: Math.max(0, totalObjetivo - total),
+    movimientos,
+    resumen: movimientos.length
+      ? movimientos.map(m => m.texto).join('. ')
+      : referencias.estado === 'equilibrada'
+        ? 'La cantidad total encaja; revisar solo excesos o huecos por gama.'
+        : referencias.estado === 'corta'
+          ? `Faltan ${Math.max(0, totalObjetivo - total)} referencias para acercarse al ideal.`
+          : `Sobran ${Math.max(0, total - totalObjetivo)} referencias para acercarse al ideal.`,
+  }
   const umbral = Math.max(1, Math.round(total * 0.10))
   const desajustes = gamas
-    .filter(g => {
-      const ideal = Math.round((g.objetivo / 100) * total)
-      return Math.abs(g.vinos - ideal) > umbral || (g.vinos === 0 && ideal > 0)
-    })
-    .map(g => `${g.label}: ${g.real}% real vs ${g.objetivo}% objetivo`)
+    .filter(g => Math.abs(g.delta) > umbral || (g.vinos === 0 && g.objetivoNumero > 0))
+    .map(g => `${g.label}: ${g.vinos} real vs ${g.objetivoNumero} objetivo`)
   if (referencias.estado === 'corta') desajustes.unshift(`Carta corta: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
   if (referencias.estado === 'larga') desajustes.unshift(`Carta larga: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
-  return { gamas, desajustes, referencias, base: 'pvp_iva_incl' }
+  return { gamas, desajustes, referencias, reequilibrio, base: 'pvp_iva_incl' }
 }
 
 // ---- Motor de análisis (único) -------------------------------------------

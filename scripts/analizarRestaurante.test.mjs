@@ -158,6 +158,98 @@ describe('analizarRestaurante — motor único', () => {
   })
 })
 
+describe('Contrato con la ficha: todos los campos que la ficha lee del analisis existen', () => {
+  // La ficha renderiza estos accesos. Si alguno es undefined, el .map o
+  // .length que vive dentro de la ficha explota con TypeError.
+  // Este test enumera los contratos y comprueba tipo esperado.
+  const d = casaMarismaDatos()
+  const r = analizarRestaurante(d.restaurante, d.vinos, d.platos, d.estadisticas, d.propuestas)
+
+  it('score, prioridad, alertas, metricas y diagnostico presentes', () => {
+    assert.equal(typeof r.score, 'number')
+    assert.ok(['Alta', 'Media', 'Baja'].includes(r.prioridad))
+    assert.ok(Array.isArray(r.alertas))
+    assert.ok(r.metricas && typeof r.metricas === 'object')
+    assert.ok(r.diagnostico && typeof r.diagnostico === 'object')
+  })
+
+  it('metricas tiene todos los contadores que la ficha renderiza', () => {
+    const esperados = [
+      'vinos', 'platos', 'copa', 'locales', 'dulces', 'generosos',
+      'precioMedioVino', 'margenMedio', 'margenBajo', 'bajoMinimo',
+      'sinCoste', 'sinProveedor', 'sinStockMinimo', 'valorCoste', 'valorVenta',
+      'escaneos30', 'sommelier30',
+    ]
+    for (const clave of esperados) {
+      assert.ok(clave in r.metricas, `metricas.${clave} falta`)
+    }
+  })
+
+  it('diagnostico.ticket tiene valor/fuente', () => {
+    assert.ok(r.diagnostico.ticket && 'valor' in r.diagnostico.ticket)
+    assert.ok('fuente' in r.diagnostico.ticket)
+  })
+
+  it('diagnostico.wineMapping con los subcampos que la ficha mapea', () => {
+    const wm = r.diagnostico.wineMapping
+    assert.ok(wm, 'wineMapping ausente')
+    assert.ok(Array.isArray(wm.gamas), 'wineMapping.gamas no es array')
+    assert.ok(Array.isArray(wm.desajustes), 'wineMapping.desajustes no es array')
+    // La ficha accede a gama.vinosDetalle.map() y gama.delta / gama.objetivoNumero.
+    for (const gama of wm.gamas) {
+      assert.ok(Array.isArray(gama.vinosDetalle), `gama "${gama.label}" sin vinosDetalle`)
+      assert.equal(typeof gama.delta, 'number', `gama "${gama.label}" sin delta`)
+      assert.equal(typeof gama.objetivoNumero, 'number', `gama "${gama.label}" sin objetivoNumero`)
+      assert.equal(typeof gama.real, 'number')
+      assert.equal(typeof gama.rangoTexto, 'string')
+    }
+    // La ficha también lee wineMapping.referencias.{actual,minimo,maximo,ideal,estado}
+    if (wm.referencias) {
+      for (const k of ['actual', 'minimo', 'maximo', 'ideal', 'estado']) {
+        assert.ok(k in wm.referencias, `wineMapping.referencias.${k} falta`)
+      }
+    }
+    // Y wineMapping.reequilibrio.{resumen,totalObjetivo,quitarTotal,agregarTotal,movimientos[]}
+    if (wm.reequilibrio) {
+      for (const k of ['resumen', 'totalObjetivo', 'quitarTotal', 'agregarTotal', 'movimientos']) {
+        assert.ok(k in wm.reequilibrio, `wineMapping.reequilibrio.${k} falta`)
+      }
+      assert.ok(Array.isArray(wm.reequilibrio.movimientos))
+    }
+  })
+
+  it('diagnostico.salud y diagnostico.equilibrio son arrays con la forma esperada', () => {
+    assert.ok(Array.isArray(r.diagnostico.salud))
+    for (const item of r.diagnostico.salud) {
+      assert.ok('label' in item && 'valor' in item && 'total' in item)
+    }
+    assert.ok(Array.isArray(r.diagnostico.equilibrio))
+    for (const item of r.diagnostico.equilibrio) {
+      assert.ok('label' in item && 'valor' in item && 'pct' in item)
+    }
+  })
+
+  it('diagnostico.brechaCocina es array (puede estar vacío) y cada entrada tiene cocina+falta', () => {
+    assert.ok(Array.isArray(r.diagnostico.brechaCocina))
+    for (const b of r.diagnostico.brechaCocina) {
+      assert.ok('cocina' in b && 'falta' in b)
+    }
+  })
+
+  it('propuestasAbiertas, incidenciasStock, dudasSala, vinosConDudas son arrays', () => {
+    assert.ok(Array.isArray(r.propuestasAbiertas))
+    assert.ok(Array.isArray(r.incidenciasStock))
+    assert.ok(Array.isArray(r.dudasSala))
+    assert.ok(Array.isArray(r.vinosConDudas))
+  })
+
+  it('REGRESIÓN fase J-fix 3: ficha hacía gama.vinosDetalle.length — debe ser array', () => {
+    for (const gama of r.diagnostico.wineMapping.gamas) {
+      assert.ok(Array.isArray(gama.vinosDetalle), `gama "${gama.label}".vinosDetalle no es array`)
+    }
+  })
+})
+
 describe('Radar y ficha dan la misma puntuación (ahora que el motor es único)', () => {
   it('con los mismos datos, dos llamadas distintas dan el mismo score', () => {
     const d = casaMarismaDatos()
