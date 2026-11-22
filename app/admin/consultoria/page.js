@@ -12,6 +12,16 @@ import {
   SELECT_CLIENT_VINO_ADMIN,
 } from '../../lib/clientSupabaseSelects'
 import { isLocalWine, localTermsForRestaurant } from '../../lib/wineRegion'
+import { analizarRestaurante as analizar } from '../../lib/analizarRestaurante'
+import {
+  calcPuntuacion,
+  calcCapitalLiberable,
+  calcAlertasCriticas,
+  calcCandidatosCopa,
+  describirFotos,
+  seleccionarTareasMiDia,
+  esExcluidoDeAgregado,
+} from '../../lib/consultoriaMetricas'
 import AdminOverlay from '../components/AdminOverlay'
 
 
@@ -42,26 +52,42 @@ function oportunidadRadar(informe) {
 }
 
 function capitalRadar(informe) {
-  const persistido = informe.ejecutivo?.resumen?.capital_liberable_estimado || 0
-  if (persistido > 0) return persistido
-  const valorCoste = informe.metricas?.valorCoste || 0
-  const vinos = informe.metricas?.vinos || 0
-  if (!valorCoste || !vinos) return 0
-  const friccion = (informe.metricas?.margenBajo || 0) + (informe.metricas?.bajoMinimo || 0) + (informe.metricas?.sinProveedor || 0)
-  if (!friccion) return 0
-  return Math.round(valorCoste * Math.min(0.18, Math.max(0.04, friccion / vinos * 0.18)))
+  return calcCapitalLiberable({
+    snapshotOportunidad: informe.consultoriaFase1?.oportunidad?.snapshot || null,
+    resumenEjecutivo: informe.ejecutivo?.resumen || null,
+    metricas: informe.metricas || null,
+  }).valor
+}
+
+function capitalRadarDetalle(informe) {
+  return calcCapitalLiberable({
+    snapshotOportunidad: informe.consultoriaFase1?.oportunidad?.snapshot || null,
+    resumenEjecutivo: informe.ejecutivo?.resumen || null,
+    metricas: informe.metricas || null,
+  })
 }
 
 function alertasCriticasRadar(informe) {
-  const persistidas = informe.ejecutivo?.resumen?.alertas_criticas
-  if (typeof persistidas === 'number' && persistidas > 0) return persistidas
-  return informe.prioridad === 'Alta' ? Math.max(1, Math.min(3, informe.alertas?.filter(alerta => alerta.peso >= 12).length || 1)) : 0
+  const conteoPersistido = (informe.ejecutivo && typeof informe.ejecutivo.resumen?.alertas_criticas === 'number')
+    ? informe.ejecutivo.resumen.alertas_criticas
+    : undefined
+  return calcAlertasCriticas({
+    conteoPersistido,
+    alertasDb: informe.alertasAbiertas || null,
+    analisis: informe,
+  }).valor
 }
 
 function candidatosCopaRadar(informe) {
-  const persistidos = informe.ejecutivo?.resumen?.candidatos_copa || 0
-  if (persistidos > 0) return persistidos
-  return Math.max(0, Math.round((informe.metricas?.vinos || 0) * 0.12) - (informe.metricas?.copa || 0))
+  return calcCandidatosCopa({
+    snapshotCopa: informe.consultoriaFase1?.copa?.snapshot || null,
+    resumenEjecutivo: informe.ejecutivo?.resumen || null,
+    metricas: informe.metricas || null,
+  }).valor
+}
+
+function puntuacionRadar(informe) {
+  return calcPuntuacion(informe)
 }
 
 function semanalRadar(informe) {
@@ -239,172 +265,6 @@ function textoPlato(plato) {
   return `${plato.nombre || ''} ${plato.descripcion || ''} ${plato.categoria || ''}`
 }
 
-function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propuestas = []) {
-  const activos = vinos.filter(vino => vino.activo !== false)
-  const platosActivos = platos.filter(plato => plato.activo !== false)
-  const total = activos.length
-  const tipos = activos.reduce((acc, vino) => {
-    acc[vino.tipo || 'sin_tipo'] = (acc[vino.tipo || 'sin_tipo'] || 0) + 1
-    return acc
-  }, {})
-  const regiones = activos.reduce((acc, vino) => {
-    const region = normalizar(vino.region || '')
-    if (!region) return acc
-    const clave = region.includes('rioja') ? 'rioja' : region.includes('ribera') ? 'ribera' : region
-    acc[clave] = (acc[clave] || 0) + 1
-    return acc
-  }, {})
-
-  const porCopa = activos.filter(v => Number(v.precio_copa) > 0)
-  const sinPrecio = activos.filter(v => !Number(v.precio_botella))
-  const sinPerfil = activos.filter(v => !v.notas_cata || normalizar(v.notas_cata).length < 12)
-  const sinAnada = activos.filter(v => !v.anada)
-  const sinStock = activos.filter(v => Number(v.stock) === 0)
-  const sinCoste = activos.filter(v => !decimal(v.coste_compra))
-  const sinProveedor = activos.filter(v => !v.proveedor)
-  const sinStockMinimo = activos.filter(v => !decimal(v.stock_minimo))
-  const bajoMinimo = activos.filter(v => decimal(v.stock_minimo) > 0 && decimal(v.stock) <= decimal(v.stock_minimo))
-  const conMargen = activos.filter(v => decimal(v.coste_compra) > 0 && decimal(v.precio_botella) > 0)
-  const margenMedio = conMargen.length
-    ? Math.round(conMargen.reduce((sum, v) => sum + (((decimal(v.precio_botella) - decimal(v.coste_compra)) / decimal(v.precio_botella)) * 100), 0) / conMargen.length)
-    : null
-  const margenBajo = conMargen.filter(v => (((decimal(v.precio_botella) - decimal(v.coste_compra)) / decimal(v.precio_botella)) * 100) < 55)
-  const valorCoste = activos.reduce((sum, v) => sum + decimal(v.stock) * decimal(v.coste_compra), 0)
-  const valorVenta = activos.reduce((sum, v) => sum + decimal(v.stock) * decimal(v.precio_botella), 0)
-
-  const dulces = activos.filter(v => v.tipo === 'dulce' || incluye(textoVino(v), ['dulce', 'moscatel', 'px', 'pedro ximenez', 'sauternes', 'tokaji']))
-  const generosos = activos.filter(v => v.tipo === 'generoso' || incluye(textoVino(v), ['fino', 'manzanilla', 'amontillado', 'oloroso', 'palo cortado']))
-  const espumosos = activos.filter(v => v.tipo === 'espumoso' || incluye(textoVino(v), ['cava', 'champagne', 'corpinnat', 'ancestral', 'brut']))
-  const frescos = activos.filter(v => incluye(textoVino(v), ['fresco', 'alta acidez', 'salino', 'mineral', 'albarino', 'riesling', 'godello']))
-  const tintosMadera = activos.filter(v => v.tipo === 'tinto' && incluye(textoVino(v), ['madera', 'tostado', 'crianza', 'reserva', 'roble']))
-
-  const platosPostre = platosActivos.filter(p => incluye(textoPlato(p), ['postre', 'tarta', 'queso', 'torrija', 'helado', 'brownie', 'chocolate']))
-  const platosFritura = platosActivos.filter(p => incluye(textoPlato(p), ['frit', 'croqueta', 'rebozado', 'flamenquin']))
-  const platosPescado = platosActivos.filter(p => incluye(textoPlato(p), ['pescado', 'marisco', 'gamba', 'atun', 'salmon', 'bacalao', 'boqueron']))
-  const platosQueso = platosActivos.filter(p => incluye(textoPlato(p), ['queso', 'quesos', 'curado', 'cabra']))
-  const platosCarne = platosActivos.filter(p => incluye(textoPlato(p), ['brasa', 'vaca', 'ternera', 'presa', 'solomillo', 'rabo', 'cordero', 'cerdo']))
-
-  const terminosLocales = localTermsForRestaurant(restaurante)
-  const locales = terminosLocales.length
-    ? activos.filter(v => isLocalWine(v, restaurante))
-    : []
-
-  const vinosConPrecio = activos.filter(v => Number(v.precio_botella) > 0)
-  const platosConPrecio = platosActivos.filter(p => Number(p.precio) > 0)
-  const ticket = ticketReferencia(restaurante, platosActivos)
-  const wineMapping = mapaPrecios(vinosConPrecio, ticket.valor)
-  const precioMedioVino = vinosConPrecio.reduce((sum, v, _, arr) => sum + Number(v.precio_botella) / arr.length, 0)
-  const precioMedioPlato = platosConPrecio.reduce((sum, p, _, arr) => sum + Number(p.precio) / arr.length, 0)
-  const vinosPremium = activos.filter(v => Number(v.precio_botella) >= Math.max(35, precioMedioVino * 1.35))
-  const platosPremium = platosActivos.filter(p => Number(p.precio) >= Math.max(20, precioMedioPlato * 1.35))
-
-  const eventosVenta = estadisticas.filter(e => e.tipo === 'venta').map(e => ({ ...e, parsed: leerDetalle(e.detalle) }))
-  const escaneos30 = estadisticas.filter(e => e.tipo === 'escaneo').length
-  const sommelier30 = estadisticas.filter(e => e.tipo === 'sommelier').length
-  const ventasMarcadas = eventosVenta.filter(e => e.parsed?.resultado === 'vendida')
-  const incidenciasStock = eventosVenta.filter(e => ['no_stock', 'agotado'].includes(e.parsed?.resultado))
-  const dudasSala = eventosVenta.filter(e => ['no_convence', 'otra'].includes(e.parsed?.resultado))
-  const propuestasAbiertas = propuestas.filter(p => p.estado !== 'descartada' && p.estado !== 'incorporada')
-  const propuestasInteresan = propuestas.filter(p => p.estado === 'interesa')
-  const vinosConDudas = Object.entries(dudasSala.reduce((acc, evento) => {
-    const clave = evento.parsed?.vino || evento.parsed?.vino_id || 'Vino sin identificar'
-    acc[clave] = (acc[clave] || 0) + 1
-    return acc
-  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 3)
-
-  const alertas = []
-  const oportunidad = (peso, titulo, detalle, servicio) => alertas.push({ peso, titulo, detalle, servicio })
-
-  if (total < 8) oportunidad(14, 'Carta de vinos muy corta', 'Hay pocas referencias para construir relato, margen y maridajes por familias de platos.', 'Diseno de carta base')
-  if (porCopa.length < Math.max(3, Math.round(total * 0.12))) oportunidad(12, 'Poca estrategia por copa', `${porCopa.length} referencias por copa sobre ${total}. Falta palanca de rotación y ticket medio.`, 'Programa de vinos por copa')
-  if (locales.length < Math.max(2, Math.round(total * 0.08))) oportunidad(13, 'Vino local débil', `${locales.length} referencias locales detectadas. Hay margen para identidad territorial y storytelling.`, 'Selección de bodegas locales')
-  if (platosPostre.length >= 2 && dulces.length === 0) oportunidad(15, 'Postres sin vino de cierre', `${platosPostre.length} platos/postres detectados y ningun vino dulce claro.`, 'Maridaje postres y venta sugerida')
-  if (platosFritura.length >= 2 && generosos.length + espumosos.length < 2) oportunidad(13, 'Frituras sin aliados claros', 'Faltan generosos secos, burbuja o blancos salinos para vender con frituras/rebozados.', 'Ajuste de estilos por cocina')
-  if (platosPescado.length >= 2 && frescos.length + espumosos.length + generosos.length < 3) oportunidad(10, 'Pescados con poca cobertura fresca', 'Pocos vinos frescos, salinos, blancos o burbuja para pescado y marisco.', 'Rediseno por maridaje')
-  if (platosQueso.length >= 1 && generosos.length + dulces.length < 2) oportunidad(9, 'Quesos sin recorrido de maridaje', 'Hay queso en carta pero poca cobertura de generoso, oxidativo o dulce.', 'Experiencia de quesos y vino')
-  if (platosCarne.length >= 2 && (tipos.tinto || 0) < 4) oportunidad(8, 'Carnes con pocos tintos defendibles', 'La cocina pide tintos con perfiles distintos, no solo una opción genérica.', 'Curaduría de tintos')
-  if (pct((regiones.rioja || 0) + (regiones.ribera || 0), total) > 35) oportunidad(12, 'Exceso Rioja/Ribera', `${pct((regiones.rioja || 0) + (regiones.ribera || 0), total)}% de la carta está concentrada en Rioja/Ribera.`, 'Diversificación de regiones')
-  if (pct(tintosMadera.length, total) > 28) oportunidad(8, 'Perfil tinto demasiado parecido', 'Muchos tintos parecen apoyarse en madera/crianza; puede cansar y limitar maridajes.', 'Arquitectura de estilos')
-  if ((tipos.blanco || 0) < (tipos.tinto || 0) * 0.35 && platosPescado.length + platosFritura.length > 2) oportunidad(9, 'Faltan blancos gastronómicos', 'La cocina da razones para vender blancos, pero la carta se apoya demasiado en tintos.', 'Selección de blancos')
-  if (vinosPremium.length < Math.max(2, Math.round(platosPremium.length * 0.5)) && platosPremium.length > 1) oportunidad(8, 'Ticket alto sin vinos premium suficientes', `${platosPremium.length} platos de ticket alto y ${vinosPremium.length} vinos premium claros.`, 'Subida de ticket medio')
-  if (sinPerfil.length > total * 0.35) oportunidad(7, 'Faltan argumentos de venta', `${sinPerfil.length} vinos sin perfil de cata útil para sala.`, 'Formación de sala')
-  if (sinPrecio.length > 0) oportunidad(6, 'Vinos sin precio', `${sinPrecio.length} referencias sin precio de botella.`, 'Auditoria operativa')
-  if (sinAnada.length > total * 0.35) oportunidad(5, 'Anadas poco cuidadas', `${sinAnada.length} referencias sin anada.`, 'Limpieza de carta')
-  if (sinStock.length > total * 0.25) oportunidad(5, 'Stock poco fiable', `${sinStock.length} referencias con stock cero.`, 'Control de bodega')
-  if (sinCoste.length > total * 0.35) oportunidad(12, 'No se está midiendo rentabilidad real', `${sinCoste.length} vinos sin coste de compra. Sin eso no hay margen, solo intuición.`, 'Auditoría de margen y bodega')
-  if (margenBajo.length > 0) oportunidad(11, 'Margen bajo en referencias con datos', `${margenBajo.length} vinos bajan del 55% de margen estimado. Puede haber compra cara o PVP mal defendido.`, 'Pricing y beverage cost')
-  if (bajoMinimo.length > 0) oportunidad(9, 'Reposición pendiente', `${bajoMinimo.length} vinos están por debajo del stock mínimo configurado.`, 'Rutina de compras')
-  if (sinProveedor.length > total * 0.4) oportunidad(8, 'Proveedores poco trazados', `${sinProveedor.length} vinos sin proveedor. Hay margen para ordenar compra y negociación.`, 'Mapa de proveedores')
-  if (wineMapping.desajustes.length > 0) oportunidad(12, 'Mapa de precios descompensado', wineMapping.desajustes.slice(0, 2).join('. '), 'Arquitectura de precios')
-  if (incidenciasStock.length >= 2) oportunidad(10, 'Sala está encontrando roturas de stock', `${incidenciasStock.length} incidencias marcadas en los últimos 30 días.`, 'Control de servicio y reposición')
-  if (dudasSala.length >= 3) oportunidad(9, 'Vinos que no terminan de convencer en sala', `${dudasSala.length} dudas o cambios marcados. Puede faltar argumento, precio o alternativa.`, 'Formación de sala')
-  if (propuestasInteresan.length > 0) oportunidad(14, 'Cliente caliente con propuestas abiertas', `${propuestasInteresan.length} propuestas marcadas como interesan. Buen momento para cerrar acción.`, 'Seguimiento comercial')
-  if (propuestasAbiertas.length > 3) oportunidad(6, 'Propuestas acumuladas sin cierre', `${propuestasAbiertas.length} propuestas abiertas. Conviene simplificar y llevar una decisión concreta.`, 'Seguimiento de propuestas')
-
-  const alertasOrdenadas = alertas.sort((a, b) => b.peso - a.peso)
-  const score = Math.min(100, Math.round(alertasOrdenadas.reduce((sum, a) => sum + a.peso, 0)))
-  const prioridad = score >= 65 ? 'Alta' : score >= 35 ? 'Media' : 'Baja'
-  const servicios = [...new Set(alertasOrdenadas.map(a => a.servicio))].slice(0, 3)
-  const propuesta = alertasOrdenadas.slice(0, 3).map(a => a.titulo).join('. ')
-  const siguienteMovimiento = alertasOrdenadas[0]
-    ? `${alertasOrdenadas[0].servicio}: ${alertasOrdenadas[0].titulo.toLowerCase()}`
-    : 'Mantenimiento fino: revisar relato, sala y pequeñas mejoras de carta'
-
-  return {
-    score,
-    prioridad,
-    alertas: alertasOrdenadas,
-    servicios,
-    propuesta,
-    siguienteMovimiento,
-    ventasMarcadas,
-    incidenciasStock,
-    dudasSala,
-    propuestasAbiertas,
-    vinosConDudas,
-    metricas: {
-      vinos: total,
-      platos: platosActivos.length,
-      copa: porCopa.length,
-      locales: locales.length,
-      dulces: dulces.length,
-      generosos: generosos.length,
-      precioMedioVino: Math.round(precioMedioVino || 0),
-      margenMedio,
-      margenBajo: margenBajo.length,
-      bajoMinimo: bajoMinimo.length,
-      sinCoste: sinCoste.length,
-      sinProveedor: sinProveedor.length,
-      sinStockMinimo: sinStockMinimo.length,
-      valorCoste,
-      valorVenta,
-      escaneos30,
-      sommelier30
-    },
-    diagnostico: {
-      ticket,
-      wineMapping,
-      salud: [
-        { label: 'Sin precio', valor: sinPrecio.length, total },
-        { label: 'Sin anada', valor: sinAnada.length, total },
-        { label: 'Sin perfil de venta', valor: sinPerfil.length, total },
-        { label: 'Sin coste', valor: sinCoste.length, total },
-        { label: 'Sin proveedor', valor: sinProveedor.length, total },
-        { label: 'Stock cero', valor: sinStock.length, total },
-      ],
-      equilibrio: [
-        { label: 'Tintos', valor: tipos.tinto || 0 },
-        { label: 'Blancos', valor: tipos.blanco || 0 },
-        { label: 'Espumosos', valor: tipos.espumoso || 0 },
-        { label: 'Generosos', valor: tipos.generoso || 0 },
-        { label: 'Dulces', valor: dulces.length },
-        { label: 'Por copa', valor: porCopa.length },
-        { label: 'Locales', valor: locales.length },
-      ]
-    }
-  }
-}
-
 export default function RadarConsultoria() {
   const [user, setUser] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
@@ -420,6 +280,7 @@ export default function RadarConsultoria() {
   const [favoritos, setFavoritos] = useState([])
   const [radarEjecutivo, setRadarEjecutivo] = useState(null)
   const [vistaRapida, setVistaRapida] = useState(null)
+  const [recalcMasivo, setRecalcMasivo] = useState({ activo: false, total: 0, hechos: 0, ok: 0, error: 0, actual: null, resumen: null })
 
   useEffect(() => {
     async function cargar() {
@@ -484,14 +345,14 @@ export default function RadarConsultoria() {
     const base = { restaurante, ...analizar(restaurante, vinosRest, platosRest, estadisticasRest, propuestasRest) }
     const ejecutivo = ejecutivoPorRestaurante.get(restaurante.id)
     if (!ejecutivo) return base
-    const prioridad = ejecutivo.prioridad === 'alta' ? 'Alta' : ejecutivo.prioridad === 'media' ? 'Media' : 'Baja'
+    // No sobrescribimos score/prioridad con el motor: calcPuntuacion (helper
+    // único) usa siempre el resultado de analizar(), y ficha y Radar llaman
+    // a analizar() con los mismos datos → mismo número.
     return {
       ...base,
       ejecutivo,
       semanal: ejecutivo.semanal,
       economica: ejecutivo.economica,
-      score: ejecutivo.score ?? base.score,
-      prioridad,
       siguienteMovimiento: ejecutivo.resumen?.siguiente_accion || base.siguienteMovimiento,
     }
   }).sort((a, b) => {
@@ -571,16 +432,57 @@ export default function RadarConsultoria() {
     }
   }
 
+  async function recalcularParaTodos() {
+    const diana = informes.filter(informe => !esExcluidoDeAgregado(informe.restaurante))
+    if (diana.length === 0) return
+    setRecalcMasivo({ activo: true, total: diana.length, hechos: 0, ok: 0, error: 0, actual: null, resumen: null })
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token || ''
+    let ok = 0
+    let error = 0
+    for (let i = 0; i < diana.length; i++) {
+      const informe = diana[i]
+      setRecalcMasivo(prev => ({ ...prev, actual: informe.restaurante.nombre, hechos: i }))
+      try {
+        const res = await fetch('/api/admin/consultoria-fase1/recalcular', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ restaurante_id: informe.restaurante.id }),
+        })
+        if (res.ok) ok++
+        else error++
+      } catch { error++ }
+    }
+    setRecalcMasivo({ activo: false, total: diana.length, hechos: diana.length, ok, error, actual: null, resumen: { ok, error, total: diana.length } })
+  }
+
   if (loading) {
     return <p className="admin-loading">Cargando radar</p>
   }
 
+  // Para agregados (embudo, totales) excluimos restaurantes marcados como demo de agregado.
+  // Las cards y listas del Radar siguen mostrando todos los informes.
+  const informesAgregado = informes.filter(informe => !esExcluidoDeAgregado(informe.restaurante))
+
+  // Mi dia: hasta 5 tareas priorizadas con datos ya cargados (propuestas interesan, alertas criticas, costes bloqueantes).
+  const tareasMiDia = seleccionarTareasMiDia(
+    informes.map(informe => ({
+      restaurante: informe.restaurante,
+      propuestasInteresan: (informe.propuestasAbiertas || []).filter(p => p.estado === 'interesa').length,
+      alertasCriticas: alertasCriticasRadar(informe),
+      capitalLiberable: capitalRadar(informe),
+      costesBloqueantes: (informe.metricas?.sinCoste || 0) + (informe.metricas?.margenBajo || 0),
+      isDemoAgregado: esExcluidoDeAgregado(informe.restaurante),
+    })),
+    { limite: 5 },
+  )
+
   const alta = informes.filter(i => i.prioridad === 'Alta').length
   const media = informes.filter(i => i.prioridad === 'Media').length
-  const oportunidadTotal = informes.reduce((sum, informe) => sum + oportunidadRadar(informe), 0)
-  const capitalTotal = informes.reduce((sum, informe) => sum + capitalRadar(informe), 0)
-  const alertasCriticas = informes.reduce((sum, informe) => sum + alertasCriticasRadar(informe), 0)
-  const candidatosCopa = informes.reduce((sum, informe) => sum + candidatosCopaRadar(informe), 0)
+  const oportunidadTotal = informesAgregado.reduce((sum, informe) => sum + oportunidadRadar(informe), 0)
+  const capitalTotal = informesAgregado.reduce((sum, informe) => sum + capitalRadar(informe), 0)
+  const alertasCriticas = informesAgregado.reduce((sum, informe) => sum + alertasCriticasRadar(informe), 0)
+  const candidatosCopa = informesAgregado.reduce((sum, informe) => sum + candidatosCopaRadar(informe), 0)
   const fotosPersistidas = informes.filter(informe => informe.ejecutivo?.resumen?.ultima_foto).length
   const agendaHoy = [...informes]
     .sort((a, b) => {
@@ -636,34 +538,57 @@ export default function RadarConsultoria() {
               <h2>Radar ejecutivo</h2>
               <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
               <p className="radar-data-note">
-                {fotosPersistidas} restaurantes con foto persistida. El resto usa estimación previa del radar hasta pulsar &ldquo;Recalcular y guardar&rdquo; en su ficha.
+                {fotosPersistidas} restaurantes con datos guardados. El resto usa estimación previa hasta pulsar &ldquo;Recalcular y guardar&rdquo; en su ficha.
               </p>
+            </div>
+            <div className="radar-header-actions">
+              <button
+                type="button"
+                className="admin-btn-ghost"
+                onClick={recalcularParaTodos}
+                disabled={recalcMasivo.activo}
+                title="Ejecuta 'Recalcular y guardar' en todos los restaurantes (excluidos los demo del agregado)"
+              >
+                {recalcMasivo.activo ? `Recalculando ${recalcMasivo.hechos + 1}/${recalcMasivo.total}…` : 'Recalcular y guardar para todos'}
+              </button>
+              <Link href="/admin/estado-producto" className="admin-btn-ghost" title="Estado del producto (checks internos)">Estado del producto</Link>
+              <span className={`radar-tag ${automatismosPendientes.length ? 'is-warning' : claseAutomatismo((resumenAutomatismos.failed || 0) > 0 ? 'failed' : 'success')}`} title={`Ejecuciones ${resumenAutomatismos.total || 0} · errores ${resumenAutomatismos.failed || 0} · procesados ${resumenAutomatismos.processed || 0}`}>
+                Automatismos: {automatismosPendientes.length ? 'migración pendiente' : `${resumenAutomatismos.success || 0} OK`}
+              </span>
             </div>
           </div>
           {ticketError && <p className="admin-alert admin-alert-error" role="alert">{ticketError}</p>}
+          {recalcMasivo.activo && (
+            <div className="admin-alert" role="status">
+              Recalculando {recalcMasivo.actual || '…'} · {recalcMasivo.hechos}/{recalcMasivo.total}
+              <div className="activation-funnel-bar" style={{ marginTop: 6 }}>
+                <span style={{ width: `${pct(recalcMasivo.hechos, recalcMasivo.total)}%` }} />
+              </div>
+            </div>
+          )}
+          {!recalcMasivo.activo && recalcMasivo.resumen && (
+            <div className="admin-alert" role="status">
+              Recálculo completado. {recalcMasivo.resumen.ok} ok · {recalcMasivo.resumen.error} con error · {recalcMasivo.resumen.total} totales.
+            </div>
+          )}
 
-          <section className="product-readiness-panel">
-            <div className="product-readiness-head">
-              <div>
-                <h3>Cierre de producto</h3>
-                <p>{resumenCierre.ok || 0}/{resumenCierre.total_checks || 0} checks listos · {resumenCierre.blockers || 0} bloqueos · {resumenCierre.warnings || 0} avisos.</p>
-              </div>
-              <div className="product-readiness-score">
-                <strong>{cierreProducto.score || 0}%</strong>
-                <span className={`radar-tag ${claseCierreProducto(cierreProducto.estado)}`}>{etiquetaCierreProducto(cierreProducto.estado)}</span>
-              </div>
-            </div>
-            <div className="product-readiness-grid">
-              {checksCierre.map(check => (
-                <article key={check.id} className="product-readiness-check">
-                  <span className={`radar-tag ${claseCierreProducto(check.estado)}`}>{etiquetaCierreProducto(check.estado)}</span>
-                  <strong>{check.titulo}</strong>
-                  <p>{check.detalle}</p>
-                  <small>{check.accion}</small>
-                </article>
-              ))}
-              {checksCierre.length === 0 && <p className="admin-loading">Cargando estado de cierre</p>}
-            </div>
+          <section className="radar-mi-dia" aria-labelledby="mi-dia-title">
+            <h3 id="mi-dia-title">Mi día</h3>
+            <p className="mi-dia-lead">Hasta 5 tareas priorizadas con datos de hoy.</p>
+            {tareasMiDia.length === 0 && <p className="radar-mi-dia-empty">Hoy no hay nada urgente. Aprovecha para preparar la siguiente llamada.</p>}
+            {tareasMiDia.length > 0 && (
+              <ul>
+                {tareasMiDia.map(tarea => (
+                  <li key={`${tarea.restaurante.id}:${tarea.tipo}`}>
+                    <div className="mi-dia-info">
+                      <strong>{tarea.restaurante.nombre}</strong>
+                      <span>{tarea.verbo}{tarea.euros > 0 ? ` · ${eur(tarea.euros)} en juego` : ''}</span>
+                    </div>
+                    <Link href={tarea.destino}>{tarea.cta}</Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <section className="executive-radar-summary">
@@ -701,221 +626,81 @@ export default function RadarConsultoria() {
             <b>{bloqueadosActivacion} necesitan acompañamiento</b>
           </section>
 
-          <section className="consultant-weekly-briefing">
-            <div className="consultant-weekly-head">
-              <div>
-                <h3>Agenda semanal por rentabilidad</h3>
-                <p>{resumenSemanalConsultor.restaurantes || 0} restaurantes medidos desde la foto semanal y el estado real de entrega.</p>
-              </div>
-              <div className="consultant-weekly-status">
-                <strong>{resumenSemanalConsultor.fotos_recientes || 0}/{resumenSemanalConsultor.restaurantes || 0}</strong>
-                <span>fotos recientes</span>
-              </div>
-            </div>
-            <div className="consultant-weekly-kpis">
-              <article>
-                <span>Beneficio defendido</span>
-                <strong>{eur(resumenSemanalConsultor.beneficio_bruto || 0)}</strong>
-              </article>
-              <article>
-                <span>Por capturar</span>
-                <strong>{eur(resumenSemanalConsultor.recuperable_semana || 0)}</strong>
-              </article>
-              <article>
-                <span>Sin foto</span>
-                <strong>{resumenSemanalConsultor.sin_foto || 0}</strong>
-              </article>
-              <article>
-                <span>Envíos fallidos</span>
-                <strong>{resumenSemanalConsultor.envio_fallido || 0}</strong>
-              </article>
-            </div>
-            <div className="consultant-weekly-grid">
-              <div className="consultant-weekly-panel">
-                <div className="consultant-weekly-panel-head">
-                  <strong>Prioridad de esta semana</strong>
-                  <span>{agendaSemanal.length} cuentas</span>
-                </div>
-                <div className="consultant-weekly-list">
-                  {agendaSemanal.slice(0, 5).map((item, index) => (
-                    <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="consultant-weekly-row">
-                      <span className={`consultant-weekly-priority priority-${item.prioridad}`}>{index + 1}</span>
-                      <div>
-                        <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
-                        <small>{item.siguiente_accion}</small>
-                      </div>
-                      <b>{eur(item.recuperable_semana || 0)}</b>
-                    </Link>
-                  ))}
-                  {agendaSemanal.length === 0 && <p className="consultant-weekly-empty">No hay cuentas semanales priorizadas.</p>}
-                </div>
-              </div>
-              <div className="consultant-weekly-panel">
-                <div className="consultant-weekly-panel-head">
-                  <strong>Bloqueos recurrentes</strong>
-                  <span>{bloqueosSemanales.length} tipos</span>
-                </div>
-                <div className="consultant-weekly-blockers">
-                  {bloqueosSemanales.map(bloqueo => (
-                    <div key={bloqueo.tipo} className="consultant-weekly-blocker">
-                      <div>
-                        <strong>{bloqueo.titulo}</strong>
-                        <small>{bloqueo.restaurantes?.slice(0, 3).map(rest => rest.nombre).join(', ') || bloqueo.detalle}</small>
-                      </div>
-                      <span>{bloqueo.total}</span>
-                    </div>
-                  ))}
-                  {bloqueosSemanales.length === 0 && <p className="consultant-weekly-empty">Sin bloqueos repetidos detectados.</p>}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="automation-health-panel">
-            <div className="automation-health-head">
-              <div>
-                <h3>Automatismos · últimos 7 días</h3>
-              </div>
-              <span className={`radar-tag ${automatismosPendientes.length ? 'is-warning' : claseAutomatismo((resumenAutomatismos.failed || 0) > 0 ? 'failed' : 'success')}`}>
-                {automatismosPendientes.length ? 'Migracion pendiente' : `${resumenAutomatismos.success || 0} OK`}
-              </span>
-            </div>
-            <div className="automation-health-kpis">
-              <article>
-                <span>Ejecuciones</span>
-                <strong>{resumenAutomatismos.total || 0}</strong>
-              </article>
-              <article>
-                <span>Errores</span>
-                <strong>{resumenAutomatismos.errors || resumenAutomatismos.failed || 0}</strong>
-              </article>
-              <article>
-                <span>Procesados</span>
-                <strong>{resumenAutomatismos.processed || 0}</strong>
-              </article>
-              <article>
-                <span>Parciales</span>
-                <strong>{resumenAutomatismos.partial || 0}</strong>
-              </article>
-            </div>
-            <div className="automation-health-list">
-              {jobsAutomatismos.slice(0, 4).map(job => (
-                <div key={job.job_key} className="automation-health-row">
+          {/* Defensa económica: tarjeta ligera si todos están sin foto, panel completo si no */}
+          {(() => {
+            const sinFoto = resumenDefensaEconomica.sin_foto || 0
+            const totalRests = resumenDefensaEconomica.restaurantes || informes.length
+            const todosSinFoto = totalRests > 0 && sinFoto === totalRests
+            if (todosSinFoto) {
+              return (
+                <section className="radar-no-foto-card" role="status" aria-label="Documentación pendiente">
                   <div>
-                    <strong>{job.job_key === 'radar_diario' ? 'Radar diario' : 'Resumen semanal'}</strong>
-                    <small>{job.latest_at ? new Date(job.latest_at).toLocaleString('es-ES') : 'Sin ejecucion'}</small>
+                    <strong>{sinFoto} restaurantes sin documentación guardada</strong>
+                    <p>Para enseñar cifras al cliente, cada uno necesita un recálculo desde su ficha.</p>
                   </div>
-                  <span className={`radar-tag ${claseAutomatismo(job.latest_status)}`}>{etiquetaAutomatismo(job.latest_status)}</span>
+                  <button
+                    type="button"
+                    className="admin-btn-ghost"
+                    onClick={recalcularParaTodos}
+                    disabled={recalcMasivo.activo}
+                  >
+                    Guardar fotos de todos
+                  </button>
+                </section>
+              )
+            }
+            return (
+              <section className="economic-defense-panel">
+                <div className="economic-defense-head">
+                  <div>
+                    <h3>Defensa económica</h3>
+                    <p>{resumenDefensaEconomica.con_foto || 0}/{totalRests} restaurantes tienen documentación guardada.</p>
+                  </div>
+                  <span className={`radar-tag ${(resumenDefensaEconomica.no_presentar || sinFoto) ? 'is-warning' : 'is-ok'}`}>
+                    Rigor medio {resumenDefensaEconomica.rigor_medio || 0}%
+                  </span>
                 </div>
-              ))}
-              {jobsAutomatismos.length === 0 && (
-                <p className="automation-health-empty">
-                  {automatismosPendientes.length ? 'Aplica la migracion de logs para ver ejecuciones reales.' : 'Todavia no hay ejecuciones registradas.'}
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section className="economic-defense-panel">
-            <div className="economic-defense-head">
-              <div>
-                <h3>Defensa económica</h3>
-                <p>{resumenDefensaEconomica.con_foto || 0}/{resumenDefensaEconomica.restaurantes || informes.length} restaurantes tienen foto económica guardada.</p>
-              </div>
-              <span className={`radar-tag ${(resumenDefensaEconomica.no_presentar || resumenDefensaEconomica.sin_foto) ? 'is-warning' : 'is-ok'}`}>
-                Rigor medio {resumenDefensaEconomica.rigor_medio || 0}%
-              </span>
-            </div>
-            <div className="economic-defense-kpis">
-              <article>
-                <span>Presentables</span>
-                <strong>{resumenDefensaEconomica.presentables || 0}</strong>
-              </article>
-              <article>
-                <span>Con contexto</span>
-                <strong>{resumenDefensaEconomica.con_contexto || 0}</strong>
-              </article>
-              <article>
-                <span>No presentar</span>
-                <strong>{resumenDefensaEconomica.no_presentar || 0}</strong>
-              </article>
-              <article>
-                <span>Sin foto</span>
-                <strong>{resumenDefensaEconomica.sin_foto || 0}</strong>
-              </article>
-            </div>
-            <div className="economic-defense-grid">
-              <div className="economic-defense-box">
-                <div className="economic-defense-box-head">
-                  <strong>Bloqueadas para informe</strong>
-                  <span>{defensaBloqueadas.length} cuentas</span>
-                </div>
-                <div className="economic-defense-list">
-                  {defensaBloqueadas.slice(0, 5).map(item => (
-                    <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="economic-defense-row">
-                      <div>
-                        <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
-                        <small>{item.bloqueo_principal || item.accion}</small>
-                      </div>
-                      <span className={`radar-tag ${claseDefensaEconomica(item)}`}>{etiquetaDefensaEconomica(item)}</span>
-                    </Link>
-                  ))}
-                  {defensaBloqueadas.length === 0 && <p className="economic-defense-empty">No hay cuentas bloqueadas por defensa económica.</p>}
-                </div>
-              </div>
-              <div className="economic-defense-box">
-                <div className="economic-defense-box-head">
-                  <strong>Cuentas presentables</strong>
-                  <span>{defensaPresentables.length} cuentas</span>
-                </div>
-                <div className="economic-defense-list">
-                  {defensaPresentables.slice(0, 5).map(item => (
-                    <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="economic-defense-row">
-                      <div>
-                        <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
-                        <small>Rigor {item.score}% · foto {item.ultima_foto_at ? new Date(item.ultima_foto_at).toLocaleDateString('es-ES') : 'sin fecha'}</small>
-                      </div>
-                      <b>{eur(item.beneficio_presentable || 0)}</b>
-                    </Link>
-                  ))}
-                  {defensaPresentables.length === 0 && <p className="economic-defense-empty">Aún no hay cuentas con cifras plenamente presentables.</p>}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="consultant-agenda">
-            <div className="consultant-agenda-head">
-              <div>
-                <h3>Los 3 restaurantes que atendería hoy</h3>
-                <p>{restaurantesConAccion} restaurantes tienen una acción concreta abierta.</p>
-              </div>
-              <Link href="/admin/acciones">Abrir pipeline completo</Link>
-            </div>
-            <div className="consultant-agenda-grid">
-              {agendaHoy.map((informe, index) => {
-                const problema = informe.ejecutivo?.resumen?.problema_principal || informe.alertas[0]?.titulo || 'Mantenimiento fino'
-                return (
-                  <article key={informe.restaurante.id}>
-                    <div className="consultant-agenda-rank">{index + 1}</div>
-                    <div className="consultant-agenda-content">
-                      <div className="consultant-agenda-title">
-                        <strong>{informe.restaurante.nombre}</strong>
-                        <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
-                      </div>
-                      <p>{problema}</p>
-                      <small>{informe.siguienteMovimiento}</small>
-                      <div className="consultant-agenda-impact">
-                        <span>{eur(oportunidadRadar(informe))} oportunidad</span>
-                        <span>{alertasCriticasRadar(informe)} alertas críticas</span>
-                      </div>
+                <div className="economic-defense-grid">
+                  <div className="economic-defense-box">
+                    <div className="economic-defense-box-head">
+                      <strong>Bloqueadas para informe</strong>
+                      <span>{defensaBloqueadas.length} cuentas</span>
                     </div>
-                    <Link href={`/admin/restaurante/${informe.restaurante.id}`}>Trabajar ahora</Link>
-                  </article>
-                )
-              })}
-            </div>
-          </section>
+                    <div className="economic-defense-list">
+                      {defensaBloqueadas.slice(0, 5).map(item => (
+                        <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="economic-defense-row">
+                          <div>
+                            <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
+                            <small>{item.bloqueo_principal || item.accion}</small>
+                          </div>
+                          <span className={`radar-tag ${claseDefensaEconomica(item)}`}>{etiquetaDefensaEconomica(item)}</span>
+                        </Link>
+                      ))}
+                      {defensaBloqueadas.length === 0 && <p className="economic-defense-empty">No hay cuentas bloqueadas por defensa económica.</p>}
+                    </div>
+                  </div>
+                  <div className="economic-defense-box">
+                    <div className="economic-defense-box-head">
+                      <strong>Cuentas presentables</strong>
+                      <span>{defensaPresentables.length} cuentas</span>
+                    </div>
+                    <div className="economic-defense-list">
+                      {defensaPresentables.slice(0, 5).map(item => (
+                        <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="economic-defense-row">
+                          <div>
+                            <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
+                            <small>Rigor {item.score}% · guardada {item.ultima_foto_at ? new Date(item.ultima_foto_at).toLocaleDateString('es-ES') : 'sin fecha'}</small>
+                          </div>
+                          <b>{eur(item.beneficio_presentable || 0)}</b>
+                        </Link>
+                      ))}
+                      {defensaPresentables.length === 0 && <p className="economic-defense-empty">Aún no hay cuentas con cifras plenamente presentables.</p>}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )
+          })()}
 
           <div className="radar-command-bar">
             <Link href="/admin/acciones">Ver pipeline consultor</Link>
@@ -951,7 +736,10 @@ export default function RadarConsultoria() {
                   <i style={{ width: `${informe.score}%` }} />
                 </div>
                 <div className="radar-info">
-                  <strong>{informe.restaurante.nombre}</strong>
+                  <strong>
+                    {informe.restaurante.nombre}
+                    {esExcluidoDeAgregado(informe.restaurante) && <span className="radar-demo-chip" title="Restaurante demo: no suma en agregados">demo</span>}
+                  </strong>
                   <div className="radar-tags">
                     <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
                     {informe.propuestasAbiertas.length > 0 && <span className="radar-tag is-warning">Pendiente acción</span>}

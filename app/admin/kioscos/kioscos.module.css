@@ -143,33 +143,25 @@
 }
 .btnEditar:hover { background: #f5f0e8; }
 
-.btnStripe {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: none;
-  background: #635bff;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.btnStripe:hover { background: #4c45e0; }
-.btnStripe:disabled { opacity: .5; cursor: not-allowed; }
-
+/* FASE J bloque 2: botones secundarios unificados con la paleta del panel */
+.btnStripe,
 .btnTrial {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: none;
-  background: #0e7a5e;
-  color: #fff;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: #fff;
+  color: #1c1c1c;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 120ms ease;
 }
-.btnTrial:hover { background: #0a5e48; }
+.btnStripe:hover,
+.btnTrial:hover { background: rgba(0, 0, 0, 0.05); }
+.btnStripe:disabled,
 .btnTrial:disabled { opacity: .5; cursor: not-allowed; }
+.btnTrial { font-variant: small-caps; }
 
 /* Fila de resultado de activación */
 .trResult td {

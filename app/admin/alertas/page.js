@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 import AdminOverlay from '../components/AdminOverlay'
+import { calcAlertasCriticas, limpiarRutasTecnicas } from '../../lib/consultoriaMetricas'
 
 const ESTADOS = [
   ['todas', 'Todas'],
@@ -96,8 +97,10 @@ export default function AdminAlertasPage() {
   }, [alertas, busqueda])
 
   const resumen = useMemo(() => ({
-    criticas: alertas.filter(a => a.severidad === 'critica').length,
-    avisos: alertas.filter(a => a.severidad === 'aviso').length,
+    // Usa el helper único para que el contador de críticas coincida con
+    // el del Radar y la ficha. Cuenta severidad=crítica Y estado abierto.
+    criticas: calcAlertasCriticas({ alertasDb: alertas }).valor,
+    avisos: alertas.filter(a => a.severidad === 'aviso' && (a.estado === 'abierta' || a.estado === 'en_progreso')).length,
     abiertas: alertas.filter(a => a.estado === 'abierta').length,
     progreso: alertas.filter(a => a.estado === 'en_progreso').length,
   }), [alertas])
@@ -170,13 +173,18 @@ export default function AdminAlertasPage() {
         <div className="ws-header-left">
           <Link href="/admin/consultoria" className="ws-back">Radar</Link>
           <div>
-            <h2 className="ws-title">Bandeja de alertas</h2>
-            <span className="ws-sub">Problemas abiertos, seguimiento y propuestas de consultoria.</span>
+            <h2 className="ws-title">Buzón del consultor</h2>
+            <span className="ws-sub">Alertas abiertas y sugerencias enviadas desde los restaurantes.</span>
           </div>
         </div>
         <div className="ws-header-actions">
           <button onClick={cargarAlertas} disabled={loading}>{loading ? 'Actualizando...' : 'Actualizar'}</button>
         </div>
+      </div>
+
+      <div className="buzon-tabs" role="tablist" aria-label="Pestañas del buzón">
+        <Link href="/admin/alertas" className="is-active" role="tab" aria-selected="true">Alertas</Link>
+        <Link href="/admin/sugerencias" role="tab" aria-selected="false">Sugerencias</Link>
       </div>
 
       <section className="ws-section">

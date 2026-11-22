@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getUserFromRequest } from '../../_lib/auth'
+import { deduplicarAcciones } from '../../../lib/consultoriaMetricas'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -313,7 +314,7 @@ export async function GET(req) {
     if (restaurantesRes.error) throw restaurantesRes.error
     const restaurantes = new Map((restaurantesRes.data || []).map(restaurante => [restaurante.id, restaurante]))
 
-    const items = [
+    const brutos = [
       ...acciones.map(item => normalizarAccionConsultor(item, restaurantes.get(item.restaurante_id) || null)),
       ...recomendaciones.map(item => normalizarRecomendacion(item, restaurantes.get(item.restaurante_id) || null)),
       ...alertas.map(item => normalizarAlerta(item, restaurantes.get(item.restaurante_id) || null)),
@@ -322,6 +323,9 @@ export async function GET(req) {
       return (pesoPrioridad[b.prioridad] || 0) - (pesoPrioridad[a.prioridad] || 0) ||
         new Date(b.created_at || 0) - new Date(a.created_at || 0)
     })
+
+    // Dedupe por restaurante+titulo (ver importación arriba).
+    const items = deduplicarAcciones(brutos, { porTitulo: true })
 
     return Response.json({ acciones: items })
   } catch (error) {
