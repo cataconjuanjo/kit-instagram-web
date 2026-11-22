@@ -491,6 +491,10 @@ export default function RestauranteWorkspace() {
   const [busquedaMatchCatalogo, setBusquedaMatchCatalogo] = useState('')
   const [aplicandoMatchId, setAplicandoMatchId] = useState('')
   const [mensajeMatch, setMensajeMatch] = useState('')
+  const [soloConCandidato, setSoloConCandidato] = useState(true)
+  const [paginaMatches, setPaginaMatches] = useState(0)
+  const [ultimoBulk, setUltimoBulk] = useState(null) // para deshacer
+  const [confirmandoBulk, setConfirmandoBulk] = useState(false)
   const [guardandoPropuesta, setGuardandoPropuesta] = useState(false)
   const [errorPropuesta, setErrorPropuesta] = useState('')
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -806,6 +810,65 @@ export default function RestauranteWorkspace() {
       precio_recomendado: pvp,
       margen_objetivo: pvp ? calcularMargen(vino.coste_estimado, pvp) : prev.margen_objetivo,
     }))
+  }
+
+  async function aplicarMatchesEnLote(umbral = 95) {
+    // Selecciona el mejor candidato por vino con confianza >= umbral y lo aplica en serie.
+    const seleccion = []
+    for (const grupo of matchesCatalogo) {
+      const mejor = grupo.candidatos
+        .slice()
+        .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0]
+      if (!mejor) continue
+      const score = Math.min(99, Number(mejor.score || 0))
+      if (score >= umbral) seleccion.push({ vino: grupo.vino, match: mejor })
+    }
+    if (seleccion.length === 0) {
+      setMensajeMatch(`No hay candidatos con confianza igual o superior a ${umbral}%.`)
+      setConfirmandoBulk(false)
+      return
+    }
+    setConfirmandoBulk(false)
+    setMensajeMatch(`Aplicando ${seleccion.length} coincidencias…`)
+    const antes = seleccion.map(({ vino }) => ({
+      id: vino.id,
+      proveedor: vino.proveedor,
+      coste_compra: vino.coste_compra,
+      referencia_proveedor: vino.referencia_proveedor,
+      formato_compra: vino.formato_compra,
+    }))
+    let ok = 0
+    let error = 0
+    for (const item of seleccion) {
+      try {
+        await aplicarMatchCatalogo(item.vino, item.match)
+        ok++
+      } catch { error++ }
+    }
+    setUltimoBulk({ antes, cuando: Date.now() })
+    setMensajeMatch(`${ok} coincidencias aplicadas (${error} con error). Puedes pulsar “Deshacer” antes de recargar.`)
+  }
+
+  async function deshacerUltimoBulk() {
+    if (!ultimoBulk) return
+    for (const original of ultimoBulk.antes) {
+      await supabase
+        .from('vinos')
+        .update({
+          proveedor: original.proveedor || null,
+          coste_compra: original.coste_compra || null,
+          referencia_proveedor: original.referencia_proveedor || null,
+          formato_compra: original.formato_compra || null,
+        })
+        .eq('id', original.id)
+        .eq('restaurante_id', id)
+    }
+    setVinos(prev => prev.map(vino => {
+      const original = ultimoBulk.antes.find(a => String(a.id) === String(vino.id))
+      return original ? { ...vino, ...original } : vino
+    }))
+    setUltimoBulk(null)
+    setMensajeMatch('Cambios deshechos.')
   }
 
   async function aplicarMatchCatalogo(vinoRestaurante, match) {
@@ -1815,57 +1878,115 @@ export default function RestauranteWorkspace() {
               </label>
             </div>
 
-            {mensajeMatch && <p className={`admin-alert ${mensajeMatch.startsWith('No se pudo') ? 'admin-alert-error' : 'admin-alert-ok'}`}>{mensajeMatch}</p>}
+            {mensajeMatch && <p className={`admin-alert ${mensajeMatch.startsWith('No se pudo') || mensajeMatch.startsWith('No hay') ? 'admin-alert-error' : 'admin-alert-ok'}`}>
+              {mensajeMatch}
+              {ultimoBulk && <> · <button type="button" className="ws-btn-secondary" onClick={deshacerUltimoBulk}>Deshacer</button></>}
+            </p>}
 
-            <div className="ws-match-list">
-              {vinosCatalogo.length === 0 && (
-                <div className="ws-empty-block">Aún no hay catalogos de proveedor cargados. Cuando subas tarifas, aqui apareceran cruces automaticos.</div>
-              )}
-              {vinosCatalogo.length > 0 && matchesCatalogo.length === 0 && (
-                <div className="ws-empty-block">No hay coincidencias claras con los filtros actuales. Prueba otro proveedor o revisa nombres/bodegas del catalogo.</div>
-              )}
-              {matchesCatalogo.map(({ vino, candidatos }) => {
-                const faltantes = [
-                  !vino.proveedor && 'proveedor',
-                  !decimal(vino.coste_compra) && 'coste',
-                  !vino.referencia_proveedor && 'referencia',
-                  !vino.formato_compra && 'formato',
-                ].filter(Boolean)
-                return (
-                  <article className="ws-match-card" key={vino.id}>
-                    <div className="ws-match-current">
-                      <span className="admin-kicker">Carta restaurante</span>
-                      <h4>{vino.nombre}</h4>
-                      <p>{[vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' · ') || 'Sin datos extra'}</p>
-                      <div className="strategy-pills">
-                        {faltantes.map(item => <span key={item} className="is-warning">Falta {item}</span>)}
+            {(() => {
+              const matchesRelevantes = soloConCandidato
+                ? matchesCatalogo.filter(m => (m.candidatos || []).length > 0)
+                : matchesCatalogo
+              const auto95 = matchesCatalogo.filter(m => {
+                const mejor = (m.candidatos || []).slice().sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0]
+                return mejor && Math.min(99, Number(mejor.score || 0)) >= 95
+              })
+              const dudosos = matchesRelevantes.filter(m => {
+                const mejor = (m.candidatos || []).slice().sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0]
+                return !mejor || Math.min(99, Number(mejor.score || 0)) < 95
+              })
+              const porPagina = 10
+              const paginas = Math.max(1, Math.ceil(dudosos.length / porPagina))
+              const pagina = Math.min(paginaMatches, paginas - 1)
+              const slice = dudosos.slice(pagina * porPagina, pagina * porPagina + porPagina)
+              return (
+                <>
+                  <div className="ws-match-controls">
+                    <label>
+                      <input type="checkbox" checked={soloConCandidato} onChange={e => setSoloConCandidato(e.target.checked)} />
+                      Mostrar sólo vinos con candidato
+                    </label>
+                    <button
+                      type="button"
+                      className="ws-btn-primary"
+                      disabled={auto95.length === 0}
+                      onClick={() => setConfirmandoBulk(true)}
+                      title="Aplicar en lote los candidatos con confianza >= 95%"
+                    >
+                      Aplicar todos los de confianza ≥ 95% ({auto95.length})
+                    </button>
+                  </div>
+
+                  {confirmandoBulk && (
+                    <div className="admin-alert admin-alert-ok" role="alertdialog">
+                      Vas a aplicar datos en {auto95.length} vinos. Los cambios se pueden deshacer antes de recargar.
+                      <div className="ws-match-controls" style={{ marginTop: 8 }}>
+                        <button type="button" className="ws-btn-primary" onClick={() => aplicarMatchesEnLote(95)}>Confirmar</button>
+                        <button type="button" className="ws-btn-secondary" onClick={() => setConfirmandoBulk(false)}>Cancelar</button>
                       </div>
                     </div>
-                    <div className="ws-match-candidates">
-                      {candidatos.map(match => {
-                        const key = `${vino.id}-${match.vino.id}`
-                        return (
-                          <div className="ws-match-candidate" key={key}>
-                            <div>
-                              <strong>{match.vino.nombre}</strong>
-                              <span>{[match.proveedor?.nombre || match.vino.proveedores_vino?.nombre, match.vino.bodega, match.vino.region, match.vino.formato, match.vino.coste_estimado ? `${match.vino.coste_estimado} EUR` : '', match.vino.referencia ? `ref. ${match.vino.referencia}` : ''].filter(Boolean).join(' · ')}</span>
-                              <small>Confianza {Math.min(99, match.score)}%</small>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => aplicarMatchCatalogo(vino, match)}
-                              disabled={aplicandoMatchId === key}
-                            >
-                              {aplicandoMatchId === key ? 'Aplicando...' : 'Aplicar datos'}
-                            </button>
+                  )}
+
+                  <div className="ws-match-list">
+                    {vinosCatalogo.length === 0 && (
+                      <div className="ws-empty-block">Aún no hay catálogos de proveedor cargados. Cuando subas tarifas, aquí aparecerán cruces automáticos.</div>
+                    )}
+                    {vinosCatalogo.length > 0 && dudosos.length === 0 && auto95.length === 0 && (
+                      <div className="ws-empty-block">No hay coincidencias claras con los filtros actuales.</div>
+                    )}
+                    {slice.map(({ vino, candidatos }) => {
+                      const faltantes = [
+                        !vino.proveedor && 'proveedor',
+                        !decimal(vino.coste_compra) && 'coste',
+                        !vino.referencia_proveedor && 'referencia',
+                        !vino.formato_compra && 'formato',
+                      ].filter(Boolean)
+                      return (
+                        <article className="ws-match-card" key={vino.id}>
+                          <div className="ws-match-current">
+                            <span className="admin-kicker">Carta restaurante</span>
+                            <h4>{vino.nombre}</h4>
+                            <p>{[vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' · ') || 'Sin datos extra'}</p>
+                            {faltantes.length > 0 && (
+                              <span className="ws-match-faltantes">Falta: {faltantes.join(', ')}</span>
+                            )}
                           </div>
-                        )
-                      })}
+                          <div className="ws-match-candidates">
+                            {candidatos.slice(0, 3).map(match => {
+                              const key = `${vino.id}-${match.vino.id}`
+                              return (
+                                <div className="ws-match-candidate" key={key}>
+                                  <div>
+                                    <strong>{match.vino.nombre}</strong>
+                                    <span>{[match.proveedor?.nombre || match.vino.proveedores_vino?.nombre, match.vino.bodega, match.vino.region, match.vino.formato, match.vino.coste_estimado ? `${match.vino.coste_estimado} EUR` : '', match.vino.referencia ? `ref. ${match.vino.referencia}` : ''].filter(Boolean).join(' · ')}</span>
+                                    <small>Confianza {Math.min(99, match.score)}%</small>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => aplicarMatchCatalogo(vino, match)}
+                                    disabled={aplicandoMatchId === key}
+                                  >
+                                    {aplicandoMatchId === key ? 'Aplicando...' : 'Aplicar datos'}
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+
+                  {paginas > 1 && (
+                    <div className="ws-match-pager">
+                      <button type="button" disabled={pagina === 0} onClick={() => setPaginaMatches(p => Math.max(0, p - 1))}>Anterior</button>
+                      <span>Página {pagina + 1} de {paginas}</span>
+                      <button type="button" disabled={pagina >= paginas - 1} onClick={() => setPaginaMatches(p => p + 1)}>Siguiente</button>
                     </div>
-                  </article>
-                )
-              })}
-            </div>
+                  )}
+                </>
+              )
+            })()}
           </section>
 
           <section id="ws-propuestas" className="ws-section">
