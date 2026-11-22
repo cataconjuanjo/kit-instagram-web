@@ -18178,3 +18178,65 @@ a.supplier-btn-primary {
   text-transform: uppercase;
   vertical-align: middle;
 }
+
+/* FASE J2 — Bloque 1: pestañas reales de la ficha (hereda estilo visual
+   de .ws-anchors pero con estado activo y control por ?tab=). */
+.ws-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line, rgba(0,0,0,0.12));
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 19;
+  padding: 0 28px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ws-tabs::-webkit-scrollbar { display: none; }
+.ws-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted, #666);
+  padding: 12px 16px;
+  min-height: 48px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ws-tabs button:hover { color: var(--ink, #1c1c1c); border-bottom-color: var(--line, rgba(0,0,0,0.12)); }
+.ws-tabs button.is-active {
+  color: var(--ink, #1c1c1c);
+  border-bottom-color: var(--ink, #1c1c1c);
+}
+.ws-tabs button[aria-selected="true"] {
+  color: var(--ink, #1c1c1c);
+  border-bottom-color: var(--ink, #1c1c1c);
+}
+
+.consultant-plan-dateline {
+  margin: 4px 0 6px;
+  font-size: 0.78rem;
+  color: var(--ink-muted, #666);
+  font-style: italic;
+}
+
+/* FASE J2 — Impresión: solo se imprime el informe cuando está montado.
+   Las pestañas y el header del workspace quedan ocultos. */
+@media print {
+  .ws-tabs,
+  .ws-header-actions,
+  .ws-anchors { display: none !important; }
+  .ws-section:not(#ws-informe) { display: none !important; }
+  #ws-informe { display: block !important; }
+}
+

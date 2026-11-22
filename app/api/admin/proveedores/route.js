@@ -207,17 +207,17 @@ export async function GET(req) {
     if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
 
     const supabase = adminClient()
-    const [{ data: proveedores, error: proveedoresError }, vinos, { data: provsProv }] = await Promise.all([
-      supabase.from('proveedores_vino').select(SELECT_PROVEEDOR).order('nombre'),
-      seleccionarTodo(
-        supabase
-          .from('proveedor_catalogo_vinos')
-          .select(SELECT_CATALOGO_VINO)
-          .order('created_at', { ascending: false })
-      ),
-      supabase.from('proveedor_provincia').select('proveedor_id, provincia_codigo')
-    ])
+    // FASE J2 - Bloque 2: permitimos pedir una respuesta 'ligera' con
+    // solo la lista de proveedores (primera pintura <1s) o filtrar el
+    // catálogo por proveedor para no descargar miles de filas al cliente.
+    const url = new URL(req.url)
+    const scope = url.searchParams.get('scope') || 'full'
+    const proveedorIdFiltro = url.searchParams.get('proveedor_id') || ''
 
+    const [{ data: proveedores, error: proveedoresError }, { data: provsProv }] = await Promise.all([
+      supabase.from('proveedores_vino').select(SELECT_PROVEEDOR).order('nombre'),
+      supabase.from('proveedor_provincia').select('proveedor_id, provincia_codigo'),
+    ])
     if (proveedoresError) throw proveedoresError
 
     const provinciasPorProveedor = {}
@@ -226,12 +226,31 @@ export async function GET(req) {
       provinciasPorProveedor[row.proveedor_id].push(row.provincia_codigo)
     }
 
-    return Response.json({
+    const base = {
       proveedores: (proveedores || []).map(p => ({
         ...repararFila(p),
         provincias: provinciasPorProveedor[p.id] || [],
       })),
+    }
+
+    if (scope === 'lite') {
+      // No cargamos vinos: la UI puede pintar la lista de proveedores
+      // inmediatamente y cargar el catálogo bajo demanda.
+      return Response.json({ ...base, vinos: [], scope: 'lite' })
+    }
+
+    let vinosQuery = supabase
+      .from('proveedor_catalogo_vinos')
+      .select(SELECT_CATALOGO_VINO)
+      .order('created_at', { ascending: false })
+    if (proveedorIdFiltro) vinosQuery = vinosQuery.eq('proveedor_id', proveedorIdFiltro)
+
+    const vinos = await seleccionarTodo(vinosQuery)
+
+    return Response.json({
+      ...base,
       vinos: (vinos || []).map(repararFila),
+      scope: proveedorIdFiltro ? 'proveedor' : 'full',
     })
   } catch (error) {
     console.error('Error leyendo proveedores:', error)

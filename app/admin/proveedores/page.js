@@ -319,32 +319,55 @@ function ProveedoresPageContent() {
     router.push(`/admin/proveedores?vista=${vista}`)
   }
 
-  const cargarCatalogo = useCallback(async () => {
+  // FASE J2 - Bloque 2: primera carga con scope=lite (solo proveedores)
+  // para que la pantalla sea interactiva en < 1 s. Los vinos del catálogo
+  // se cargan bajo demanda (cuando el usuario cambia a vista 'catalogo'
+  // o cuando selecciona un proveedor).
+  const cargarProveedoresLite = useCallback(async () => {
     const token = await tokenAdmin()
-    const res = await fetch('/api/admin/proveedores', {
+    const res = await fetch('/api/admin/proveedores?scope=lite', {
       headers: { Authorization: `Bearer ${token}` }
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'No se pudieron cargar proveedores.')
     setProveedores(data.proveedores || [])
-    const favoritosLocales = leerFavoritosLocales()
-    const idsSeen = new Set()
-    const vinosCargados = (data.vinos || []).filter(v => {
-      if (idsSeen.has(v.id)) return false
-      idsSeen.add(v.id)
-      return true
-    }).map(v => ({
-      ...v,
-      favorito: v.favorito || favoritosLocales.has(v.id)
-    }))
-    setVinos(vinosCargados)
-
     const primerProveedor = data.proveedores?.[0]?.id || ''
     setVinoForm(actual => ({
       ...actual,
       proveedor_id: actual.proveedor_id || primerProveedor
     }))
   }, [])
+
+  const cargarVinosProveedor = useCallback(async (proveedorId = '') => {
+    const token = await tokenAdmin()
+    const params = new URLSearchParams(proveedorId ? { proveedor_id: String(proveedorId) } : {})
+    const url = params.toString() ? `/api/admin/proveedores?${params}` : '/api/admin/proveedores'
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'No se pudieron cargar vinos del catálogo.')
+    const favoritosLocales = leerFavoritosLocales()
+    const idsSeen = new Set()
+    const vinosCargados = (data.vinos || []).filter(v => {
+      if (idsSeen.has(v.id)) return false
+      idsSeen.add(v.id)
+      return true
+    }).map(v => ({ ...v, favorito: v.favorito || favoritosLocales.has(v.id) }))
+    if (proveedorId) {
+      // Fusionamos los vinos del proveedor con los ya cargados.
+      setVinos(actuales => {
+        const sinEste = actuales.filter(v => String(v.proveedor_id) !== String(proveedorId))
+        return [...sinEste, ...vinosCargados]
+      })
+    } else {
+      setVinos(vinosCargados)
+    }
+  }, [])
+
+  // Compat con el resto del page (acciones de guardar): recarga completa.
+  const cargarCatalogo = useCallback(async () => {
+    await cargarProveedoresLite()
+    await cargarVinosProveedor('')
+  }, [cargarProveedoresLite, cargarVinosProveedor])
 
   useEffect(() => {
     async function cargar() {
@@ -356,7 +379,9 @@ function ProveedoresPageContent() {
 
       setUser(user)
       try {
-        await cargarCatalogo()
+        // Primera pintura: solo proveedores (rápido). Los vinos se cargan
+        // bajo demanda según vista/proveedor.
+        await cargarProveedoresLite()
       } catch (error) {
         setError(error.message)
       } finally {
@@ -364,7 +389,21 @@ function ProveedoresPageContent() {
       }
     }
     cargar()
-  }, [cargarCatalogo])
+  }, [cargarProveedoresLite])
+
+  // Carga diferida del catálogo cuando el usuario entra en 'catalogo'
+  // o selecciona un proveedor concreto. Evita bajar miles de filas al
+  // cliente al abrir la página.
+  const [vinosCargadosPara, setVinosCargadosPara] = useState('') // '' | 'all' | proveedorId
+  useEffect(() => {
+    if (loading) return
+    const necesitaTodos = vistaProveedores === 'catalogo' && !proveedorSeleccionado
+    const clave = necesitaTodos ? 'all' : (proveedorSeleccionado ? String(proveedorSeleccionado) : '')
+    if (!clave || clave === vinosCargadosPara) return
+    cargarVinosProveedor(necesitaTodos ? '' : proveedorSeleccionado)
+      .then(() => setVinosCargadosPara(clave))
+      .catch(error => setError(error.message))
+  }, [vistaProveedores, proveedorSeleccionado, loading, cargarVinosProveedor, vinosCargadosPara])
 
   useEffect(() => {
     setPaginaReferencias(1)

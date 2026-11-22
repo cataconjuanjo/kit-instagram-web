@@ -336,23 +336,26 @@ function textoPropuesta(restaurante, simulacion) {
   return lineas.join('\n')
 }
 
-async function seleccionarVinosCarta() {
+async function seleccionarVinosCarta(restauranteId = null) {
+  // FASE J2 - Bloque 2: el simulador antes cargaba vinos de TODOS los
+  // restaurantes (miles de filas) aunque solo se mostraran los del
+  // restaurante activo. Ahora pedimos sólo los del restaurante elegido.
+  // Si no hay restauranteId (caso raro al iniciar sin URL), devolvemos [].
+  if (!restauranteId) return []
   let from = 0
   const rows = []
-
   while (true) {
     const { data, error } = await supabase
       .from('vinos')
       .select(SELECT_CLIENT_VINO_ADMIN)
+      .eq('restaurante_id', restauranteId)
       .order('nombre')
       .range(from, from + 999)
-
     if (error) throw error
     rows.push(...(data || []))
     if (!data || data.length < 1000) break
     from += 1000
   }
-
   return rows
 }
 
@@ -416,46 +419,90 @@ export default function SimuladorCartas() {
       }
 
       const token = await tokenAdmin()
-      const [{ data: rests, error: restError }, vinosResult, catalogoRes] = await Promise.all([
+      // FASE J2 - Bloque 2: primera pintura rápida.
+      //  1) Solo restaurantes (lista corta).
+      //  2) scope=lite del API proveedores (sin vinos).
+      //  3) Vinos del restaurante inicial (el de la URL o el primero).
+      const params = new URLSearchParams(window.location.search)
+      const restauranteUrl = params.get('restaurante')
+      const [{ data: rests, error: restError }, catalogoRes] = await Promise.all([
         supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre'),
-        seleccionarVinosCarta()
-          .then(data => ({ data }))
-          .catch(error => ({ error })),
-        fetch('/api/admin/proveedores', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/admin/proveedores?scope=lite', { headers: { Authorization: `Bearer ${token}` } }),
       ])
-      const { data: vinosData, error: vinosError } = vinosResult
-
-      if (restError || vinosError) {
-        setError(restError?.message || vinosError?.message || 'No se pudieron cargar los datos.')
+      if (restError) {
+        setError(restError.message || 'No se pudieron cargar los datos.')
         setLoading(false)
         return
       }
-
       const catalogoData = await catalogoRes.json().catch(() => ({}))
       if (!catalogoRes.ok) {
         setError(catalogoData.error || 'No se pudo cargar el catalogo de proveedores.')
       }
-
       const restaurantesData = rests || []
+      const restauranteInicial = restauranteUrl || restaurantesData[0]?.id || ''
       setRestaurantes(restaurantesData)
-      setVinos(vinosData || [])
-      const favoritosLocales = leerFavoritosLocales()
       setProveedores(catalogoRes.ok ? catalogoData.proveedores || [] : [])
-      setCatalogo(catalogoRes.ok ? (catalogoData.vinos || []).map(vino => ({
-        ...vino,
-        favorito: vino.favorito || favoritosLocales.has(String(vino.id))
-      })) : [])
-
-      const params = new URLSearchParams(window.location.search)
-      const restauranteUrl = params.get('restaurante')
-      setRestauranteId(restauranteUrl || restaurantesData[0]?.id || '')
+      setCatalogo([]) // El catálogo se carga cuando se elige proveedor.
+      setRestauranteId(restauranteInicial)
       const proveedorUrl = params.get('proveedor')
       if (proveedorUrl) setProveedorId(proveedorUrl)
+
+      // Vinos del restaurante inicial (en paralelo, sin bloquear la primera pintura).
+      if (restauranteInicial) {
+        try {
+          const vinosData = await seleccionarVinosCarta(restauranteInicial)
+          setVinos(vinosData || [])
+        } catch (error) {
+          setError(error.message || 'No se pudieron cargar los vinos del restaurante.')
+        }
+      } else {
+        setVinos([])
+      }
       setLoading(false)
     }
 
     cargar()
   }, [])
+
+  // Al cambiar de restaurante, cargamos sus vinos (en vez de tenerlos
+  // todos cargados de inicio).
+  useEffect(() => {
+    if (!restauranteId) return
+    let cancelado = false
+    seleccionarVinosCarta(restauranteId)
+      .then(data => { if (!cancelado) setVinos(data || []) })
+      .catch(error => { if (!cancelado) setError(error.message || 'No se pudieron cargar los vinos.') })
+    return () => { cancelado = true }
+  }, [restauranteId])
+
+  // Al elegir proveedor, cargamos su catálogo bajo demanda.
+  useEffect(() => {
+    if (!proveedorId) return
+    let cancelado = false
+    ;(async () => {
+      const token = await tokenAdmin()
+      try {
+        const res = await fetch(`/api/admin/proveedores?proveedor_id=${encodeURIComponent(proveedorId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'No se pudo cargar el catálogo del proveedor.')
+        if (cancelado) return
+        const favoritosLocales = leerFavoritosLocales()
+        const nuevos = (data.vinos || []).map(vino => ({
+          ...vino,
+          favorito: vino.favorito || favoritosLocales.has(String(vino.id)),
+        }))
+        setCatalogo(actuales => {
+          const sinEste = (actuales || []).filter(v => String(v.proveedor_id) !== String(proveedorId))
+          return [...sinEste, ...nuevos]
+        })
+      } catch (error) {
+        if (!cancelado) setError(error.message || 'No se pudo cargar el catálogo del proveedor.')
+      }
+    })()
+    return () => { cancelado = true }
+  }, [proveedorId])
 
   const proveedoresPorId = useMemo(() => {
     return proveedores.reduce((acc, proveedor) => {
