@@ -22,6 +22,13 @@ import {
   seleccionarTareasMiDia,
   esExcluidoDeAgregado,
 } from '../../lib/consultoriaMetricas'
+import {
+  ultimoContactoPorRestaurante,
+  construirSenalesDeContacto,
+  tareasMiDiaDesdeContactos,
+  diasDesdeUltimoContacto,
+} from '../../lib/consultorContactos'
+import { agregarSeguimiento } from '../../lib/propuestasSeguimiento'
 import AdminOverlay from '../components/AdminOverlay'
 
 
@@ -272,6 +279,8 @@ export default function RadarConsultoria() {
   const [platos, setPlatos] = useState([])
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
+  const [contactos, setContactos] = useState([])
+  const [seguimientos, setSeguimientos] = useState([])
   const [filtro, setFiltro] = useState('todas')
   const [ticketDrafts, setTicketDrafts] = useState({})
   const [guardandoTicket, setGuardandoTicket] = useState('')
@@ -293,18 +302,23 @@ export default function RadarConsultoria() {
       const desde = haceDiasISO(30)
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token || ''
-      const radarPromise = token
-        ? fetch('/api/admin/radar-ejecutivo', { headers: { Authorization: `Bearer ${token}` } })
+      const fetchAutenticado = (url) => token
+        ? fetch(url, { headers: { Authorization: `Bearer ${token}` } })
             .then(async res => res.ok ? res.json() : null)
             .catch(() => null)
         : Promise.resolve(null)
-      const [{ data: rests }, { data: vinosData }, { data: platosData }, { data: estadisticasData }, { data: propuestasData }, radarData] = await Promise.all([
+      const radarPromise = fetchAutenticado('/api/admin/radar-ejecutivo')
+      const contactosPromise = fetchAutenticado('/api/admin/contactos')
+      const seguimientoPromise = fetchAutenticado('/api/admin/propuestas-seguimiento')
+      const [{ data: rests }, { data: vinosData }, { data: platosData }, { data: estadisticasData }, { data: propuestasData }, radarData, contactosData, seguimientoData] = await Promise.all([
         supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre'),
         supabase.from('vinos').select(SELECT_CLIENT_VINO_ADMIN),
         supabase.from('platos').select(SELECT_CLIENT_PLATO_ADMIN),
         supabase.from('estadisticas').select(SELECT_CLIENT_ESTADISTICA_ADMIN).gte('created_at', desde),
         supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).order('created_at', { ascending: false }),
         radarPromise,
+        contactosPromise,
+        seguimientoPromise,
       ])
       setRestaurantes(rests || [])
       setTicketDrafts(Object.fromEntries((rests || []).map(rest => [
@@ -316,6 +330,11 @@ export default function RadarConsultoria() {
       setEstadisticas(estadisticasData || [])
       setPropuestas(propuestasData || [])
       setRadarEjecutivo(radarData)
+      // Si la migración de fase K aún no está aplicada, el API devuelve
+      // items: [] + pendiente_migracion. Trabajamos con lista vacía y
+      // el Radar cae al proxy anterior; no revienta nada.
+      setContactos(Array.isArray(contactosData?.items) ? contactosData.items : [])
+      setSeguimientos(Array.isArray(seguimientoData?.items) ? seguimientoData.items : [])
       setLoading(false)
     }
     cargar()
@@ -464,18 +483,31 @@ export default function RadarConsultoria() {
   // Las cards y listas del Radar siguen mostrando todos los informes.
   const informesAgregado = informes.filter(informe => !esExcluidoDeAgregado(informe.restaurante))
 
-  // Mi dia: hasta 5 tareas priorizadas con datos ya cargados (propuestas interesan, alertas criticas, costes bloqueantes).
-  const tareasMiDia = seleccionarTareasMiDia(
-    informes.map(informe => ({
+  // Mi día: hasta 5 tareas priorizadas. Fuentes:
+  //  - propuestas 'interesa' abiertas, alertas críticas, costes bloqueantes (fase J).
+  //  - contacto programado vencido, >14 días sin contacto (fase K).
+  // Los dos últimos solo se añaden si la tabla consultor_contactos está
+  // aplicada (si no, `contactos` llega vacío y no emiten tareas).
+  const contextosMiDia = informes.map(informe => {
+    const base = {
       restaurante: informe.restaurante,
       propuestasInteresan: (informe.propuestasAbiertas || []).filter(p => p.estado === 'interesa').length,
       alertasCriticas: alertasCriticasRadar(informe),
       capitalLiberable: capitalRadar(informe),
       costesBloqueantes: (informe.metricas?.sinCoste || 0) + (informe.metricas?.margenBajo || 0),
       isDemoAgregado: esExcluidoDeAgregado(informe.restaurante),
-    })),
-    { limite: 5 },
-  )
+    }
+    const propios = (contactos || []).filter(c => String(c.restaurante_id) === String(informe.restaurante.id))
+    return construirSenalesDeContacto(base, propios)
+  })
+  const tareasPrincipales = seleccionarTareasMiDia(contextosMiDia, { limite: 5 })
+  const tareasContacto = tareasMiDiaDesdeContactos(contextosMiDia)
+  // Fusionar sin duplicar restaurante y respetar máximo 5.
+  const yaIncluidos = new Set(tareasPrincipales.map(t => t.restaurante.id))
+  const tareasMiDia = [
+    ...tareasPrincipales,
+    ...tareasContacto.filter(t => !yaIncluidos.has(t.restaurante.id)),
+  ].slice(0, 5)
 
   const alta = informes.filter(i => i.prioridad === 'Alta').length
   const media = informes.filter(i => i.prioridad === 'Media').length
@@ -625,6 +657,29 @@ export default function RadarConsultoria() {
             </div>
             <b>{bloqueadosActivacion} necesitan acompañamiento</b>
           </section>
+
+          {/* Seguimiento de propuestas (fase K bloque 2). Solo cifras
+              agregadas sobre restaurantes reales (no demo). */}
+          {(() => {
+            const idsDemo = new Set(informes.filter(i => esExcluidoDeAgregado(i.restaurante)).map(i => String(i.restaurante.id)))
+            const agg = agregarSeguimiento(seguimientos || [], idsDemo)
+            return (
+              <section className="radar-propuestas-seguimiento">
+                <div>
+                  <span>Propuestas</span>
+                  <strong>{agg.porEstado.propuesta + agg.porEstado.enviada + agg.porEstado.aceptada} abiertas</strong>
+                  <small>
+                    {agg.porEstado.enviada} enviadas · {agg.porEstado.aceptada} aceptadas · {agg.porEstado.implantada} implantadas
+                  </small>
+                </div>
+                <div>
+                  <span>€ en juego</span>
+                  <strong>{eur(agg.estimado)}</strong>
+                  <small>{agg.capturado > 0 ? `${eur(agg.capturado)} capturados` : 'Sin cifras capturadas aún'}</small>
+                </div>
+              </section>
+            )
+          })()}
 
           {/* Defensa económica: tarjeta ligera si todos están sin foto, panel completo si no */}
           {(() => {
@@ -786,7 +841,17 @@ export default function RadarConsultoria() {
                 <div className="radar-next">
                   <span>Siguiente acción</span>
                   <strong>{activacionRadar(informe).nivel < 4 ? activacionRadar(informe).accion : informe.siguienteMovimiento}</strong>
-                  <small>Último contacto: hace {Math.max(1, informe.propuestasAbiertas.length + informe.incidenciasStock.length)} días</small>
+                  <small>
+                    {(() => {
+                      const propios = (contactos || []).filter(c => String(c.restaurante_id) === String(informe.restaurante.id))
+                      if (propios.length === 0) return 'Sin contactos registrados'
+                      const d = diasDesdeUltimoContacto(propios)
+                      if (d == null) return 'Sin contactos registrados'
+                      if (d === 0) return 'Último contacto: hoy'
+                      if (d === 1) return 'Último contacto: ayer'
+                      return `Último contacto: hace ${d} días`
+                    })()}
+                  </small>
                 </div>
                 <div className="radar-cta">Ver detalles</div>
                 </Link>

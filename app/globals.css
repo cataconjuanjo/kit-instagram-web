@@ -18280,3 +18280,267 @@ a.supplier-btn-primary {
 .consultant-plan.is-historic em {
   color: var(--ink-muted, #777);
 }
+
+/* FASE K — Bloque 1: registro de contactos en la pestaña Resumen */
+.ws-contactos-block {
+  margin-top: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--line, rgba(0,0,0,0.1));
+  border-radius: 12px;
+  background: #fff;
+}
+.ws-contactos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ws-contactos-head small { color: var(--ink-muted, #666); font-size: 0.82rem; }
+.ws-contactos-empty { color: var(--ink-muted, #666); margin: 0; font-size: 0.88rem; }
+.ws-contactos-list { list-style: none; padding: 0; margin: 0; }
+.ws-contactos-list li {
+  padding: 8px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.ws-contactos-list li:first-child { border-top: 0; }
+.ws-contactos-list li div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.86rem;
+}
+.ws-contactos-list li strong { text-transform: capitalize; }
+.ws-contactos-list li em { color: var(--ink-muted, #666); font-style: italic; }
+.ws-contactos-list li p { margin: 2px 0 0; color: var(--ink, #222); font-size: 0.9rem; }
+.ws-contactos-list-actions { text-align: right; }
+
+/* FASE K — Bloque 1: modal de registrar contacto */
+.admin-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.admin-modal-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  width: min(520px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+.ws-form-shortcuts {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ws-form-shortcuts button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(0,0,0,0.12));
+  background: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.ws-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin-top: 12px;
+}
+
+/* FASE K-fix: modal de registrar contacto con labels arriba y campos a
+   ancho completo (en lugar de grid). Atajos en línea bajo el date. */
+.ws-contacto-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ws-contacto-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ws-contacto-field label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink, #222);
+}
+.ws-contacto-field select,
+.ws-contacto-field textarea,
+.ws-contacto-field input[type="date"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.14));
+  border-radius: 6px;
+  font-size: 0.92rem;
+  background: #fff;
+  box-sizing: border-box;
+}
+.ws-contacto-field textarea { resize: vertical; min-height: 96px; }
+.ws-contacto-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ws-contacto-shortcuts button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.14));
+  background: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.ws-contacto-shortcuts button:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.ws-contacto-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* FASE K — Bloque 2: estado de seguimiento en propuestas */
+.ws-seguimiento { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(0, 0, 0, 0.1); }
+.ws-seguimiento-pasos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ws-seguimiento-paso {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink-muted, #666);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+.ws-seguimiento-paso.is-ok { background: #e6f4ea; color: #1b6b3a; }
+.ws-seguimiento-paso.is-activo { background: #d7edff; color: #1b4d8f; }
+.ws-seguimiento-paso.is-rechazada { background: #fdeaea; color: #933; }
+.ws-seguimiento-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ws-seguimiento-implantar {
+  display: inline-flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.ws-seguimiento-implantar label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+}
+.ws-seguimiento-implantar input {
+  width: 110px;
+  padding: 4px 8px;
+}
+
+/* FASE K — Bloque 3: informe de cliente de 1 página A4. En pantalla
+   solo se ve cuando modoInformeCliente activo; al imprimir, se fuerza
+   visible y se ocultan todas las demás secciones. */
+.ws-informe-cliente {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: #f7f3ee;
+  overflow: auto;
+  padding: 32px;
+  display: none;
+}
+.ws-informe-cliente.is-visible { display: block; }
+.informe-cliente-page {
+  margin: 0 auto;
+  width: min(760px, 100%);
+  min-height: 1035px; /* ~A4 */
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 48px 56px;
+  color: #222;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.informe-cliente-head h1 { margin: 0 0 4px; font-size: 1.4rem; }
+.informe-cliente-head p { margin: 0 0 28px; color: #666; font-size: 0.86rem; }
+.informe-cliente-cifra { margin: 20px 0 24px; padding: 18px 20px; background: #fafafa; border-left: 3px solid #333; }
+.informe-cliente-cifra strong { display: block; font-size: 2.1rem; font-weight: 700; margin-bottom: 6px; }
+.informe-cliente-cifra p { margin: 0; font-size: 0.96rem; color: #333; }
+.informe-cliente-prioridades h2,
+.informe-cliente-seguimiento h2,
+.informe-cliente-proximo h2 { font-size: 0.86rem; letter-spacing: 0.06em; text-transform: uppercase; margin: 22px 0 8px; color: #555; }
+.informe-cliente-prioridades ol { padding-left: 20px; margin: 0; }
+.informe-cliente-prioridades li { margin-bottom: 10px; }
+.informe-cliente-prioridades li strong { display: block; margin-bottom: 2px; }
+.informe-cliente-prioridades li p { margin: 0; color: #444; font-size: 0.92rem; }
+.informe-cliente-seguimiento p,
+.informe-cliente-proximo p { margin: 0; font-size: 0.92rem; }
+.informe-cliente-foot { margin-top: 28px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 0.78rem; color: #888; }
+
+@media print {
+  .ws-informe-cliente.is-visible {
+    display: block !important;
+    position: static;
+    padding: 0;
+    background: #fff;
+  }
+  .ws-informe-cliente.is-visible ~ * ,
+  body > :not(.ws-informe-cliente):not(script):not(style),
+  .admin-main > :not(.ws-informe-cliente),
+  .admin-main .ws-section,
+  .ws-tabs,
+  .ws-header-actions,
+  .ws-anchors { display: none !important; }
+  .informe-cliente-page { box-shadow: none; padding: 0; }
+}
+
+/* FASE K — Bloque 2: panel compacto de seguimiento de propuestas en Radar.
+   Mismo estilo de tarjeta y márgenes laterales que .activation-funnel-summary
+   para no aparecer a pantalla completa. */
+.radar-propuestas-seguimiento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  padding: 16px 20px;
+  margin: 0 32px 16px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 10px;
+  background: #fffaf3;
+}
+.radar-propuestas-seguimiento > div { min-width: 0; }
+.radar-propuestas-seguimiento span {
+  display: block;
+  color: var(--muted, #666);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.radar-propuestas-seguimiento strong {
+  display: block;
+  color: var(--ink, #222);
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  line-height: 1.1;
+}
+.radar-propuestas-seguimiento small {
+  color: var(--muted, #666);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+@media (max-width: 860px) {
+  .radar-propuestas-seguimiento { margin: 0 18px 14px; }
+}

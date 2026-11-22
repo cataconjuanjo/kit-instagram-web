@@ -1,0 +1,207 @@
+/**
+ * FASE K — Bloque 3: tests del informe de cliente de 1 página.
+ *
+ * Garantiza:
+ *  - No contiene jerga interna (score, snapshot, fase N, /dashboard/).
+ *  - Las 3 prioridades vienen limpiadas por limpiarRutasTecnicas.
+ *  - La cifra principal se formatea en EUR.
+ *  - El seguimiento se renderiza SOLO si hay datos.
+ */
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
+import { construirInformeCliente, auditarInformeCliente } from '../app/lib/informeCliente.js'
+
+describe('construirInformeCliente', () => {
+  it('monta la estructura mínima con la cifra principal', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'Casa Marisma', ciudad: 'Málaga' },
+      oportunidadEuros: 2850,
+      prioridades: [
+        { titulo: 'Poca estrategia por copa', detalle: 'Ve a /dashboard/vinos?filtro=pendientes' },
+        { titulo: 'Margen bajo en 12 referencias', detalle: 'Revisar compras' },
+      ],
+    })
+    assert.equal(r.titulo, 'Cata con Juanjo · Informe de carta')
+    assert.equal(r.restaurante.nombre, 'Casa Marisma')
+    assert.ok(r.cifraPrincipal.valor && r.cifraPrincipal.valor.includes('€'))
+    assert.ok(r.cifraPrincipal.frase.length > 0)
+    assert.equal(r.prioridades.length, 2)
+  })
+
+  it('las prioridades son como máximo 3', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      prioridades: Array.from({ length: 10 }, (_, i) => ({ titulo: `T${i}` })),
+    })
+    assert.equal(r.prioridades.length, 3)
+  })
+
+  it('oportunidad cero o nula se presenta con frase alternativa', () => {
+    const r = construirInformeCliente({ restaurante: { nombre: 'X' }, oportunidadEuros: 0 })
+    assert.equal(r.cifraPrincipal.valor, null)
+    assert.ok(r.cifraPrincipal.frase.includes('pendiente de cuantificar'))
+  })
+
+  it('el seguimiento sólo se incluye si viene', () => {
+    const r1 = construirInformeCliente({ restaurante: { nombre: 'X' } })
+    assert.equal(r1.seguimiento, null)
+    const r2 = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      seguimiento: { porEstado: { enviada: 1, aceptada: 2, implantada: 1, propuesta: 0, rechazada: 0 }, capturado: 450 },
+    })
+    assert.equal(r2.seguimiento.enviadas, 4) // enviada + aceptada + implantada
+    assert.equal(r2.seguimiento.aceptadas, 3)
+    assert.equal(r2.seguimiento.implantadas, 1)
+    assert.ok(r2.seguimiento.capturado && r2.seguimiento.capturado.includes('€'))
+  })
+})
+
+describe('auditarInformeCliente — SIN jerga interna', () => {
+  it('no permite "score", "snapshot", "fase N", "/dashboard/" ni "motor persistente"', () => {
+    // Un informe limpio pasa.
+    const limpio = construirInformeCliente({
+      restaurante: { nombre: 'Casa Marisma' },
+      oportunidadEuros: 2850,
+      prioridades: [{ titulo: 'Carta corta', detalle: 'Añadir 5 referencias' }],
+    })
+    assert.equal(auditarInformeCliente(limpio).limpio, true)
+
+    // Si se cuela jerga por error, auditar lo detecta.
+    const sucio = {
+      cifraPrincipal: { frase: 'score 72' },
+      prioridades: [{ titulo: 'Ir a /dashboard/vinos' }],
+    }
+    const r = auditarInformeCliente(sucio)
+    assert.equal(r.limpio, false)
+    assert.ok(r.banderas.length >= 2)
+  })
+
+  it('limpiarTextoCliente elimina las rutas técnicas de .accion/.detalle', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      prioridades: [{ titulo: 'Entra en /dashboard/vinos?filtro=pendientes', detalle: 'Ver /dashboard/platos?filtro=X' }],
+    })
+    const txt = JSON.stringify(r)
+    assert.ok(!/\/dashboard\//i.test(txt), 'El informe no debe contener /dashboard/')
+  })
+})
+
+describe('Filtrado de señales INTERNAS (fase K-fix)', () => {
+  it('"Cliente caliente con propuestas abiertas" NO aparece en las prioridades del cliente', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'Casa Marisma' },
+      oportunidadEuros: 2850,
+      prioridades: [
+        { titulo: 'Cliente caliente con propuestas abiertas', detalle: '2 propuestas marcadas como interesan', servicio: 'Seguimiento comercial' },
+        { titulo: 'Vinos sin coste de compra', detalle: '18 referencias sin coste', euros: 1200 },
+        { titulo: 'Margen bajo en 7 referencias', detalle: 'bajan del 55%' },
+      ],
+    })
+    assert.equal(r.prioridades.length, 2)
+    const txt = JSON.stringify(r)
+    assert.ok(!/cliente caliente/i.test(txt))
+    assert.ok(!/propuestas? abiertas?/i.test(txt))
+  })
+
+  it('"Propuestas acumuladas sin cierre" tampoco entra', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      prioridades: [
+        { titulo: 'Propuestas acumuladas sin cierre', detalle: '4 propuestas abiertas', servicio: 'Seguimiento de propuestas' },
+        { titulo: 'Vinos sin precio', detalle: '3 referencias sin precio' },
+      ],
+    })
+    assert.equal(r.prioridades.length, 1)
+    assert.equal(r.prioridades[0].titulo, 'Vinos de la carta sin precio')
+  })
+
+  it('"Sin contacto en más de 14 días" tampoco entra', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      prioridades: [
+        { titulo: 'Sin contacto en más de 14 días', detalle: 'Últimos 14 días sin registro' },
+        { titulo: 'Poca estrategia por copa', detalle: '3 referencias por copa sobre 40' },
+      ],
+    })
+    assert.equal(r.prioridades.length, 1)
+    assert.ok(/copa/i.test(r.prioridades[0].titulo))
+  })
+
+  it('Menos de 3 prioridades tras filtrar: muestra las que haya', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      prioridades: [
+        { titulo: 'Cliente caliente con propuestas abiertas' },
+        { titulo: 'Propuestas acumuladas sin cierre' },
+        { titulo: 'Sin contacto en más de 14 días' },
+        { titulo: 'Vinos sin coste de compra registrado' },
+      ],
+    })
+    assert.equal(r.prioridades.length, 1)
+  })
+
+  it('Títulos crudos del motor se reescriben en lenguaje de dueño', () => {
+    const casos = [
+      { in: 'Vinos sin precio', out: 'Vinos de la carta sin precio' },
+      { in: 'No se está midiendo rentabilidad real', out: 'Vinos sin coste de compra registrado' },
+      { in: 'Margen bajo en referencias con datos', out: 'Vinos con margen bajo' },
+      { in: 'Poca estrategia por copa', out: 'Pocos vinos ofrecidos por copa' },
+      { in: 'Vino local débil', out: 'Poca presencia de bodegas locales' },
+      { in: 'Postres sin vino de cierre', out: 'Falta vino de cierre para postres' },
+      { in: 'Mapa de precios descompensado', out: 'Mapa de precios desequilibrado' },
+    ]
+    for (const c of casos) {
+      const r = construirInformeCliente({
+        restaurante: { nombre: 'X' },
+        prioridades: [{ titulo: c.in, detalle: 'detalle' }],
+      })
+      assert.equal(r.prioridades[0]?.titulo, c.out, `Esperaba "${c.out}" para "${c.in}"`)
+    }
+  })
+
+  it('El auditor también detecta "cliente caliente", "propuestas abiertas" y "alerta"', () => {
+    const malo = {
+      cifraPrincipal: { frase: 'ver alertas abiertas' },
+      prioridades: [{ titulo: 'Cliente caliente con propuestas abiertas' }],
+    }
+    const r = auditarInformeCliente(malo)
+    assert.equal(r.limpio, false)
+    assert.ok(r.banderas.some(b => /cliente caliente/.test(b)))
+    assert.ok(r.banderas.some(b => /propuestas/.test(b)))
+    assert.ok(r.banderas.some(b => /alerta/.test(b)))
+  })
+
+  it('Informe real de Casa Marisma (ejemplo del preview) queda limpio', () => {
+    // Simulación: le llegan las 3 alertas que aparecían en el preview
+    // (la primera era "Cliente caliente ..."). El informe final no
+    // contiene ninguna de esas cadenas.
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'Casa Marisma', ciudad: 'Málaga' },
+      oportunidadEuros: 2850,
+      prioridades: [
+        { titulo: 'Cliente caliente con propuestas abiertas', detalle: '2 propuestas marcadas como interesan.', servicio: 'Seguimiento comercial' },
+        { titulo: 'Poca estrategia por copa', detalle: '3 referencias por copa sobre 22.', servicio: 'Programa de vinos por copa' },
+        { titulo: 'No se mide rentabilidad real', detalle: '15 vinos sin coste de compra.', servicio: 'Auditoría de margen' },
+      ],
+    })
+    const audit = auditarInformeCliente(r)
+    assert.equal(audit.limpio, true, `Banderas inesperadas: ${audit.banderas.join('; ')}`)
+    assert.equal(r.prioridades.length, 2)
+    assert.ok(/copa/i.test(r.prioridades[0].titulo))
+    assert.ok(/coste/i.test(r.prioridades[1].titulo))
+  })
+})
+
+describe('Degradación del informe cuando faltan datos', () => {
+  it('sin oportunidad y sin prioridades, sigue produciendo objeto válido', () => {
+    const r = construirInformeCliente({ restaurante: { nombre: 'X' } })
+    assert.equal(r.prioridades.length, 0)
+    assert.equal(typeof r.titulo, 'string')
+    assert.equal(typeof r.fecha, 'string')
+  })
+
+  it('sin restaurante usa fallback "Restaurante"', () => {
+    const r = construirInformeCliente({})
+    assert.equal(r.restaurante.nombre, 'Restaurante')
+  })
+})
