@@ -58,6 +58,7 @@ export default function AdminAccionesPage() {
   const [loading, setLoading] = useState(true)
   const [accionando, setAccionando] = useState('')
   const [mensaje, setMensaje] = useState('')
+  const [gruposAbiertos, setGruposAbiertos] = useState({})
 
   const cargarAcciones = useCallback(async () => {
     setLoading(true)
@@ -136,6 +137,24 @@ export default function AdminAccionesPage() {
     rapidas: acciones.filter(item => item.fase === 'accion_rapida').length,
   }), [acciones])
 
+  // Agrupar las acciones visibles por restaurante, manteniendo el orden
+  // de prioridad original. El primer grupo se abre por defecto.
+  const gruposPorRestaurante = useMemo(() => {
+    const grupos = new Map()
+    for (const accion of visibles) {
+      const key = accion.restaurante_id || 'sin'
+      if (!grupos.has(key)) {
+        grupos.set(key, { restaurante_id: key, nombre: accion.restaurante?.nombre || 'Sin restaurante', items: [] })
+      }
+      grupos.get(key).items.push(accion)
+    }
+    return Array.from(grupos.values())
+  }, [visibles])
+
+  function toggleGrupo(id) {
+    setGruposAbiertos(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
   if (loading && !acciones.length) return <p className="admin-loading">Cargando acciones</p>
 
   return (
@@ -189,33 +208,50 @@ export default function AdminAccionesPage() {
         {mensaje && <p className="admin-alert">{mensaje}</p>}
 
         <div className="alerts-list">
-          {visibles.map(accion => {
-            const key = `${accion.fuente}-${accion.id}`
+          {gruposPorRestaurante.map((grupo, grupoIdx) => {
+            const abierto = gruposAbiertos[grupo.restaurante_id] ?? (grupoIdx === 0)
+            const total = grupo.items.length
             return (
-              <article className={`alert-work-card is-${accion.prioridad === 'alta' ? 'critica' : accion.prioridad === 'media' ? 'aviso' : 'info'}`} key={key}>
-                <div className="alert-work-main">
-                  <div className="alert-work-head">
-                    <span>{accion.prioridad}</span>
-                    <strong>{accion.titulo}</strong>
-                    <em>{accion.estado.replace('_', ' ')}</em>
-                  </div>
-                  {accion.detalle && <p>{accion.detalle}</p>}
-                  <small>Accion: {accion.accion}</small>
-                  <div className="alert-work-meta">
-                    <Link href={`/admin/restaurante/${accion.restaurante_id}`}>{accion.restaurante?.nombre || 'Restaurante'}</Link>
-                    <span>{etiquetaFase(accion.fase)}</span>
-                    <span>impacto {accion.impacto}</span>
-                    <span>esfuerzo {accion.esfuerzo}</span>
-                    <span>{haceDias(accion.created_at)}</span>
-                    <span>{accion.fuente}</span>
-                  </div>
-                </div>
-                <div className="alert-work-actions">
-                  <button className="is-primary" disabled={accionando === key} onClick={() => actualizarAccion(accion, 'en_progreso')}>En progreso</button>
-                  <button disabled={accionando === key} onClick={() => actualizarAccion(accion, 'hecha')}>Hecha</button>
-                  <button className="is-ghost" disabled={accionando === key} onClick={() => actualizarAccion(accion, 'descartada')}>Descartar</button>
-                </div>
-              </article>
+              <div key={grupo.restaurante_id} className="actions-group">
+                <button
+                  type="button"
+                  className="actions-group-head"
+                  onClick={() => toggleGrupo(grupo.restaurante_id)}
+                  aria-expanded={abierto}
+                >
+                  <strong>{grupo.nombre}</strong>
+                  <span className="actions-group-count">{total} {total === 1 ? 'acción' : 'acciones'}</span>
+                  <span className="actions-group-chevron" aria-hidden="true">{abierto ? '▾' : '▸'}</span>
+                </button>
+                {abierto && grupo.items.map(accion => {
+                  const key = `${accion.fuente}-${accion.id}`
+                  return (
+                    <article className={`alert-work-card is-${accion.prioridad === 'alta' ? 'critica' : accion.prioridad === 'media' ? 'aviso' : 'info'}`} key={key}>
+                      <div className="alert-work-main">
+                        <div className="alert-work-head">
+                          <span>{accion.prioridad}</span>
+                          <strong>{accion.titulo}</strong>
+                          <em>{accion.estado.replace('_', ' ')}</em>
+                        </div>
+                        {accion.detalle && <p>{accion.detalle}</p>}
+                        <small>Acción: {accion.accion}</small>
+                        <div className="alert-work-meta">
+                          <Link href={`/admin/restaurante/${accion.restaurante_id}`}>{accion.restaurante?.nombre || 'Restaurante'}</Link>
+                          <span>{etiquetaFase(accion.fase)}</span>
+                          <span>impacto {accion.impacto}</span>
+                          <span>esfuerzo {accion.esfuerzo}</span>
+                          <span>{haceDias(accion.created_at)}</span>
+                        </div>
+                      </div>
+                      <div className="alert-work-actions">
+                        <button className="is-primary" disabled={accionando === key} onClick={() => actualizarAccion(accion, 'en_progreso')}>En progreso</button>
+                        <button disabled={accionando === key} onClick={() => actualizarAccion(accion, 'hecha')}>Hecha</button>
+                        <button className="is-ghost" disabled={accionando === key} onClick={() => actualizarAccion(accion, 'descartada')}>Descartar</button>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
             )
           })}
           {!visibles.length && <div className="ws-empty-block">No hay acciones con estos filtros.</div>}

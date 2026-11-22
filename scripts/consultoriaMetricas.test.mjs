@@ -252,6 +252,15 @@ describe('deduplicarAcciones', () => {
     assert.equal(res.length, 3)
     assert.equal(res[0].titulo, 'A') // mantiene el primero
   })
+  it('con porTitulo=true, caza duplicados por restaurante+titulo aunque origen difiera', () => {
+    const acciones = [
+      { restaurante_id: 'araboka', titulo: 'Costes pendientes', origen: 'alert_engine' },
+      { restaurante_id: 'araboka', titulo: 'Costes pendientes', origen: 'modo_consultor' },
+      { restaurante_id: 'araboka', titulo: 'Otra cosa', origen: 'alert_engine' },
+    ]
+    const res = deduplicarAcciones(acciones, { porTitulo: true })
+    assert.equal(res.length, 2)
+  })
   it('acepta array vacío', () => {
     assert.deepEqual(deduplicarAcciones([]), [])
   })

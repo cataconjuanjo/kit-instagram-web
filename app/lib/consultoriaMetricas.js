@@ -244,17 +244,24 @@ export function limpiarRutasTecnicas(texto) {
 }
 
 // ---- Deduplicación de acciones -------------------------------------------
-// Dos acciones son duplicadas si coinciden restaurante_id + tipo + origen.
-// Devuelve el array deduplicado manteniendo la primera aparición.
-export function deduplicarAcciones(acciones = []) {
+// Dos acciones son duplicadas si coinciden la clave construida.
+// Por defecto usamos restaurante_id + tipo + origen (campos del backend
+// original). Admite además 'titulo' normalizado como criterio adicional
+// — útil cuando una alerta auto-generada y una acción manual tienen el
+// mismo título (p.ej. 'Costes pendientes' en Araboka).
+function _normalizarClave(txt) {
+  return String(txt || '').trim().toLowerCase()
+}
+
+export function deduplicarAcciones(acciones = [], { porTitulo = false } = {}) {
   const vistas = new Set()
   const salida = []
   for (const accion of acciones) {
     if (!accion) continue
-    const restaurante = String(accion.restaurante_id || accion.restauranteId || '')
-    const tipo = String(accion.tipo || '')
-    const origen = String(accion.origen || '')
-    const clave = `${restaurante}::${tipo}::${origen}`
+    const restaurante = _normalizarClave(accion.restaurante_id || accion.restauranteId)
+    const clave = porTitulo
+      ? `${restaurante}::titulo::${_normalizarClave(accion.titulo)}`
+      : `${restaurante}::${_normalizarClave(accion.tipo)}::${_normalizarClave(accion.origen)}`
     if (vistas.has(clave)) continue
     vistas.add(clave)
     salida.push(accion)

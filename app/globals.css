@@ -18018,3 +18018,45 @@ a.supplier-btn-primary {
   white-space: nowrap;
 }
 .radar-mi-dia-empty { color: var(--ink-muted, #666); font-size: 0.88rem; margin: 0; }
+
+.radar-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.automation-health-compact {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0;
+}
+
+.actions-group { margin-bottom: 14px; }
+.actions-group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--line, rgba(0,0,0,0.12));
+  border-radius: 10px;
+  background: #fafafa;
+  color: var(--ink, #1c1c1c);
+  font-size: 0.92rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+.actions-group-head:hover { background: #f1f1f1; }
+.actions-group-count {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--ink-muted, #666);
+  font-size: 0.82rem;
+}
+.actions-group-chevron {
+  font-size: 0.9rem;
+  color: var(--ink-muted, #666);
+}
+.actions-group .alert-work-card { margin-top: 8px; }
