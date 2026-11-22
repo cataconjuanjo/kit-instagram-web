@@ -24,6 +24,9 @@ import {
 } from '../../../lib/consultoriaMetricas'
 import { analizarRestaurante as analizar } from '../../../lib/analizarRestaurante'
 import { TABS_VALIDOS, TAB_POR_DEFECTO, resolverTab } from '../../../lib/fichaTabs'
+import { diasDesdeUltimoContacto } from '../../../lib/consultorContactos'
+import { indiceSeguimiento, puedeTransicionar, PASOS_UI, indiceDePaso, agregarSeguimiento } from '../../../lib/propuestasSeguimiento'
+import { construirInformeCliente } from '../../../lib/informeCliente'
 import OpenCartaPruebaButton from '../../../dashboard/OpenCartaPruebaButton'
 
 
@@ -211,6 +214,89 @@ async function tokenAdmin() {
   return data?.session?.access_token
 }
 
+function ImplantarForm({ seguimiento, onImplantar }) {
+  const [euros, setEuros] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  async function enviar(e) {
+    e.preventDefault()
+    setEnviando(true)
+    await onImplantar(euros === '' ? null : Number(euros))
+    setEnviando(false)
+    setEuros('')
+  }
+  return (
+    <form onSubmit={enviar} className="ws-seguimiento-implantar">
+      <label>
+        € capturados
+        <input type="number" step="0.01" min="0" value={euros} onChange={e => setEuros(e.target.value)} placeholder="opcional" />
+      </label>
+      <button type="submit" disabled={enviando}>{enviando ? 'Guardando…' : 'Marcar implantada'}</button>
+    </form>
+  )
+}
+
+function RegistrarContactoModal({ onSubmit, onClose }) {
+  const [canal, setCanal] = useState('llamada')
+  const [resumen, setResumen] = useState('')
+  const [proximo, setProximo] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+  function atajoDias(dias) {
+    const d = new Date()
+    d.setDate(d.getDate() + dias)
+    setProximo(d.toISOString().slice(0, 10))
+  }
+  async function enviar(e) {
+    e.preventDefault()
+    if (!resumen.trim()) { setError('Añade un breve resumen'); return }
+    setGuardando(true); setError('')
+    const r = await onSubmit({ canal, resumen: resumen.trim(), proximo_contacto: proximo || null })
+    setGuardando(false)
+    if (!r.ok) setError(r.error || 'No se pudo registrar.')
+  }
+  return (
+    <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Registrar contacto">
+      <div className="admin-modal-card">
+        <h3>Registrar contacto</h3>
+        <form onSubmit={enviar} className="ws-form-grid">
+          <label>
+            Canal
+            <select value={canal} onChange={e => setCanal(e.target.value)}>
+              <option value="llamada">Llamada</option>
+              <option value="visita">Visita</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="email">Email</option>
+              <option value="otro">Otro</option>
+            </select>
+          </label>
+          <label className="ws-form-full">
+            Qué se habló
+            <textarea maxLength={1000} rows={4} value={resumen} onChange={e => setResumen(e.target.value)} placeholder="Resumen del contacto…" />
+          </label>
+          <div className="ws-form-full">
+            <label>
+              Próximo contacto (opcional)
+              <input type="date" value={proximo} onChange={e => setProximo(e.target.value)} />
+            </label>
+            <div className="ws-form-shortcuts">
+              <button type="button" onClick={() => atajoDias(3)}>+3 días</button>
+              <button type="button" onClick={() => atajoDias(7)}>+1 semana</button>
+              <button type="button" onClick={() => atajoDias(14)}>+2 semanas</button>
+            </div>
+          </div>
+          {error && <p className="admin-alert admin-alert-error">{error}</p>}
+          <div className="ws-form-actions">
+            <button type="button" className="ws-btn-secondary" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="ws-btn-primary" disabled={guardando}>
+              {guardando ? 'Guardando…' : 'Registrar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function RestauranteWorkspace() {
   const params = useParams()
   const id = params?.id
@@ -233,6 +319,11 @@ export default function RestauranteWorkspace() {
   const [platos, setPlatos] = useState([])
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
+  const [contactos, setContactos] = useState([])
+  const [contactosPendienteMigracion, setContactosPendienteMigracion] = useState(false)
+  const [contactoModalOpen, setContactoModalOpen] = useState(false)
+  const [seguimientos, setSeguimientos] = useState([])
+  const [seguimientoPendienteMigracion, setSeguimientoPendienteMigracion] = useState(false)
   const [proveedoresCatalogo, setProveedoresCatalogo] = useState([])
   const [vinosCatalogo, setVinosCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
@@ -281,6 +372,78 @@ export default function RestauranteWorkspace() {
 
   const RESTAURANTE_PREFIX = '[RESTAURANTE] '
   const esSeleccionJuanjo = item => !String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
+
+  const cargarContactos = useCallback(async (tokenRecibido) => {
+    if (!id) return
+    try {
+      const token = tokenRecibido || await tokenAdmin()
+      const res = await fetch(`/api/admin/contactos?restaurante_id=${id}`, {
+        headers: { Authorization: `Bearer ${token || ''}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return
+      setContactos(Array.isArray(data.items) ? data.items : [])
+      setContactosPendienteMigracion(!!data.pendiente_migracion)
+    } catch { /* degrada en silencio */ }
+  }, [id])
+
+  const cargarSeguimientos = useCallback(async (tokenRecibido) => {
+    if (!id) return
+    try {
+      const token = tokenRecibido || await tokenAdmin()
+      const res = await fetch(`/api/admin/propuestas-seguimiento?restaurante_id=${id}`, {
+        headers: { Authorization: `Bearer ${token || ''}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return
+      setSeguimientos(Array.isArray(data.items) ? data.items : [])
+      setSeguimientoPendienteMigracion(!!data.pendiente_migracion)
+    } catch { /* degrada */ }
+  }, [id])
+
+  async function registrarContacto({ canal, resumen, proximo_contacto }) {
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/contactos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ restaurante_id: id, canal, resumen, proximo_contacto: proximo_contacto || null }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { ok: false, error: data.error || 'No se pudo registrar.' }
+    setContactos(prev => [data.contacto, ...prev])
+    return { ok: true }
+  }
+
+  async function borrarUltimoContacto() {
+    const ultimo = contactos[0]
+    if (!ultimo) return
+    const token = await tokenAdmin()
+    const res = await fetch(`/api/admin/contactos?id=${ultimo.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.ok) setContactos(prev => prev.slice(1))
+  }
+
+  async function guardarSeguimiento(propuestaId, parche) {
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/propuestas-seguimiento', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        propuesta_id: propuestaId,
+        restaurante_id: id,
+        ...parche,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { ok: false, error: data.error || 'No se pudo guardar.' }
+    setSeguimientos(prev => {
+      const sinEste = prev.filter(s => String(s.propuesta_id) !== String(propuestaId))
+      return [data.item, ...sinEste]
+    })
+    return { ok: true }
+  }
 
   const cargarConsultoriaFase1 = useCallback(async (tokenRecibido) => {
     if (!id) return
@@ -333,6 +496,8 @@ export default function RestauranteWorkspace() {
       setSeleccion((selData || []).filter(item => !String(item.nota_personal || '').startsWith('[RESTAURANTE] ')))
       setLoading(false)
       cargarConsultoriaFase1(token)
+      cargarContactos(token)
+      cargarSeguimientos(token)
       const politicaRes = await fetch(`/api/politica-precio?restaurante_id=${id}`)
       if (politicaRes.ok) {
         const politicaData = await politicaRes.json().catch(() => ({}))
@@ -837,6 +1002,18 @@ export default function RestauranteWorkspace() {
     })
   }
 
+  const [modoInformeCliente, setModoInformeCliente] = useState(false)
+  function imprimirInformeCliente() {
+    setModoInformeCliente(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print()
+        // Al volver del diálogo, salir del modo cliente.
+        setTimeout(() => setModoInformeCliente(false), 500)
+      })
+    })
+  }
+
   function scrollTo(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -894,6 +1071,7 @@ export default function RestauranteWorkspace() {
               <button onClick={copiarResumen} aria-label="Copiar resumen del restaurante">Copiar datos</button>
               <button onClick={gestionar}>Abrir dashboard</button>
               <button onClick={() => imprimirInforme()} aria-label="Imprimir esta página">Imprimir página</button>
+              <button onClick={() => imprimirInformeCliente()} aria-label="Informe para el cliente (1 página A4)">Informe para el cliente</button>
               <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Descargar informe</a>
               <OpenCartaPruebaButton restauranteId={restaurante.id}>Probar carta</OpenCartaPruebaButton>
             </div>
@@ -976,8 +1154,78 @@ export default function RestauranteWorkspace() {
                 <div><span>Maridajes 30d</span><strong>{metricas.sommelier30}</strong></div>
                 <div><span>Bodega a coste</span><strong>{eur(metricas.valorCoste)}</strong></div>
                 <div><span>Propuestas abiertas</span><strong>{propuestasAbiertas.length}</strong></div>
+                <div>
+                  <span>Último contacto</span>
+                  <strong>
+                    {(() => {
+                      const d = diasDesdeUltimoContacto(contactos)
+                      if (contactosPendienteMigracion) return <em style={{ fontWeight: 400, color: 'var(--ink-muted, #666)' }}>Pendiente de activar</em>
+                      if (d == null) return <em style={{ fontWeight: 400, color: 'var(--ink-muted, #666)' }}>Sin contactos</em>
+                      if (d === 0) return 'hoy'
+                      if (d === 1) return 'ayer'
+                      return `hace ${d} días`
+                    })()}
+                  </strong>
+                </div>
               </div>
             </div>
+
+            {/* Registro de contactos (FASE K) */}
+            <div className="ws-contactos-block">
+              <div className="ws-contactos-head">
+                <div>
+                  <p className="admin-kicker">Registro de contactos</p>
+                  <small>{contactos.length} contactos registrados</small>
+                </div>
+                <button
+                  type="button"
+                  className="ws-btn-primary"
+                  onClick={() => setContactoModalOpen(true)}
+                  disabled={contactosPendienteMigracion}
+                  title={contactosPendienteMigracion ? 'La tabla aún no está aplicada en Supabase.' : ''}
+                >
+                  Registrar contacto
+                </button>
+              </div>
+              {contactosPendienteMigracion && (
+                <p className="admin-alert">Pendiente de activar en servidor — aplica la migración de fase K para empezar a registrar contactos.</p>
+              )}
+              {!contactosPendienteMigracion && contactos.length === 0 && (
+                <p className="ws-contactos-empty">Aún no hay contactos registrados.</p>
+              )}
+              {!contactosPendienteMigracion && contactos.length > 0 && (
+                <ul className="ws-contactos-list">
+                  {contactos.slice(0, 5).map(c => (
+                    <li key={c.id}>
+                      <div>
+                        <strong>{c.canal}</strong>
+                        <span>{new Date(c.ocurrido_en).toLocaleDateString('es-ES')}</span>
+                        {c.proximo_contacto && <em>Próximo: {new Date(c.proximo_contacto).toLocaleDateString('es-ES')}</em>}
+                      </div>
+                      <p>{limpiarRutasTecnicas(c.resumen)}</p>
+                    </li>
+                  ))}
+                  {contactos.length > 0 && (
+                    <li className="ws-contactos-list-actions">
+                      <button type="button" className="admin-plain-button" onClick={borrarUltimoContacto}>
+                        Borrar último
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+
+            {contactoModalOpen && (
+              <RegistrarContactoModal
+                onSubmit={async (datos) => {
+                  const r = await registrarContacto(datos)
+                  if (r.ok) setContactoModalOpen(false)
+                  return r
+                }}
+                onClose={() => setContactoModalOpen(false)}
+              />
+            )}
             {servicios.length > 0 && (
               <div className="ws-servicios">
                 <span className="ws-servicios-label">Servicios detectados</span>
@@ -1966,36 +2214,82 @@ export default function RestauranteWorkspace() {
               <div className="ws-empty-block">No hay propuestas para este restaurante todavía.</div>
             ) : (
               <div className="ws-propuestas-list">
-                {propuestas.map(p => (
-                  <div key={p.id} className={`ws-propuesta-item ws-propuesta-${p.estado}`}>
-                    <div className="ws-propuesta-info">
-                      <div className="ws-propuesta-badges">
-                        <span className={`ws-estado ws-estado-${p.estado}`}>{p.estado}</span>
-                        <span className="ws-prioridad">{p.prioridad}</span>
+                {seguimientoPendienteMigracion && (
+                  <p className="admin-alert">Seguimiento de propuestas: pendiente de activar en servidor (fase K).</p>
+                )}
+                {(() => {
+                  const idxSeg = indiceSeguimiento(seguimientos)
+                  return propuestas.map(p => {
+                    const seg = idxSeg[String(p.id)] || { estado: 'propuesta' }
+                    const pasoActual = indiceDePaso(seg.estado === 'rechazada' ? 'propuesta' : seg.estado)
+                    return (
+                      <div key={p.id} className={`ws-propuesta-item ws-propuesta-${p.estado}`}>
+                        <div className="ws-propuesta-info">
+                          <div className="ws-propuesta-badges">
+                            <span className={`ws-estado ws-estado-${p.estado}`}>{p.estado}</span>
+                            <span className="ws-prioridad">{p.prioridad}</span>
+                          </div>
+                          <strong>{p.titulo}</strong>
+                          <p>{[p.vino, p.tipo, p.zona].filter(Boolean).join(' · ') || 'Propuesta de consultoría'}</p>
+                          <div className="ws-propuesta-history">
+                            <span>Abierta desde hace {diasDesde(p.created_at) ?? 0} dias</span>
+                            <span>Responsable: Juanjo</span>
+                          </div>
+                          {p.motivo && <p className="ws-propuesta-motivo">{limpiarRutasTecnicas(p.motivo)}</p>}
+                          {(p.coste_estimado || p.precio_recomendado) && (
+                            <small>
+                              {p.coste_estimado ? `Coste: ${p.coste_estimado} EUR` : ''}
+                              {p.precio_recomendado ? ` · PVP rec: ${p.precio_recomendado} EUR` : ''}
+                              {p.margen_objetivo ? ` · Margen: ${p.margen_objetivo}%` : ''}
+                            </small>
+                          )}
+
+                          {!seguimientoPendienteMigracion && (
+                            <div className="ws-seguimiento">
+                              <div className="ws-seguimiento-pasos" role="list" aria-label="Estado comercial">
+                                {PASOS_UI.map((paso, idx) => {
+                                  const alcanzado = idx <= pasoActual && seg.estado !== 'rechazada'
+                                  const esActivo = idx === pasoActual && seg.estado !== 'rechazada'
+                                  return (
+                                    <span key={paso.id} role="listitem" className={`ws-seguimiento-paso${alcanzado ? ' is-ok' : ''}${esActivo ? ' is-activo' : ''}`}>
+                                      {paso.label}
+                                    </span>
+                                  )
+                                })}
+                                {seg.estado === 'rechazada' && <span className="ws-seguimiento-paso is-rechazada">Rechazada</span>}
+                              </div>
+                              <div className="ws-seguimiento-actions">
+                                {seg.estado === 'propuesta' && (
+                                  <button type="button" onClick={() => guardarSeguimiento(p.id, { estado: 'enviada' })}>Marcar enviada</button>
+                                )}
+                                {seg.estado === 'enviada' && (
+                                  <>
+                                    <button type="button" onClick={() => guardarSeguimiento(p.id, { estado: 'aceptada' })}>Marcar aceptada</button>
+                                    <button type="button" className="admin-plain-button" onClick={() => guardarSeguimiento(p.id, { estado: 'rechazada' })}>Rechazar</button>
+                                  </>
+                                )}
+                                {seg.estado === 'aceptada' && (
+                                  <ImplantarForm seguimiento={seg} onImplantar={(euros) => guardarSeguimiento(p.id, { estado: 'implantada', importe_capturado_eur: euros })} />
+                                )}
+                                {seg.estado === 'implantada' && seg.implantada_en && (
+                                  <small>Implantada el {new Date(seg.implantada_en).toLocaleDateString('es-ES')}{seg.importe_capturado_eur ? ` · ${Number(seg.importe_capturado_eur).toLocaleString('es-ES')} EUR capturados` : ''}</small>
+                                )}
+                                {seg.estado === 'rechazada' && (
+                                  <button type="button" className="admin-plain-button" onClick={() => guardarSeguimiento(p.id, { estado: 'propuesta' })}>Reabrir</button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ws-propuesta-actions">
+                          {p.estado !== 'incorporada' && <button onClick={() => completarPropuesta(p)}>Marcar completada</button>}
+                          <button onClick={() => abrirFormEditar(p)}>Editar</button>
+                          <button className="admin-plain-button" onClick={() => borrarPropuesta(p.id)}>Borrar</button>
+                        </div>
                       </div>
-                      <strong>{p.titulo}</strong>
-                      <p>{[p.vino, p.tipo, p.zona].filter(Boolean).join(' · ') || 'Propuesta de consultoría'}</p>
-                      <div className="ws-propuesta-history">
-                        <span>Abierta desde hace {diasDesde(p.created_at) ?? 0} dias</span>
-                        <span>Responsable: Juanjo</span>
-                        <a href="#ws-propuestas">Historial de cambios</a>
-                      </div>
-                      {p.motivo && <p className="ws-propuesta-motivo">{p.motivo}</p>}
-                      {(p.coste_estimado || p.precio_recomendado) && (
-                        <small>
-                          {p.coste_estimado ? `Coste: ${p.coste_estimado} EUR` : ''}
-                          {p.precio_recomendado ? ` · PVP rec: ${p.precio_recomendado} EUR` : ''}
-                          {p.margen_objetivo ? ` · Margen: ${p.margen_objetivo}%` : ''}
-                        </small>
-                      )}
-                    </div>
-                    <div className="ws-propuesta-actions">
-                      {p.estado !== 'incorporada' && <button onClick={() => completarPropuesta(p)}>Marcar completada</button>}
-                      <button onClick={() => abrirFormEditar(p)}>Editar</button>
-                      <button className="admin-plain-button" onClick={() => borrarPropuesta(p.id)}>Borrar</button>
-                    </div>
-                  </div>
-                ))}
+                    )
+                  })
+                })()}
               </div>
             )}
           </section>
@@ -2134,6 +2428,78 @@ export default function RestauranteWorkspace() {
             </div>
           </section>
           )}
+
+          {/* Informe de cliente de 1 página (fase K - bloque 3).
+              Montado siempre fuera de las pestañas; sólo visible cuando
+              modoInformeCliente === true (al pulsar "Informe para el
+              cliente") o en impresión. */}
+          <section id="ws-informe-cliente" className={`ws-informe-cliente${modoInformeCliente ? ' is-visible' : ''}`} aria-hidden={!modoInformeCliente}>
+            {(() => {
+              const agg = agregarSeguimiento(seguimientos || [])
+              const oportunidad = consultoriaFase1?.oportunidad?.snapshot?.recuperacion_anual_estimada
+                || analisis?.ejecutivo?.resumen?.recuperacion_anual_estimada
+                || 0
+              const prioridades = (alertas || []).slice(0, 3).map(a => ({
+                titulo: a.titulo,
+                detalle: a.detalle,
+                accion: a.accion,
+                euros: null,
+              }))
+              const proximo = (contactos || [])
+                .map(c => c.proximo_contacto)
+                .filter(Boolean)
+                .sort()[0] || null
+              const informe = construirInformeCliente({
+                restaurante,
+                oportunidadEuros: oportunidad,
+                prioridades,
+                seguimiento: agg,
+                proximoContacto: proximo,
+              })
+              return (
+                <article className="informe-cliente-page">
+                  <header className="informe-cliente-head">
+                    <h1>{informe.titulo}</h1>
+                    <p>{informe.fechaLegible} · {informe.restaurante.nombre}{informe.restaurante.ubicacion ? ` · ${informe.restaurante.ubicacion}` : ''}</p>
+                  </header>
+                  <section className="informe-cliente-cifra">
+                    {informe.cifraPrincipal.valor && <strong>{informe.cifraPrincipal.valor}</strong>}
+                    <p>{informe.cifraPrincipal.frase}</p>
+                  </section>
+                  <section className="informe-cliente-prioridades">
+                    <h2>Las 3 prioridades</h2>
+                    {informe.prioridades.length === 0 && <p>No hay prioridades abiertas. La carta está sana.</p>}
+                    <ol>
+                      {informe.prioridades.map(p => (
+                        <li key={p.numero}>
+                          <strong>{p.titulo}{p.euros ? ` · ${p.euros}` : ''}</strong>
+                          {p.detalle && <p>{p.detalle}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                  {informe.seguimiento && (
+                    <section className="informe-cliente-seguimiento">
+                      <h2>Estado de las propuestas</h2>
+                      <p>
+                        {informe.seguimiento.enviadas} enviadas · {informe.seguimiento.aceptadas} aceptadas · {informe.seguimiento.implantadas} implantadas
+                        {informe.seguimiento.capturado ? ` · ${informe.seguimiento.capturado} capturados` : ''}
+                      </p>
+                    </section>
+                  )}
+                  {informe.proximoContacto && (
+                    <section className="informe-cliente-proximo">
+                      <h2>Próximo contacto</h2>
+                      <p>{informe.proximoContacto}</p>
+                    </section>
+                  )}
+                  <footer className="informe-cliente-foot">
+                    Cata con Juanjo — hoja de ruta trimestral.
+                  </footer>
+                </article>
+              )
+            })()}
+          </section>
 
           <section id="ws-politica-precio" className="ws-section">
             <div className="ws-section-head">
