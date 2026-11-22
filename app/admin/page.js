@@ -226,6 +226,13 @@ function AdminPageContent() {
   // auto-recupera para evitar contaminar con datos de otro
   // restaurante.
   const [borradorDisponible, setBorradorDisponible] = useState(null)
+  // G2: ¿el usuario ha editado el campo slug a mano? Si no, el slug
+  // sigue al nombre caracter a caracter. En cuanto toca el input de
+  // slug (onChange directo), se bloquea y deja de auto-generarse.
+  // El bug preexistente usaba `!prev.slug` como condición: una vez
+  // el slug tiene algún carácter (la "p" tras teclear "P" en el
+  // nombre), `!prev.slug` es false y el auto-genera se detiene.
+  const [slugEditadoManualmente, setSlugEditadoManualmente] = useState(false)
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
   const [bajaError, setBajaError] = useState('')
@@ -294,6 +301,10 @@ function AdminPageContent() {
       trial_expires_at: trialPorDefectoAt(),   // SIEMPRE hoy+30
     })
     setBorradorDisponible(null)
+    // G2: si el borrador trae un slug explícito, lo tratamos como
+    // "editado manualmente" para no sobreescribirlo al cambiar el
+    // nombre. Si no trae slug, el slug seguirá al nombre.
+    setSlugEditadoManualmente(Boolean(borradorDisponible.slug))
   }
 
   function descartarBorrador() {
@@ -437,8 +448,20 @@ function AdminPageContent() {
     setNuevoRestaurante(prev => ({
       ...prev,
       [campo]: valor,
-      ...(campo === 'nombre' && !prev.slug ? { slug: slugDesdeNombre(valor) } : {})
+      // G2: el slug sigue al nombre MIENTRAS el usuario no haya
+      // editado el campo slug manualmente. Antes la condición era
+      // `!prev.slug`, que solo autogeneraba si el slug estaba
+      // totalmente vacío — la "p" generada tras la primera letra
+      // del nombre ya bloqueaba el seguimiento.
+      ...(campo === 'nombre' && !slugEditadoManualmente ? { slug: slugDesdeNombre(valor) } : {})
     }))
+  }
+
+  // G2: al cambiar el slug, marcamos que el usuario lo tocó. A
+  // partir de ese momento el slug ya no sigue al nombre.
+  function actualizarSlugManual(valor) {
+    setSlugEditadoManualmente(true)
+    actualizarCampo('slug', slugDesdeNombre(valor))
   }
 
   function actualizarEdicion(campo, valor) {
@@ -573,6 +596,8 @@ function AdminPageContent() {
       // G: tras crear, el borrador queda obsoleto → limpiamos.
       try { window.localStorage.removeItem('admin_alta_restaurante_draft') } catch {}
       setBorradorDisponible(null)
+      // G2: el nuevo alta empieza con slug siguiendo al nombre.
+      setSlugEditadoManualmente(false)
     } catch (error) {
       setErrorAlta(error.message)
     }
@@ -836,12 +861,12 @@ function AdminPageContent() {
                       </span>
                       <input
                         value={nuevoRestaurante.slug}
-                        onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))}
+                        onChange={e => actualizarSlugManual(e.target.value)}
                         onBlur={e => actualizarCampo('slug', slugFinal(e.target.value))}
                         placeholder="casa-pepe"
                         required
                       />
-                      <small>URL pública corta. Permitido: minúsculas, números y guiones. Sin espacios, acentos ni símbolos.</small>
+                      <small>URL pública corta. Permitido: minúsculas, números y guiones. Sin espacios, acentos ni símbolos. Sigue al nombre hasta que lo edites manualmente.</small>
                     </label>
                   </div>
                 )}
