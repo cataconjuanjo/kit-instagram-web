@@ -12,6 +12,15 @@ import {
   SELECT_CLIENT_VINO_ADMIN,
 } from '../../lib/clientSupabaseSelects'
 import { isLocalWine, localTermsForRestaurant } from '../../lib/wineRegion'
+import {
+  calcPuntuacion,
+  calcCapitalLiberable,
+  calcAlertasCriticas,
+  calcCandidatosCopa,
+  describirFotos,
+  seleccionarTareasMiDia,
+  esExcluidoDeAgregado,
+} from '../../lib/consultoriaMetricas'
 import AdminOverlay from '../components/AdminOverlay'
 
 
@@ -42,26 +51,38 @@ function oportunidadRadar(informe) {
 }
 
 function capitalRadar(informe) {
-  const persistido = informe.ejecutivo?.resumen?.capital_liberable_estimado || 0
-  if (persistido > 0) return persistido
-  const valorCoste = informe.metricas?.valorCoste || 0
-  const vinos = informe.metricas?.vinos || 0
-  if (!valorCoste || !vinos) return 0
-  const friccion = (informe.metricas?.margenBajo || 0) + (informe.metricas?.bajoMinimo || 0) + (informe.metricas?.sinProveedor || 0)
-  if (!friccion) return 0
-  return Math.round(valorCoste * Math.min(0.18, Math.max(0.04, friccion / vinos * 0.18)))
+  return calcCapitalLiberable({
+    snapshotOportunidad: informe.consultoriaFase1?.oportunidad?.snapshot || null,
+    resumenEjecutivo: informe.ejecutivo?.resumen || null,
+    metricas: informe.metricas || null,
+  }).valor
+}
+
+function capitalRadarDetalle(informe) {
+  return calcCapitalLiberable({
+    snapshotOportunidad: informe.consultoriaFase1?.oportunidad?.snapshot || null,
+    resumenEjecutivo: informe.ejecutivo?.resumen || null,
+    metricas: informe.metricas || null,
+  })
 }
 
 function alertasCriticasRadar(informe) {
-  const persistidas = informe.ejecutivo?.resumen?.alertas_criticas
-  if (typeof persistidas === 'number' && persistidas > 0) return persistidas
-  return informe.prioridad === 'Alta' ? Math.max(1, Math.min(3, informe.alertas?.filter(alerta => alerta.peso >= 12).length || 1)) : 0
+  return calcAlertasCriticas({
+    alertasDb: informe.alertasAbiertas || null,
+    analisis: informe,
+  }).valor
 }
 
 function candidatosCopaRadar(informe) {
-  const persistidos = informe.ejecutivo?.resumen?.candidatos_copa || 0
-  if (persistidos > 0) return persistidos
-  return Math.max(0, Math.round((informe.metricas?.vinos || 0) * 0.12) - (informe.metricas?.copa || 0))
+  return calcCandidatosCopa({
+    snapshotCopa: informe.consultoriaFase1?.copa?.snapshot || null,
+    resumenEjecutivo: informe.ejecutivo?.resumen || null,
+    metricas: informe.metricas || null,
+  }).valor
+}
+
+function puntuacionRadar(informe) {
+  return calcPuntuacion(informe)
 }
 
 function semanalRadar(informe) {
@@ -575,12 +596,16 @@ export default function RadarConsultoria() {
     return <p className="admin-loading">Cargando radar</p>
   }
 
+  // Para agregados (embudo, totales) excluimos restaurantes marcados como demo de agregado.
+  // Las cards y listas del Radar siguen mostrando todos los informes.
+  const informesAgregado = informes.filter(informe => !esExcluidoDeAgregado(informe.restaurante))
+
   const alta = informes.filter(i => i.prioridad === 'Alta').length
   const media = informes.filter(i => i.prioridad === 'Media').length
-  const oportunidadTotal = informes.reduce((sum, informe) => sum + oportunidadRadar(informe), 0)
-  const capitalTotal = informes.reduce((sum, informe) => sum + capitalRadar(informe), 0)
-  const alertasCriticas = informes.reduce((sum, informe) => sum + alertasCriticasRadar(informe), 0)
-  const candidatosCopa = informes.reduce((sum, informe) => sum + candidatosCopaRadar(informe), 0)
+  const oportunidadTotal = informesAgregado.reduce((sum, informe) => sum + oportunidadRadar(informe), 0)
+  const capitalTotal = informesAgregado.reduce((sum, informe) => sum + capitalRadar(informe), 0)
+  const alertasCriticas = informesAgregado.reduce((sum, informe) => sum + alertasCriticasRadar(informe), 0)
+  const candidatosCopa = informesAgregado.reduce((sum, informe) => sum + candidatosCopaRadar(informe), 0)
   const fotosPersistidas = informes.filter(informe => informe.ejecutivo?.resumen?.ultima_foto).length
   const agendaHoy = [...informes]
     .sort((a, b) => {

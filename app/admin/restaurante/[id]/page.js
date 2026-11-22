@@ -14,6 +14,12 @@ import {
   SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN,
   SELECT_CLIENT_VINO_ADMIN,
 } from '../../../lib/clientSupabaseSelects'
+import {
+  calcCapitalLiberable,
+  calcCandidatosCopa,
+  calcAlertasCriticas,
+  calcPuntuacion,
+} from '../../../lib/consultoriaMetricas'
 import OpenCartaPruebaButton from '../../../dashboard/OpenCartaPruebaButton'
 
 
@@ -957,9 +963,9 @@ export default function RestauranteWorkspace() {
       '',
       diagnostico?.estado_actual ? `Estado actual: ${diagnostico.estado_actual}` : '',
       diagnostico?.problema_principal ? `Problema principal: ${diagnostico.problema_principal}` : '',
-      oportunidad ? `Recuperacion anual estimada: ${Number(oportunidad.recuperacion_anual_estimada).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : '',
-      oportunidad ? `Capital liberable estimado: ${Number(oportunidad.capital_liberable_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : '',
-      copa ? `Venta por copa: ${copa.candidatos_copa + copa.candidatos_copa_premium + copa.candidatos_coravin} candidatos detectados` : '',
+      oportunidad ? `Recuperación anual estimada: ${Number(oportunidad.recuperacion_anual_estimada).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : '',
+      `Capital liberable: ${Number(calcCapitalLiberable({ snapshotOportunidad: oportunidad, metricas }).valor).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR`,
+      `Candidatos para venta por copa: ${calcCandidatosCopa({ snapshotCopa: copa, metricas }).valor}`,
       '',
       'Alertas principales:',
       ...(alertasMotor.length
@@ -1266,7 +1272,7 @@ export default function RestauranteWorkspace() {
                           </div>
                           <div>
                             <span>Capital liberable</span>
-                            <strong>{Number(consultoriaFase1.oportunidad.snapshot.capital_liberable_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
+                            <strong>{Number(calcCapitalLiberable({ snapshotOportunidad: consultoriaFase1.oportunidad.snapshot, metricas }).valor).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
                           </div>
                           <div>
                             <span>Acciones rapidas</span>
@@ -2119,9 +2125,9 @@ export default function RestauranteWorkspace() {
 
               <div className="ws-informe-metrics">
                 <div><span>Recuperacion anual</span><strong>{consultoriaFase1?.oportunidad?.snapshot ? `${Number(consultoriaFase1.oportunidad.snapshot.recuperacion_anual_estimada).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : eur(metricas.valorVenta)}</strong></div>
-                <div><span>Capital liberable</span><strong>{consultoriaFase1?.oportunidad?.snapshot ? `${Number(consultoriaFase1.oportunidad.snapshot.capital_liberable_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : eur(metricas.valorCoste)}</strong></div>
-                <div><span>Alertas abiertas</span><strong>{consultoriaFase1?.alertas?.length ?? alertas.length}</strong></div>
-                <div><span>Candidatos copa</span><strong>{consultoriaFase1?.copa?.snapshot ? consultoriaFase1.copa.snapshot.candidatos_copa + consultoriaFase1.copa.snapshot.candidatos_copa_premium + consultoriaFase1.copa.snapshot.candidatos_coravin : metricas.sommelier30}</strong></div>
+                <div><span>Capital liberable</span><strong>{`${Number(calcCapitalLiberable({ snapshotOportunidad: consultoriaFase1?.oportunidad?.snapshot, metricas }).valor).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR`}</strong></div>
+                <div><span>Alertas críticas</span><strong>{calcAlertasCriticas({ alertasDb: consultoriaFase1?.alertas, analisis: { alertas } }).valor}</strong></div>
+                <div><span>Candidatos copa</span><strong>{calcCandidatosCopa({ snapshotCopa: consultoriaFase1?.copa?.snapshot, metricas }).valor}</strong></div>
               </div>
 
               <div className="ws-informe-alertas">
