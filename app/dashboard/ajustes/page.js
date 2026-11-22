@@ -1,12 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { etiquetaActividadReal } from '../../lib/actividadReal'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
+import { estadoChecklistEntrega } from '../../lib/checklistEntrega'
+import {
+  DEFAULTS as PARAMS_DEFAULTS,
+  FUENTE_VENTAS_UI_ELEGIBLE,
+  FUENTES_VENTAS_NO_DISPONIBLES,
+  validarParametros,
+} from '../../lib/parametrosBodega'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -26,6 +33,31 @@ export default function AjustesHub() {
   const [loading, setLoading] = useState(true)
   const [esAdmin, setEsAdmin] = useState(false)
 
+  // FASE I — señales para el checklist de entrega REAL.
+  // - vinos: para "Referencias completas" (≥1 activo + nombre + tipo +
+  //   precio_botella + coste). Mismo criterio que lib pura.
+  // - respuestaConteos: para "Inventario preparado" (conteo inicial
+  //   cerrado). Misma fuente que el checklist de Inicio.
+  // - checklistEntrega: JSONB con confirmaciones manuales (QR, mapa).
+  // Si cualquiera falla, la UI mantiene el ítem "Pendiente" (nunca
+  // asume Listo por defecto; política heredada de FASE G).
+  const [vinos, setVinos] = useState(null)
+  const [respuestaConteos, setRespuestaConteos] = useState(null)
+  const [checklistEntrega, setChecklistEntrega] = useState({})
+  const [marcandoConfirmacion, setMarcandoConfirmacion] = useState(null)
+
+  // FASE I — Parámetros de bodega (sección nueva).
+  const [paramsCarga, setParamsCarga] = useState('loading') // 'loading'|'ok'|'error'
+  const [paramsValores, setParamsValores] = useState({ ...PARAMS_DEFAULTS })
+  const [paramsPorDefecto, setParamsPorDefecto] = useState({
+    copas_por_botella: true, iva_venta_pct: true, merma_copa_pct: true, fuente_ventas: true,
+  })
+  const [paramsExisteFila, setParamsExisteFila] = useState(false)
+  const [paramsEditados, setParamsEditados] = useState({})
+  const [guardandoParams, setGuardandoParams] = useState(false)
+  const [mensajeParams, setMensajeParams] = useState('')
+  const [erroresParams, setErroresParams] = useState([])
+
   useEffect(() => {
     async function cargar() {
       const { email, isAdmin } = await getEffectiveRestaurantEmail(supabase)
@@ -38,6 +70,69 @@ export default function AjustesHub() {
     }
     cargar()
   }, [])
+
+  // FASE I — Cargar señales reales del checklist y los parámetros de
+  // bodega. Todo pasa por endpoints service_role (RLS bloquea leer
+  // restaurant_economic_settings y checklist_entrega desde cliente).
+  useEffect(() => {
+    if (!restaurante?.id) return
+    let vivo = true
+    ;(async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess?.session?.access_token || ''
+        const headers = { Authorization: `Bearer ${token}` }
+        const url = p => `${p}?restaurante_id=${encodeURIComponent(restaurante.id)}`
+        const [resConteos, resChecklist, resParams, vinosRes] = await Promise.all([
+          fetch(url('/api/conteos'), { headers }),
+          fetch(url('/api/checklist-entrega'), { headers }),
+          fetch(url('/api/restaurant-economic-settings'), { headers }),
+          // vinos desde el cliente: RLS permite propietario leer sus vinos.
+          supabase.from('vinos')
+            .select('id, activo, nombre, tipo, precio_botella, coste_compra, coste_medio_pmp')
+            .eq('restaurante_id', restaurante.id),
+        ])
+        if (!vivo) return
+
+        if (resConteos.ok) {
+          const body = await resConteos.json().catch(() => null)
+          setRespuestaConteos(body)
+        } else {
+          setRespuestaConteos(null)
+        }
+
+        if (resChecklist.ok) {
+          const body = await resChecklist.json().catch(() => ({}))
+          setChecklistEntrega(body?.checklist_entrega && typeof body.checklist_entrega === 'object' ? body.checklist_entrega : {})
+        } else {
+          setChecklistEntrega({})
+        }
+
+        if (resParams.ok) {
+          const body = await resParams.json().catch(() => null)
+          if (body) {
+            setParamsValores({ ...PARAMS_DEFAULTS, ...(body.valores || {}) })
+            setParamsPorDefecto(body.por_defecto || { copas_por_botella: true, iva_venta_pct: true, merma_copa_pct: true, fuente_ventas: true })
+            setParamsExisteFila(Boolean(body.existe_fila))
+            setParamsCarga('ok')
+          } else {
+            setParamsCarga('error')
+          }
+        } else {
+          setParamsCarga('error')
+        }
+
+        setVinos(Array.isArray(vinosRes?.data) ? vinosRes.data : [])
+      } catch {
+        if (!vivo) return
+        setRespuestaConteos(null)
+        setChecklistEntrega({})
+        setParamsCarga('error')
+        setVinos([])
+      }
+    })()
+    return () => { vivo = false }
+  }, [restaurante?.id])
 
   useEffect(() => {
     if (!modalActividad) return
@@ -63,34 +158,29 @@ export default function AjustesHub() {
   const actividadIniciada = Boolean(restaurante?.actividad_real_desde)
   const cartaPublicada = restaurante?.carta_publica_activa !== false
 
-  // G: Cada ítem solo pasa a "Listo" si hay una señal REAL registrada.
-  // Antes de este fix, varios ítems no declaraban `pendiente`, por lo
-  // que la UI los pintaba "Listo" de oficio (ejemplos observados en
-  // un restaurante recién creado: "QR probado en móvil", "Marca
-  // revisada", "Acceso de sala revisado" o "Referencias completas"
-  // marcados en verde sin acción). Convención ahora: si no sabemos
-  // responder con un valor fiable, el ítem queda `pendiente: true`.
+  // FASE I: cada ítem solo pasa a "Listo" si hay una señal REAL. Los
+  // 4 ítems que antes vivían con `pendiente: true` de oficio ahora
+  // leen su estado del decisor puro `estadoChecklistEntrega`:
+  //   - Inventario preparado   → /api/conteos (reusa estadoConteoInicial)
+  //   - Referencias completas  → vinos activos con nombre+tipo+precio+coste
+  //   - QR probado en móvil    → checklist_entrega.qr_probado_en (manual)
+  //   - Mapa estrella/joya     → checklist_entrega.mapa_revisado_en (manual)
   //
-  // Señales fiables disponibles hoy:
+  // Señales derivables del restaurante (no cambian):
   //   - Actividad real → `restaurantes.actividad_real_desde`
-  //   - PIN sala      → `restaurantes.camarero_pin_bloqueo_activo`
-  //   - Marca         → `restaurantes.logo_url` (si hay logo subido,
-  //                     el usuario ha pasado por la pantalla de marca)
-  //   - Carta pública → `restaurantes.carta_publica_activa`
-  //
-  // Señales SIN fuente fiable → `pendiente: true` siempre (el usuario
-  // los marca al pulsar los enlaces y hacer la acción):
-  //   - QR probado en móvil (no hay columna qr_probado_en)
-  //   - Referencias completas (no se conoce agregado de coste/
-  //     proveedor/stock_minimo a este nivel del dashboard)
-  //   - Mapa estrella/joya revisado (no hay columna)
-  //   - Inventario preparado (no hay columna; el conteo inicial
-  //     vive en bodega > inventario; lo documenta el checklist de
-  //     Inicio en la pantalla principal)
+  //   - PIN sala       → `restaurantes.camarero_pin_bloqueo_activo`
+  //   - Marca          → `restaurantes.logo_url`
+  //   - Carta pública  → `restaurantes.carta_publica_activa`
   const tieneLogo = Boolean(restaurante?.logo_url)
   const marcaDetalle = tieneLogo
     ? 'Logo subido. Revisa colores y banner para dejarla al punto.'
     : 'Sube el logo y revisa colores y banner.'
+
+  const estadoReal = estadoChecklistEntrega({
+    respuestaConteos,
+    vinos: vinos || [],
+    checklistEntrega,
+  })
 
   const checklist = perfilBodega ? [
     {
@@ -99,11 +189,43 @@ export default function AjustesHub() {
       href: '#actividad-real',
       pendiente: !actividadIniciada,
     },
-    { titulo: 'Referencias completas', detalle: 'Revisa coste, proveedor, stock mínimo y perfil comercial.', href: '/dashboard/vinos?filtro=pendientes', pendiente: true },
-    { titulo: 'Mapa estrella/joya revisado', detalle: 'Detecta estrellas, joyas, caballos de batalla y referencias a archivar.', href: '/dashboard/menu-engineering', pendiente: true },
-    { titulo: 'Inventario preparado', detalle: 'Conteo físico, bajo mínimo y capital inmovilizado.', href: '/dashboard/inventario', pendiente: true },
+    {
+      titulo: 'Referencias completas',
+      detalle: estadoReal.referencias_completas.pendiente
+        ? 'Revisa que todos los vinos activos tengan nombre, tipo, precio y coste.'
+        : 'Todos los vinos activos tienen nombre, tipo, precio y coste.',
+      href: '/dashboard/vinos?filtro=pendientes',
+      pendiente: estadoReal.referencias_completas.pendiente,
+    },
+    {
+      titulo: 'Mapa estrella/joya revisado',
+      detalle: estadoReal.mapa_revisado.pendiente
+        ? 'Detecta estrellas, joyas, caballos de batalla y referencias a archivar. Cuando lo mires, márcalo como hecho.'
+        : 'Revisión confirmada por el propietario.',
+      href: '/dashboard/menu-engineering',
+      pendiente: estadoReal.mapa_revisado.pendiente,
+      confirmable: true,
+      clave: 'mapa_revisado_en',
+    },
+    {
+      titulo: 'Inventario preparado',
+      detalle: estadoReal.inventario_preparado.pendiente
+        ? 'Haz el conteo inicial en Bodega → Inventario para empezar a controlar stock.'
+        : 'Conteo inicial cerrado.',
+      href: '/dashboard/inventario',
+      pendiente: estadoReal.inventario_preparado.pendiente,
+    },
   ] : [
-    { titulo: 'QR probado en móvil', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta directa.', href: '/dashboard/qr', pendiente: true },
+    {
+      titulo: 'QR probado en móvil',
+      detalle: estadoReal.qr_probado.pendiente
+        ? (restaurante?.hub_activo ? 'Prueba el QR y márcalo como hecho (abre el hub público).' : 'Prueba el QR y márcalo como hecho (abre la carta directa).')
+        : 'QR probado y confirmado por el propietario.',
+      href: '/dashboard/qr',
+      pendiente: estadoReal.qr_probado.pendiente,
+      confirmable: true,
+      clave: 'qr_probado_en',
+    },
     { titulo: 'Marca revisada', detalle: marcaDetalle, href: '/dashboard/personalizar', pendiente: !tieneLogo },
     { titulo: 'Acceso de sala revisado', detalle: pinConfigurado ? 'El modo camarero pide PIN.' : 'El modo camarero queda abierto sin PIN.', href: '#pin-sala', pendiente: !pinConfigurado },
     { titulo: cartaPublicada ? 'Carta pública abierta' : 'Carta en borrador', detalle: cartaPublicada ? 'Comprueba que precios, platos y enlaces cargan bien.' : 'Publícala desde QR cuando marca, precios y contenido estén revisados.', href: cartaPublicada ? destino : '/dashboard/qr', pendiente: !cartaPublicada },
@@ -154,6 +276,80 @@ export default function AjustesHub() {
     }
     setMensajePin(res.ok ? 'Modo camarero deshabilitado.' : 'No se pudo deshabilitar el PIN.')
     setGuardandoPin(false)
+  }
+
+  // FASE I — Marca / desmarca una confirmación manual del checklist
+  // de entrega. Refresca sólo la clave tocada en el estado local.
+  async function toggleConfirmacion(clave, marcar) {
+    if (!restaurante?.id || marcandoConfirmacion) return
+    setMarcandoConfirmacion(clave)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token || ''
+      const res = await fetch('/api/checklist-entrega', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id, clave, marcar }),
+      })
+      const body = await res.json().catch(() => null)
+      if (res.ok && body?.checklist_entrega) {
+        setChecklistEntrega(body.checklist_entrega)
+      }
+    } finally {
+      setMarcandoConfirmacion(null)
+    }
+  }
+
+  // FASE I — Edita un parámetro de bodega localmente. Los cambios se
+  // acumulan hasta pulsar "Guardar" (upsert parcial, solo las claves
+  // tocadas).
+  function editarParametro(campo, valor) {
+    setParamsEditados(prev => ({ ...prev, [campo]: valor }))
+    setMensajeParams('')
+    setErroresParams([])
+  }
+
+  async function guardarParametros() {
+    if (!restaurante?.id || guardandoParams) return
+    const campos = Object.keys(paramsEditados)
+    if (campos.length === 0) {
+      setMensajeParams('No hay cambios que guardar.')
+      return
+    }
+    // Validación previa en el cliente (coincide con la del servidor).
+    const val = validarParametros(paramsEditados)
+    if (!val.ok) {
+      setErroresParams(val.errores)
+      setMensajeParams('')
+      return
+    }
+    setGuardandoParams(true)
+    setMensajeParams('')
+    setErroresParams([])
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token || ''
+      const res = await fetch('/api/restaurant-economic-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id, ...val.normalizado }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        if (body?.detalles) setErroresParams(body.detalles)
+        setMensajeParams(body?.error || 'No se pudieron guardar los parámetros.')
+      } else if (body) {
+        setParamsValores({ ...PARAMS_DEFAULTS, ...(body.valores || {}) })
+        setParamsPorDefecto(body.por_defecto || paramsPorDefecto)
+        setParamsExisteFila(true)
+        setParamsEditados({})
+        setMensajeParams('Parámetros guardados.')
+      }
+    } catch (e) {
+      setMensajeParams(e?.message || 'Error inesperado al guardar.')
+    } finally {
+      setGuardandoParams(false)
+    }
   }
 
   async function copiar(texto, tipo) {
@@ -252,32 +448,184 @@ export default function AjustesHub() {
         </div>
         <div className={styles.panelBody}>
           <div className={styles.itemStack}>
-            {checklist.map(item => (
-              item.href.startsWith('#') ? (
-                <a key={item.titulo} href={item.href} className={styles.itemCard}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <h3 className={styles.sectionTitle}>{item.titulo}</h3>
-                      <p className={styles.sectionText}>{item.detalle}</p>
-                    </div>
-                    <span className={styles.badge}>{item.pendiente ? 'Pendiente' : 'Listo'}</span>
+            {checklist.map(item => {
+              const Head = (
+                <div className={styles.sectionHead} style={{ margin: 0 }}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>{item.titulo}</h3>
+                    <p className={styles.sectionText}>{item.detalle}</p>
                   </div>
-                </a>
-              ) : (
-                <Link key={item.titulo} href={item.href} target={item.href.startsWith('/') ? undefined : '_blank'} className={styles.itemCard}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <h3 className={styles.sectionTitle}>{item.titulo}</h3>
-                      <p className={styles.sectionText}>{item.detalle}</p>
-                    </div>
-                    <span className={styles.badge}>{item.pendiente ? 'Pendiente' : 'Listo'}</span>
-                  </div>
-                </Link>
+                  <span className={styles.badge}>{item.pendiente ? 'Pendiente' : 'Listo'}</span>
+                </div>
               )
-            ))}
+              // `.itemStack` es `display: grid` y antes de FASE I cada
+              // ítem era un <a>/<Link> grid-child directo, blockificado
+              // por el grid y estirado al 100 % de la columna. Al añadir
+              // el botón "Marcar como hecho" necesitamos agrupar enlace
+              // + botón; si envolvemos con un <div> plano, el <a>
+              // interior vuelve a ser inline (defecto del user-agent),
+              // y la cabecera flex se colapsa a min-content → tira de
+              // ~15 px. Solución: el grid-child es SIEMPRE el <a>/<Link>
+              // (sigue blockificado). El botón se añade como SIGUIENTE
+              // grid-child vía Fragment con key — mantiene el gap de 10 px
+              // del grid y el ancho completo en ambos. Aceptamos la
+              // separación visual de 10 px (coincide con el resto de
+              // componentes de la página).
+              const Enlace = item.href.startsWith('#') ? (
+                <a href={item.href} className={styles.itemCard}>{Head}</a>
+              ) : (
+                <Link href={item.href} target={item.href.startsWith('/') ? undefined : '_blank'} className={styles.itemCard}>{Head}</Link>
+              )
+              if (!item.confirmable) {
+                return <Fragment key={item.titulo}>{Enlace}</Fragment>
+              }
+              return (
+                <Fragment key={item.titulo}>
+                  {Enlace}
+                  <div style={{ marginTop: -4, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className={styles.ghost}
+                      disabled={marcandoConfirmacion === item.clave}
+                      onClick={() => toggleConfirmacion(item.clave, item.pendiente)}
+                    >
+                      {marcandoConfirmacion === item.clave
+                        ? 'Guardando...'
+                        : (item.pendiente ? 'Marcar como hecho' : 'Desmarcar')}
+                    </button>
+                  </div>
+                </Fragment>
+              )
+            })}
           </div>
         </div>
       </section>}
+
+      {(perfilBodega || esAdmin) && (
+        <section className={styles.panel} style={{ marginBottom: 16 }} id="parametros-bodega">
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Parámetros de bodega</h2>
+              <p className={styles.panelSub}>
+                Copas por botella, IVA de venta, merma por copa y fuente de ventas.
+                Cambiar IVA, copas o merma afecta a los meses abiertos; los meses ya
+                cerrados conservan sus cifras (se guardan en el snapshot del cierre).
+              </p>
+            </div>
+            <span className={styles.badge}>
+              {paramsCarga === 'loading' ? 'Cargando' : paramsExisteFila ? 'Guardado' : 'Por defecto'}
+            </span>
+          </div>
+          <div className={styles.panelBody}>
+            {paramsCarga === 'error' ? (
+              <p className={styles.tiny}>No se pudieron cargar los parámetros. Prueba a recargar la página.</p>
+            ) : (
+              <>
+                <div className={styles.formGrid}>
+                  <div>
+                    <label className={styles.label} htmlFor="param-copas">Copas por botella (1-12)</label>
+                    <input
+                      id="param-copas"
+                      className={styles.input}
+                      type="number"
+                      min={1}
+                      max={12}
+                      step={1}
+                      value={(paramsEditados.copas_por_botella ?? paramsValores.copas_por_botella) ?? ''}
+                      onChange={e => editarParametro('copas_por_botella', e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                    {paramsPorDefecto.copas_por_botella && !('copas_por_botella' in paramsEditados) && (
+                      <p className={styles.tiny}>Por defecto: {PARAMS_DEFAULTS.copas_por_botella}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className={styles.label} htmlFor="param-iva">IVA de venta (%)</label>
+                    <input
+                      id="param-iva"
+                      className={styles.input}
+                      type="number"
+                      min={0}
+                      max={30}
+                      step={0.01}
+                      value={(paramsEditados.iva_venta_pct ?? paramsValores.iva_venta_pct) ?? ''}
+                      onChange={e => editarParametro('iva_venta_pct', e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                    {paramsPorDefecto.iva_venta_pct && !('iva_venta_pct' in paramsEditados) && (
+                      <p className={styles.tiny}>Por defecto: {PARAMS_DEFAULTS.iva_venta_pct}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className={styles.label} htmlFor="param-merma">Merma por copa (%)</label>
+                    <input
+                      id="param-merma"
+                      className={styles.input}
+                      type="number"
+                      min={0}
+                      max={30}
+                      step={0.01}
+                      value={(paramsEditados.merma_copa_pct ?? paramsValores.merma_copa_pct) ?? ''}
+                      onChange={e => editarParametro('merma_copa_pct', e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                    {paramsPorDefecto.merma_copa_pct && !('merma_copa_pct' in paramsEditados) && (
+                      <p className={styles.tiny}>Por defecto: {PARAMS_DEFAULTS.merma_copa_pct}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className={styles.label} htmlFor="param-fuente">Fuente de ventas</label>
+                    {(() => {
+                      // Valor actual en el formulario. Si el usuario no ha
+                      // tocado el campo, usa el guardado (o '' si es null).
+                      const guardado = paramsValores.fuente_ventas ?? ''
+                      const actual = 'fuente_ventas' in paramsEditados
+                        ? (paramsEditados.fuente_ventas ?? '')
+                        : guardado
+                      return (
+                        <select
+                          id="param-fuente"
+                          className={styles.select}
+                          value={actual}
+                          onChange={e => editarParametro('fuente_ventas', e.target.value === '' ? null : e.target.value)}
+                        >
+                          <option value="">(sin elegir — usa partes de servicio por defecto)</option>
+                          <option value={FUENTE_VENTAS_UI_ELEGIBLE}>Partes de servicio</option>
+                          {/* 'tpv'/'ambas': no implementadas (stub B8 en
+                              el agregador). Se muestran DESHABILITADAS
+                              salvo que ya estén guardadas → preservar. */}
+                          {FUENTES_VENTAS_NO_DISPONIBLES.map(v => (
+                            <option
+                              key={v}
+                              value={v}
+                              disabled={guardado !== v}
+                            >
+                              {v === 'tpv' ? 'TPV' : 'Ambas'} — No disponible todavía
+                            </option>
+                          ))}
+                        </select>
+                      )
+                    })()}
+                  </div>
+                </div>
+                {erroresParams.length > 0 && (
+                  <ul className={styles.tiny} style={{ marginTop: 10 }}>
+                    {erroresParams.map((e, i) => (
+                      <li key={i}><strong>{e.campo}:</strong> {e.mensaje}</li>
+                    ))}
+                  </ul>
+                )}
+                {mensajeParams && <p className={styles.tiny} style={{ marginTop: 10 }}>{mensajeParams}</p>}
+                <button
+                  className={styles.primary}
+                  onClick={guardarParametros}
+                  disabled={guardandoParams || paramsCarga !== 'ok' || Object.keys(paramsEditados).length === 0}
+                  style={{ marginTop: 14 }}
+                >
+                  {guardandoParams ? 'Guardando...' : 'Guardar parámetros'}
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {perfilBodega && (
         <section className={styles.hubGrid}>
