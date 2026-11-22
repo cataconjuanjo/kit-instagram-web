@@ -230,7 +230,7 @@ function ImplantarForm({ seguimiento, onImplantar }) {
         € capturados
         <input type="number" step="0.01" min="0" value={euros} onChange={e => setEuros(e.target.value)} placeholder="opcional" />
       </label>
-      <button type="submit" disabled={enviando}>{enviando ? 'Guardando…' : 'Marcar implantada'}</button>
+      <button type="submit" className="ws-btn-secondary" disabled={enviando}>{enviando ? 'Guardando…' : 'Marcar implantada'}</button>
     </form>
   )
 }
@@ -258,34 +258,39 @@ function RegistrarContactoModal({ onSubmit, onClose }) {
     <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Registrar contacto">
       <div className="admin-modal-card">
         <h3>Registrar contacto</h3>
-        <form onSubmit={enviar} className="ws-form-grid">
-          <label>
-            Canal
-            <select value={canal} onChange={e => setCanal(e.target.value)}>
+        <form onSubmit={enviar} className="ws-contacto-form">
+          <div className="ws-contacto-field">
+            <label htmlFor="rc-canal">Canal</label>
+            <select id="rc-canal" value={canal} onChange={e => setCanal(e.target.value)}>
               <option value="llamada">Llamada</option>
               <option value="visita">Visita</option>
               <option value="whatsapp">WhatsApp</option>
               <option value="email">Email</option>
               <option value="otro">Otro</option>
             </select>
-          </label>
-          <label className="ws-form-full">
-            Qué se habló
-            <textarea maxLength={1000} rows={4} value={resumen} onChange={e => setResumen(e.target.value)} placeholder="Resumen del contacto…" />
-          </label>
-          <div className="ws-form-full">
-            <label>
-              Próximo contacto (opcional)
-              <input type="date" value={proximo} onChange={e => setProximo(e.target.value)} />
-            </label>
-            <div className="ws-form-shortcuts">
+          </div>
+          <div className="ws-contacto-field">
+            <label htmlFor="rc-resumen">Qué se habló</label>
+            <textarea
+              id="rc-resumen"
+              maxLength={1000}
+              rows={4}
+              value={resumen}
+              onChange={e => setResumen(e.target.value)}
+              placeholder="Resumen del contacto…"
+            />
+          </div>
+          <div className="ws-contacto-field">
+            <label htmlFor="rc-proximo">Próximo contacto (opcional)</label>
+            <input id="rc-proximo" type="date" value={proximo} onChange={e => setProximo(e.target.value)} />
+            <div className="ws-contacto-shortcuts">
               <button type="button" onClick={() => atajoDias(3)}>+3 días</button>
               <button type="button" onClick={() => atajoDias(7)}>+1 semana</button>
               <button type="button" onClick={() => atajoDias(14)}>+2 semanas</button>
             </div>
           </div>
           {error && <p className="admin-alert admin-alert-error">{error}</p>}
-          <div className="ws-form-actions">
+          <div className="ws-contacto-actions">
             <button type="button" className="ws-btn-secondary" onClick={onClose}>Cancelar</button>
             <button type="submit" className="ws-btn-primary" disabled={guardando}>
               {guardando ? 'Guardando…' : 'Registrar'}
@@ -2260,12 +2265,12 @@ export default function RestauranteWorkspace() {
                               </div>
                               <div className="ws-seguimiento-actions">
                                 {seg.estado === 'propuesta' && (
-                                  <button type="button" onClick={() => guardarSeguimiento(p.id, { estado: 'enviada' })}>Marcar enviada</button>
+                                  <button type="button" className="ws-btn-secondary" onClick={() => guardarSeguimiento(p.id, { estado: 'enviada' })}>Marcar enviada</button>
                                 )}
                                 {seg.estado === 'enviada' && (
                                   <>
-                                    <button type="button" onClick={() => guardarSeguimiento(p.id, { estado: 'aceptada' })}>Marcar aceptada</button>
-                                    <button type="button" className="admin-plain-button" onClick={() => guardarSeguimiento(p.id, { estado: 'rechazada' })}>Rechazar</button>
+                                    <button type="button" className="ws-btn-secondary" onClick={() => guardarSeguimiento(p.id, { estado: 'aceptada' })}>Marcar aceptada</button>
+                                    <button type="button" className="ws-btn-secondary" onClick={() => guardarSeguimiento(p.id, { estado: 'rechazada' })}>Rechazar</button>
                                   </>
                                 )}
                                 {seg.estado === 'aceptada' && (
@@ -2275,7 +2280,7 @@ export default function RestauranteWorkspace() {
                                   <small>Implantada el {new Date(seg.implantada_en).toLocaleDateString('es-ES')}{seg.importe_capturado_eur ? ` · ${Number(seg.importe_capturado_eur).toLocaleString('es-ES')} EUR capturados` : ''}</small>
                                 )}
                                 {seg.estado === 'rechazada' && (
-                                  <button type="button" className="admin-plain-button" onClick={() => guardarSeguimiento(p.id, { estado: 'propuesta' })}>Reabrir</button>
+                                  <button type="button" className="ws-btn-secondary" onClick={() => guardarSeguimiento(p.id, { estado: 'propuesta' })}>Reabrir</button>
                                 )}
                               </div>
                             </div>
