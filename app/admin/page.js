@@ -706,9 +706,21 @@ function AdminPageContent() {
         body: JSON.stringify({ id: restaurante.id, email: restaurante.email })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo dar de baja el restaurante.')
+      if (!res.ok) {
+        // Fase H: el backend ahora devuelve `detalle` con code+message
+        // de Postgres para el admin. El mensaje corto se preserva.
+        if (data?.detalle) {
+          console.error('[darDeBaja] detalle del error:', data.detalle)
+        }
+        throw new Error(data.error || 'No se pudo dar de baja el restaurante.')
+      }
       setRestaurantes(prev => prev.filter(r => r.id !== restaurante.id))
       setBajaId(null)
+      // Fase H: si el backend avisa de que el restaurante se borró pero
+      // el usuario de auth quedó pendiente, lo mostramos.
+      if (data?.advertencia) {
+        setBajaError(data.advertencia)
+      }
     } catch (error) {
       setBajaError(error.message || 'No se pudo dar de baja el restaurante.')
     } finally {

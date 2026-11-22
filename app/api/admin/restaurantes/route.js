@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { TABLAS_HIJAS_VINOS_SIN_CASCADE, trocear } from '../../../lib/bajaRestaurante'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -476,13 +477,84 @@ export async function DELETE(req) {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
+    // ── 0. Limpieza previa de hijas de `vinos` sin ON DELETE CASCADE.
+    //
+    // DELETE FROM restaurantes falla con 23503 si queda alguna fila
+    // en una tabla hija de `vinos` con FK sin cascade (verificado
+    // con "Ensayo Onboarding": 1 vino + 1 parte cerrado + 1 conteo
+    // inicial cerrado → bloqueo por partes_servicio_lineas.vino_id
+    // y conteos_inventario_lineas.vino_id).
+    //
+    // Estrategia: leer los ids de los vinos del restaurante y borrar
+    // las filas de cada tabla hija ANTES del DELETE del restaurante.
+    // El resto de cascadas (parte_id→partes_servicio CASCADE, etc.)
+    // Postgres las resuelve solo al borrar el restaurante.
+    //
+    // Si alguno de estos borrados previos falla, abortamos y devolvemos
+    // 500 SIN haber tocado el restaurante ni el usuario de auth
+    // (estado consistente).
+    const { data: vinosDelRest, error: vinosErr } = await adminSupabase
+      .from('vinos')
+      .select('id')
+      .eq('restaurante_id', id)
+    if (vinosErr) {
+      console.error('[DELETE restaurante] error listando vinos:', vinosErr)
+      return Response.json({
+        error: 'No se pudo dar de baja el restaurante.',
+        detalle: { code: vinosErr.code, message: vinosErr.message, paso: 'select vinos' },
+      }, { status: 500 })
+    }
+    const vinoIds = (vinosDelRest || []).map(v => v.id)
+
+    if (vinoIds.length > 0) {
+      // Troceamos en chunks de 200 para no reventar la URL del .in().
+      for (const tablaCfg of TABLAS_HIJAS_VINOS_SIN_CASCADE) {
+        for (const chunk of trocear(vinoIds, 200)) {
+          // Cada tabla puede tener 1 o varias columnas que apuntan a
+          // vinos (duelo_carta tiene 3). Hacemos DELETE por cada una.
+          for (const col of tablaCfg.columnas) {
+            const { error: delErr } = await adminSupabase
+              .from(tablaCfg.tabla)
+              .delete()
+              .in(col, chunk)
+            // Tratar "tabla no existe" (42P01 / PGRST205) como OK:
+            // si la migración no se aplicó en este entorno, no hay
+            // filas que bloqueen.
+            if (delErr) {
+              const codigo = delErr.code || ''
+              const msg = String(delErr.message || '').toLowerCase()
+              const tablaAusente = codigo === '42P01' || codigo === 'PGRST205' ||
+                                   msg.includes('does not exist') ||
+                                   msg.includes('schema cache')
+              if (tablaAusente) continue
+              console.error(`[DELETE restaurante] error limpiando ${tablaCfg.tabla}.${col}:`, delErr)
+              return Response.json({
+                error: 'No se pudo dar de baja el restaurante.',
+                detalle: {
+                  code: codigo, message: delErr.message,
+                  paso: `limpieza ${tablaCfg.tabla}.${col}`,
+                  evidencia: tablaCfg.evidencia,
+                },
+              }, { status: 500 })
+            }
+          }
+        }
+      }
+    }
+
     // 1. Borrar el restaurante de la base de datos
     const { error: dbError } = await adminSupabase
       .from('restaurantes')
       .delete()
       .eq('id', id)
 
-    if (dbError) throw dbError
+    if (dbError) {
+      console.error('[DELETE restaurante] error en DELETE restaurantes:', dbError)
+      return Response.json({
+        error: 'No se pudo dar de baja el restaurante.',
+        detalle: { code: dbError.code, message: dbError.message, paso: 'delete restaurantes' },
+      }, { status: 500 })
+    }
 
     // 2. Buscar y borrar el usuario de Supabase Auth
     const filterRes = await fetch(
@@ -492,9 +564,19 @@ export async function DELETE(req) {
     const filterData = await filterRes.json()
     const authUser = filterData.users?.[0]
 
+    // Si el auth falla, el restaurante YA está borrado. Devolvemos
+    // ok=true con advertencia en lugar de ocultarlo silenciosamente.
+    let authBorrado = false
+    let authAdvertencia = null
+
     if (authUser) {
       const { error: authError } = await adminSupabase.auth.admin.deleteUser(authUser.id)
-      if (authError) console.error('Error borrando usuario auth:', authError)
+      if (authError) {
+        console.error('[DELETE restaurante] restaurante borrado; auth user NO borrado:', authError)
+        authAdvertencia = authError.message || 'error desconocido'
+      } else {
+        authBorrado = true
+      }
     } else {
       // Fallback: buscar paginando
       let found = null
@@ -507,13 +589,34 @@ export async function DELETE(req) {
         page++
       }
       if (found) {
-        await adminSupabase.auth.admin.deleteUser(found.id)
+        const { error: authError } = await adminSupabase.auth.admin.deleteUser(found.id)
+        if (authError) {
+          console.error('[DELETE restaurante] restaurante borrado; auth user NO borrado:', authError)
+          authAdvertencia = authError.message || 'error desconocido'
+        } else {
+          authBorrado = true
+        }
+      } else {
+        // No había usuario de auth asociado a ese email (p. ej. el
+        // propietario nunca aceptó la invitación o ya se borró). No
+        // es un error: el restaurante estaba sin dueño.
+        authBorrado = null  // no había nada que borrar
       }
     }
 
-    return Response.json({ ok: true, email })
+    return Response.json({
+      ok: true,
+      email,
+      auth_borrado: authBorrado,
+      advertencia: authAdvertencia
+        ? `Restaurante borrado. Usuario de acceso pendiente de borrar: ${authAdvertencia}`
+        : null,
+    })
   } catch (error) {
-    console.error('Error dando de baja restaurante:', error)
-    return Response.json({ error: 'No se pudo dar de baja el restaurante.' }, { status: 500 })
+    console.error('[DELETE restaurante] excepción no capturada:', error)
+    return Response.json({
+      error: 'No se pudo dar de baja el restaurante.',
+      detalle: { code: error?.code || null, message: error?.message || String(error), paso: 'catch' },
+    }, { status: 500 })
   }
 }
