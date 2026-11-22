@@ -55,11 +55,14 @@ export function calcCapitalLiberable({ snapshotOportunidad, resumenEjecutivo, me
 }
 
 // ---- Alertas críticas -----------------------------------------------------
-// Fuente única: contar la tabla `alerts` filtrada por severidad=crítica y
-// estado abierto/en_progreso cuando se nos pasa. Si no se nos pasa (ficha que
-// aún no cargó alerts), hacemos fallback contando las alertas pesadas (>=12)
-// del propio análisis local. Marcamos fuente para que la UI pueda rotularlo.
-export function calcAlertasCriticas({ alertasDb, analisis } = {}) {
+// Fuente única, preferencia: conteo persistido (lo que devuelve el API
+// radar-ejecutivo en resumen.alertas_criticas) > contar tabla `alerts` por
+// severidad=crítica y estado abierto/en_progreso > fallback por pesos.
+// El fallback se marca como 'estimado' para que la UI pueda rotularlo.
+export function calcAlertasCriticas({ conteoPersistido, alertasDb, analisis } = {}) {
+  if (typeof conteoPersistido === 'number' && Number.isFinite(conteoPersistido)) {
+    return { valor: conteoPersistido, fuente: 'persistido' }
+  }
   if (Array.isArray(alertasDb)) {
     const criticas = alertasDb.filter(a => {
       const sev = String(a && (a.severidad || a.severity) || '').toLowerCase()
@@ -85,12 +88,22 @@ export function calcCandidatosCopa({ snapshotCopa, resumenEjecutivo, metricas } 
       + toNumber(snapshotCopa.candidatos_coravin)
     if (total > 0) return { valor: total, fuente: 'persistido' }
   }
-  const persistido = toNumber(resumenEjecutivo && resumenEjecutivo.candidatos_copa)
-  if (persistido > 0) return { valor: persistido, fuente: 'persistido' }
+  if (resumenEjecutivo && typeof resumenEjecutivo.candidatos_copa === 'number') {
+    return { valor: resumenEjecutivo.candidatos_copa, fuente: 'persistido' }
+  }
   const vinos = toNumber(metricas && metricas.vinos)
   const copaActuales = toNumber(metricas && metricas.copa)
   const estimado = Math.max(0, Math.round(vinos * 0.12) - copaActuales)
   return { valor: estimado, fuente: 'estimado' }
+}
+
+// Contador separado para "Vinos actualmente servidos por copa" — distinto
+// concepto que "Candidatos a copa". Sirve para no forzar que coincidan.
+export function calcVinosPorCopa({ metricas, vinos } = {}) {
+  if (Array.isArray(vinos)) {
+    return vinos.filter(v => v && v.activo !== false && toNumber(v.precio_copa) > 0).length
+  }
+  return toNumber(metricas && metricas.copa)
 }
 
 // ---- Fotos (3 nombres distintos) -----------------------------------------
@@ -196,6 +209,104 @@ export function seleccionarMatchesAutoaplicables(matches = [], { umbral = 95 } =
     .map(m => ({ wineId: m.wineId, score: Math.min(99, Math.round(toNumber(m.score))) }))
 }
 
+// ---- Matching: regla rica de auto-aplicación (fase J-fix) -----------------
+// Entrada: array de grupos { vino, candidatos } donde vino puede traer
+// `formato_compra` (texto, ej. '75 cl', '300 cl', 'Magnum 150 cl').
+// Candidatos son { score, vino: { formato, ...}, proveedor, ... }.
+//
+// Regla:
+//   1) Filtrar candidatos con score >= umbral.
+//   2) Si hay 0 → revisión.
+//   3) Si hay exactamente 1 → auto.
+//   4) Si hay varios:
+//      - Ordenar por score desc. Si el 1º no supera al 2º en >= 10 puntos → revisión.
+//      - Si el vino de la carta tiene formato informado:
+//          · El candidato elegido debe tener MISMO formato (en cl) → auto.
+//          · Si no coincide → revisión.
+//      - Si el vino no tiene formato:
+//          · Si hay un único candidato ≥95% de 75 cl y ninguno de otro cl
+//            con ≥95% → auto con ese.
+//          · Si no → revisión.
+//
+// Devuelve { auto: [{ vino, candidato, score, formato }], revision: [...] }.
+function _normalizarFormato(txt) {
+  const bruto = String(txt || '').toLowerCase().replace(',', '.')
+  const match = bruto.match(/(\d+(?:\.\d+)?)\s*cl/)
+  if (match) return Math.round(parseFloat(match[1]))
+  // aliases comunes sin cifra
+  if (/magnum/.test(bruto)) return 150
+  if (/jeroboam|jeroboa/.test(bruto)) return 300
+  if (/matusale/.test(bruto)) return 600
+  if (/salmanazar/.test(bruto)) return 900
+  if (/balthazar/.test(bruto)) return 1200
+  if (/nabucodonosor/.test(bruto)) return 1500
+  if (/media.*botella|half/.test(bruto)) return 37
+  return null
+}
+
+export function seleccionarMatchesParaAutoAplicar(grupos = [], { umbral = 95, ventajaMinima = 10 } = {}) {
+  const u = toNumber(umbral)
+  const v = toNumber(ventajaMinima)
+  const auto = []
+  const revision = []
+  for (const grupo of grupos) {
+    if (!grupo || !grupo.vino) continue
+    // Ordenamos TODOS los candidatos por score (sin filtrar por umbral),
+    // porque la comparación de ventaja considera también los que están
+    // por debajo del umbral como 'segundo'.
+    const todos = (grupo.candidatos || [])
+      .map(c => ({ ...c, score: Math.min(99, Math.round(toNumber(c.score))) }))
+      .sort((a, b) => b.score - a.score)
+    const mejor = todos[0]
+    if (!mejor || mejor.score < u) {
+      revision.push({ vino: grupo.vino, motivo: 'sin_candidato', candidatos: todos })
+      continue
+    }
+    const formatoVino = _normalizarFormato(grupo.vino.formato_compra)
+    const formatoCand = _normalizarFormato(mejor.vino && mejor.vino.formato)
+
+    // Caso (a): solo hay UN candidato en la lista total → auto directo
+    // (si el formato no choca con el del vino cuando está informado).
+    if (todos.length === 1) {
+      if (formatoVino != null && formatoCand != null && formatoCand !== formatoVino) {
+        revision.push({ vino: grupo.vino, motivo: 'formato_distinto', candidatos: todos })
+      } else {
+        auto.push({ vino: grupo.vino, candidato: mejor, score: mejor.score, motivo: 'unico_candidato' })
+      }
+      continue
+    }
+
+    // Caso (b): hay segundo candidato (dentro o fuera del umbral). Pedir
+    // ventaja ≥ ventajaMinima puntos para considerar al mejor como ganador claro.
+    const segundoScore = todos[1].score
+    const ventaja = mejor.score - segundoScore
+    if (ventaja < v) {
+      revision.push({ vino: grupo.vino, motivo: 'ventaja_insuficiente', candidatos: todos })
+      continue
+    }
+
+    if (formatoVino != null) {
+      if (formatoCand === formatoVino) {
+        auto.push({ vino: grupo.vino, candidato: mejor, score: mejor.score, motivo: 'formato_coincide' })
+      } else {
+        revision.push({ vino: grupo.vino, motivo: 'formato_distinto', candidatos: todos })
+      }
+      continue
+    }
+
+    // Vino sin formato: solo auto si TODOS los candidatos ≥umbral son 75cl.
+    const candidatosAlto = todos.filter(c => c.score >= u)
+    const formatosAlto = new Set(candidatosAlto.map(c => _normalizarFormato(c.vino && c.vino.formato)).filter(x => x != null))
+    const soloSetentaicinco = formatosAlto.size === 1 && formatosAlto.has(75)
+    if (soloSetentaicinco && formatoCand === 75) {
+      auto.push({ vino: grupo.vino, candidato: mejor, score: mejor.score, motivo: 'asumido_75cl' })
+    } else {
+      revision.push({ vino: grupo.vino, motivo: 'sin_formato_informado', candidatos: todos })
+    }
+  }
+  return { auto, revision }
+}
+
 // ---- Excluir demos de agregados ------------------------------------------
 // Lista hardcoded pero separada de DEMO_IDS. DEMO_IDS controla cosmética en
 // la UI del cliente (ocultar cifras). Esta lista controla si un restaurante
@@ -203,11 +314,13 @@ export function seleccionarMatchesAutoaplicables(matches = [], { umbral = 95 } =
 const EXCLUIR_AGREGADO_SLUGS = new Set([
   'araboka',
   'sumiller-casa-marisma',
+  'casa-marisma',
 ])
 
 const EXCLUIR_AGREGADO_IDS = new Set([
-  // Vacío por ahora. Casa Marisma sigue en DEMO_IDS (UI cliente) pero
-  // participa en agregados del consultor para poder usarse como caso real.
+  // Casa Marisma: demo pilotada. Queda en DEMO_IDS (cosmética cliente)
+  // Y en esta lista (agregados consultor), por decisión de fase J-fix.
+  '65d26545-7c7e-424c-9c29-33bfe8bbaafa',
 ])
 
 export function esExcluidoDeAgregado(restaurante) {

@@ -67,7 +67,11 @@ function capitalRadarDetalle(informe) {
 }
 
 function alertasCriticasRadar(informe) {
+  const conteoPersistido = (informe.ejecutivo && typeof informe.ejecutivo.resumen?.alertas_criticas === 'number')
+    ? informe.ejecutivo.resumen.alertas_criticas
+    : undefined
   return calcAlertasCriticas({
+    conteoPersistido,
     alertasDb: informe.alertasAbiertas || null,
     analisis: informe,
   }).valor
@@ -506,14 +510,14 @@ export default function RadarConsultoria() {
     const base = { restaurante, ...analizar(restaurante, vinosRest, platosRest, estadisticasRest, propuestasRest) }
     const ejecutivo = ejecutivoPorRestaurante.get(restaurante.id)
     if (!ejecutivo) return base
-    const prioridad = ejecutivo.prioridad === 'alta' ? 'Alta' : ejecutivo.prioridad === 'media' ? 'Media' : 'Baja'
+    // No sobrescribimos score/prioridad con el motor: calcPuntuacion (helper
+    // único) usa siempre el resultado de analizar(), y ficha y Radar llaman
+    // a analizar() con los mismos datos → mismo número.
     return {
       ...base,
       ejecutivo,
       semanal: ejecutivo.semanal,
       economica: ejecutivo.economica,
-      score: ejecutivo.score ?? base.score,
-      prioridad,
       siguienteMovimiento: ejecutivo.resumen?.siguiente_accion || base.siguienteMovimiento,
     }
   }).sort((a, b) => {
@@ -713,6 +717,9 @@ export default function RadarConsultoria() {
                 {recalcMasivo.activo ? `Recalculando ${recalcMasivo.hechos + 1}/${recalcMasivo.total}…` : 'Recalcular y guardar para todos'}
               </button>
               <Link href="/admin/estado-producto" className="admin-btn-ghost" title="Estado del producto (checks internos)">Estado del producto</Link>
+              <span className={`radar-tag ${automatismosPendientes.length ? 'is-warning' : claseAutomatismo((resumenAutomatismos.failed || 0) > 0 ? 'failed' : 'success')}`} title={`Ejecuciones ${resumenAutomatismos.total || 0} · errores ${resumenAutomatismos.failed || 0} · procesados ${resumenAutomatismos.processed || 0}`}>
+                Automatismos: {automatismosPendientes.length ? 'migración pendiente' : `${resumenAutomatismos.success || 0} OK`}
+              </span>
             </div>
           </div>
           {ticketError && <p className="admin-alert admin-alert-error" role="alert">{ticketError}</p>}
@@ -784,23 +791,27 @@ export default function RadarConsultoria() {
             <b>{bloqueadosActivacion} necesitan acompañamiento</b>
           </section>
 
-          {/* Automatismos reducido a badge pequeño */}
-          <div className="automation-health-compact" role="status" aria-label="Estado de automatismos">
-            <span className={`radar-tag ${automatismosPendientes.length ? 'is-warning' : claseAutomatismo((resumenAutomatismos.failed || 0) > 0 ? 'failed' : 'success')}`} title={`Ejecuciones ${resumenAutomatismos.total || 0} · errores ${resumenAutomatismos.failed || 0} · procesados ${resumenAutomatismos.processed || 0}`}>
-              Automatismos: {automatismosPendientes.length ? 'migración pendiente' : `${resumenAutomatismos.success || 0} OK`}
-            </span>
-          </div>
-
-          {/* Defensa económica: una sola línea si todos están sin foto, panel completo si no */}
+          {/* Defensa económica: tarjeta ligera si todos están sin foto, panel completo si no */}
           {(() => {
             const sinFoto = resumenDefensaEconomica.sin_foto || 0
             const totalRests = resumenDefensaEconomica.restaurantes || informes.length
             const todosSinFoto = totalRests > 0 && sinFoto === totalRests
             if (todosSinFoto) {
               return (
-                <div className="admin-alert" role="status">
-                  {sinFoto} restaurantes sin documentación guardada para enseñar al cliente → recalcula y guarda su foto desde la ficha.
-                </div>
+                <section className="radar-no-foto-card" role="status" aria-label="Documentación pendiente">
+                  <div>
+                    <strong>{sinFoto} restaurantes sin documentación guardada</strong>
+                    <p>Para enseñar cifras al cliente, cada uno necesita un recálculo desde su ficha.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-btn-ghost"
+                    onClick={recalcularParaTodos}
+                    disabled={recalcMasivo.activo}
+                  >
+                    Guardar fotos de todos
+                  </button>
+                </section>
               )
             }
             return (
@@ -890,7 +901,10 @@ export default function RadarConsultoria() {
                   <i style={{ width: `${informe.score}%` }} />
                 </div>
                 <div className="radar-info">
-                  <strong>{informe.restaurante.nombre}</strong>
+                  <strong>
+                    {informe.restaurante.nombre}
+                    {esExcluidoDeAgregado(informe.restaurante) && <span className="radar-demo-chip" title="Restaurante demo: no suma en agregados">demo</span>}
+                  </strong>
                   <div className="radar-tags">
                     <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
                     {informe.propuestasAbiertas.length > 0 && <span className="radar-tag is-warning">Pendiente acción</span>}

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 import AdminOverlay from '../components/AdminOverlay'
+import { calcAlertasCriticas, limpiarRutasTecnicas } from '../../lib/consultoriaMetricas'
 
 const ESTADOS = [
   ['todas', 'Todas'],
@@ -96,8 +97,10 @@ export default function AdminAlertasPage() {
   }, [alertas, busqueda])
 
   const resumen = useMemo(() => ({
-    criticas: alertas.filter(a => a.severidad === 'critica').length,
-    avisos: alertas.filter(a => a.severidad === 'aviso').length,
+    // Usa el helper único para que el contador de críticas coincida con
+    // el del Radar y la ficha. Cuenta severidad=crítica Y estado abierto.
+    criticas: calcAlertasCriticas({ alertasDb: alertas }).valor,
+    avisos: alertas.filter(a => a.severidad === 'aviso' && (a.estado === 'abierta' || a.estado === 'en_progreso')).length,
     abiertas: alertas.filter(a => a.estado === 'abierta').length,
     progreso: alertas.filter(a => a.estado === 'en_progreso').length,
   }), [alertas])
@@ -179,7 +182,7 @@ export default function AdminAlertasPage() {
         </div>
       </div>
 
-      <div className="actions-filterbar" role="tablist" aria-label="Pestañas del buzón">
+      <div className="buzon-tabs" role="tablist" aria-label="Pestañas del buzón">
         <Link href="/admin/alertas" className="is-active" role="tab" aria-selected="true">Alertas</Link>
         <Link href="/admin/sugerencias" role="tab" aria-selected="false">Sugerencias</Link>
       </div>

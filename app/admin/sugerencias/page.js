@@ -97,7 +97,7 @@ export default function AdminSugerenciasPage() {
         </div>
       </div>
 
-      <div className="actions-filterbar" role="tablist" aria-label="Pestañas del buzón">
+      <div className="buzon-tabs" role="tablist" aria-label="Pestañas del buzón">
         <Link href="/admin/alertas" role="tab" aria-selected="false">Alertas</Link>
         <Link href="/admin/sugerencias" className="is-active" role="tab" aria-selected="true">Sugerencias</Link>
       </div>
