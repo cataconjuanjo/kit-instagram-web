@@ -336,23 +336,26 @@ function textoPropuesta(restaurante, simulacion) {
   return lineas.join('\n')
 }
 
-async function seleccionarVinosCarta() {
+async function seleccionarVinosCarta(restauranteId = null) {
+  // FASE J2 - Bloque 2: el simulador antes cargaba vinos de TODOS los
+  // restaurantes (miles de filas) aunque solo se mostraran los del
+  // restaurante activo. Ahora pedimos sólo los del restaurante elegido.
+  // Si no hay restauranteId (caso raro al iniciar sin URL), devolvemos [].
+  if (!restauranteId) return []
   let from = 0
   const rows = []
-
   while (true) {
     const { data, error } = await supabase
       .from('vinos')
       .select(SELECT_CLIENT_VINO_ADMIN)
+      .eq('restaurante_id', restauranteId)
       .order('nombre')
       .range(from, from + 999)
-
     if (error) throw error
     rows.push(...(data || []))
     if (!data || data.length < 1000) break
     from += 1000
   }
-
   return rows
 }
 
@@ -376,6 +379,8 @@ export default function SimuladorCartas() {
   const [vinos, setVinos] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [catalogo, setCatalogo] = useState([])
+  const [catalogoListo, setCatalogoListo] = useState(false)
+  const [catalogoCargando, setCatalogoCargando] = useState(false)
   const [restauranteId, setRestauranteId] = useState('')
   const [proveedorId, setProveedorId] = useState('')
   const [escenario, setEscenario] = useState('optimizado')
@@ -416,46 +421,90 @@ export default function SimuladorCartas() {
       }
 
       const token = await tokenAdmin()
-      const [{ data: rests, error: restError }, vinosResult, catalogoRes] = await Promise.all([
+      // FASE J2 - Bloque 2: primera pintura rápida.
+      //  1) Solo restaurantes (lista corta).
+      //  2) scope=lite del API proveedores (sin vinos).
+      //  3) Vinos del restaurante inicial (el de la URL o el primero).
+      const params = new URLSearchParams(window.location.search)
+      const restauranteUrl = params.get('restaurante')
+      const [{ data: rests, error: restError }, catalogoRes] = await Promise.all([
         supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre'),
-        seleccionarVinosCarta()
-          .then(data => ({ data }))
-          .catch(error => ({ error })),
-        fetch('/api/admin/proveedores', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/admin/proveedores?scope=lite', { headers: { Authorization: `Bearer ${token}` } }),
       ])
-      const { data: vinosData, error: vinosError } = vinosResult
-
-      if (restError || vinosError) {
-        setError(restError?.message || vinosError?.message || 'No se pudieron cargar los datos.')
+      if (restError) {
+        setError(restError.message || 'No se pudieron cargar los datos.')
         setLoading(false)
         return
       }
-
       const catalogoData = await catalogoRes.json().catch(() => ({}))
       if (!catalogoRes.ok) {
         setError(catalogoData.error || 'No se pudo cargar el catalogo de proveedores.')
       }
-
       const restaurantesData = rests || []
+      const restauranteInicial = restauranteUrl || restaurantesData[0]?.id || ''
       setRestaurantes(restaurantesData)
-      setVinos(vinosData || [])
-      const favoritosLocales = leerFavoritosLocales()
       setProveedores(catalogoRes.ok ? catalogoData.proveedores || [] : [])
-      setCatalogo(catalogoRes.ok ? (catalogoData.vinos || []).map(vino => ({
-        ...vino,
-        favorito: vino.favorito || favoritosLocales.has(String(vino.id))
-      })) : [])
-
-      const params = new URLSearchParams(window.location.search)
-      const restauranteUrl = params.get('restaurante')
-      setRestauranteId(restauranteUrl || restaurantesData[0]?.id || '')
+      setCatalogo([]) // El catálogo se carga cuando se elige proveedor.
+      setRestauranteId(restauranteInicial)
       const proveedorUrl = params.get('proveedor')
       if (proveedorUrl) setProveedorId(proveedorUrl)
+
+      // Vinos del restaurante inicial (en paralelo, sin bloquear la primera pintura).
+      if (restauranteInicial) {
+        try {
+          const vinosData = await seleccionarVinosCarta(restauranteInicial)
+          setVinos(vinosData || [])
+        } catch (error) {
+          setError(error.message || 'No se pudieron cargar los vinos del restaurante.')
+        }
+      } else {
+        setVinos([])
+      }
       setLoading(false)
+
+      // Cargar el catálogo completo en segundo plano tras la primera
+      // pintura. Hasta que termine, "Generar simulación" y "Guardar
+      // propuestas" quedan desactivados.
+      setCatalogoCargando(true)
+      try {
+        const catRes = await fetch('/api/admin/proveedores?scope=full', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const catData = await catRes.json()
+        if (catRes.ok) {
+          const favoritosLocales = leerFavoritosLocales()
+          setCatalogo((catData.vinos || []).map(vino => ({
+            ...vino,
+            favorito: vino.favorito || favoritosLocales.has(String(vino.id)),
+          })))
+          setCatalogoListo(true)
+        } else {
+          setError(catData.error || 'No se pudo cargar el catálogo de proveedores.')
+        }
+      } catch (error) {
+        setError(error.message || 'No se pudo cargar el catálogo de proveedores.')
+      } finally {
+        setCatalogoCargando(false)
+      }
     }
 
     cargar()
   }, [])
+
+  // Al cambiar de restaurante, cargamos sus vinos (en vez de tenerlos
+  // todos cargados de inicio).
+  useEffect(() => {
+    if (!restauranteId) return
+    let cancelado = false
+    seleccionarVinosCarta(restauranteId)
+      .then(data => { if (!cancelado) setVinos(data || []) })
+      .catch(error => { if (!cancelado) setError(error.message || 'No se pudieron cargar los vinos.') })
+    return () => { cancelado = true }
+  }, [restauranteId])
+
+  // El catálogo completo ya se carga en segundo plano tras la primera
+  // pintura (ver useEffect de inicio). No necesitamos recargar por
+  // proveedor; filtramos sobre el catálogo en memoria.
 
   const proveedoresPorId = useMemo(() => {
     return proveedores.reduce((acc, proveedor) => {
@@ -874,8 +923,8 @@ export default function SimuladorCartas() {
           <button type="button" className="sim-btn sim-btn-ghost" onClick={() => window.print()} disabled={!simulacionEditada}>
             PDF
           </button>
-          <button type="button" className="sim-btn sim-btn-primary" onClick={guardarPropuestas} disabled={!simulacionEditada || guardando}>
-            {guardando ? 'Guardando...' : 'Guardar propuestas'}
+          <button type="button" className="sim-btn sim-btn-primary" onClick={guardarPropuestas} disabled={!simulacionEditada || guardando || !catalogoListo}>
+            {guardando ? 'Guardando...' : (!catalogoListo ? 'Esperando catálogo…' : 'Guardar propuestas')}
           </button>
         </div>
       </header>
@@ -926,11 +975,22 @@ export default function SimuladorCartas() {
           </div>
 
           <div className="sim-sidebar-block">
-            <button type="button" className="sim-btn sim-btn-primary sim-btn-full" onClick={generar}>
-              Generar simulación
+            <button
+              type="button"
+              className="sim-btn sim-btn-primary sim-btn-full"
+              onClick={generar}
+              disabled={!catalogoListo}
+              title={!catalogoListo ? 'Esperando a que cargue el catálogo del fondo común para proponer altas…' : ''}
+            >
+              {catalogoListo ? 'Generar simulación' : 'Cargando catálogo…'}
             </button>
           </div>
 
+          {!catalogoListo && (
+            <div className="sim-sidebar-alert sim-sidebar-alert-info">
+              Cargando catálogo del fondo común… las altas aparecerán en unos segundos.
+            </div>
+          )}
           {error ? <div className="sim-sidebar-alert sim-sidebar-alert-error">{error}</div> : null}
           {status ? <div className="sim-sidebar-alert sim-sidebar-alert-ok">{status}</div> : null}
         </aside>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../../demo'
 import { openRestaurantDashboard } from '../../openRestaurantDashboard'
@@ -23,6 +23,7 @@ import {
   seleccionarMatchesParaAutoAplicar,
 } from '../../../lib/consultoriaMetricas'
 import { analizarRestaurante as analizar } from '../../../lib/analizarRestaurante'
+import { TABS_VALIDOS, TAB_POR_DEFECTO, resolverTab } from '../../../lib/fichaTabs'
 import OpenCartaPruebaButton from '../../../dashboard/OpenCartaPruebaButton'
 
 
@@ -213,6 +214,18 @@ async function tokenAdmin() {
 export default function RestauranteWorkspace() {
   const params = useParams()
   const id = params?.id
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const tab = resolverTab(searchParams?.get('tab'))
+  const setTab = useCallback((siguiente) => {
+    const limpio = TABS_VALIDOS.includes(siguiente) ? siguiente : TAB_POR_DEFECTO
+    const q = new URLSearchParams(searchParams?.toString() || '')
+    if (limpio === TAB_POR_DEFECTO) q.delete('tab')
+    else q.set('tab', limpio)
+    const qs = q.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: true })
+  }, [pathname, router, searchParams])
 
   const [user, setUser] = useState(null)
   const [restaurante, setRestaurante] = useState(null)
@@ -812,6 +825,18 @@ export default function RestauranteWorkspace() {
     navigator.clipboard.writeText(lineas.join('\n'))
   }
 
+  function imprimirInforme() {
+    // El informe imprimible solo existe cuando la pestaña 'informe' está
+    // montada. Nos aseguramos de cambiar a esa pestaña y esperamos un
+    // frame para que React monte el DOM antes de invocar print().
+    if (tab !== 'informe') setTab('informe')
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print()
+      })
+    })
+  }
+
   function scrollTo(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -868,7 +893,7 @@ export default function RestauranteWorkspace() {
             <div className="ws-header-actions">
               <button onClick={copiarResumen} aria-label="Copiar resumen del restaurante">Copiar datos</button>
               <button onClick={gestionar}>Abrir dashboard</button>
-              <button onClick={() => window.print()} aria-label="Imprimir esta página">Imprimir página</button>
+              <button onClick={() => imprimirInforme()} aria-label="Imprimir esta página">Imprimir página</button>
               <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Descargar informe</a>
               <OpenCartaPruebaButton restauranteId={restaurante.id}>Probar carta</OpenCartaPruebaButton>
             </div>
@@ -885,7 +910,7 @@ export default function RestauranteWorkspace() {
                 <div className="ws-actions-dropdown-panel">
                   <button onClick={() => { copiarResumen(); setAccionesMobileOpen(false) }}>Copiar datos</button>
                   <button onClick={() => { gestionar(); setAccionesMobileOpen(false) }}>Abrir dashboard</button>
-                  <button onClick={() => { window.print(); setAccionesMobileOpen(false) }}>Imprimir página</button>
+                  <button onClick={() => { imprimirInforme(); setAccionesMobileOpen(false) }}>Imprimir página</button>
                   <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" onClick={() => setAccionesMobileOpen(false)}>Descargar informe</a>
                   <OpenCartaPruebaButton restauranteId={restaurante.id}>Probar carta</OpenCartaPruebaButton>
                 </div>
@@ -893,20 +918,35 @@ export default function RestauranteWorkspace() {
             </div>
           </div>
 
-          {/* Anchor navigation */}
-          <nav className="ws-anchors">
-            <button onClick={() => scrollTo('ws-resumen')}>Resumen {propuestasAbiertas.length > 0 && <span className="ws-badge">{propuestasAbiertas.length}</span>}</button>
-            <button onClick={() => scrollTo('ws-inteligencia')}>Inteligencia {consultoriaFase1?.alertas?.length > 0 && <span className="ws-badge">{consultoriaFase1.alertas.length}</span>}</button>
-            <button onClick={() => scrollTo('ws-diagnostico')}>Hallazgos {alertas.length > 0 && <span className="ws-badge">{alertas.length}</span>}</button>
-            <button onClick={() => scrollTo('ws-matching')}>Matching {matchesCatalogo.length > 0 && <span className="ws-badge">{matchesCatalogo.length}</span>}</button>
-            <button onClick={() => scrollTo('ws-propuestas')}>Propuestas {propuestasActivas.length > 0 && <span className="ws-badge">{propuestasActivas.length}</span>}</button>
-            <button onClick={() => scrollTo('ws-seleccion')}>Selección {seleccion.length > 0 && <span className="ws-badge">{seleccion.length}/4</span>}</button>
-            <button onClick={() => scrollTo('ws-informe')}>Informe</button>
+          {/* Pestañas reales con ?tab=. El mount es lazy: sólo la activa se renderiza. */}
+          <nav className="ws-tabs" role="tablist" aria-label="Secciones del restaurante">
+            <button role="tab" aria-selected={tab === 'resumen'} className={tab === 'resumen' ? 'is-active' : ''} onClick={() => setTab('resumen')}>
+              Resumen {propuestasAbiertas.length > 0 && <span className="ws-badge">{propuestasAbiertas.length}</span>}
+            </button>
+            <button role="tab" aria-selected={tab === 'inteligencia'} className={tab === 'inteligencia' ? 'is-active' : ''} onClick={() => setTab('inteligencia')}>
+              Inteligencia {consultoriaFase1?.alertas?.length > 0 && <span className="ws-badge">{consultoriaFase1.alertas.length}</span>}
+            </button>
+            <button role="tab" aria-selected={tab === 'hallazgos'} className={tab === 'hallazgos' ? 'is-active' : ''} onClick={() => setTab('hallazgos')}>
+              Hallazgos {alertas.length > 0 && <span className="ws-badge">{alertas.length}</span>}
+            </button>
+            <button role="tab" aria-selected={tab === 'matching'} className={tab === 'matching' ? 'is-active' : ''} onClick={() => setTab('matching')}>
+              Matching {matchesCatalogo.length > 0 && <span className="ws-badge">{matchesCatalogo.length}</span>}
+            </button>
+            <button role="tab" aria-selected={tab === 'propuestas'} className={tab === 'propuestas' ? 'is-active' : ''} onClick={() => setTab('propuestas')}>
+              Propuestas {propuestasActivas.length > 0 && <span className="ws-badge">{propuestasActivas.length}</span>}
+            </button>
+            <button role="tab" aria-selected={tab === 'seleccion'} className={tab === 'seleccion' ? 'is-active' : ''} onClick={() => setTab('seleccion')}>
+              Selección {seleccion.length > 0 && <span className="ws-badge">{seleccion.length}/4</span>}
+            </button>
+            <button role="tab" aria-selected={tab === 'informe'} className={tab === 'informe' ? 'is-active' : ''} onClick={() => setTab('informe')}>
+              Informe
+            </button>
           </nav>
 
           {/* ═══════════════════════════════════════
               SECCIÓN: RESUMEN
           ═══════════════════════════════════════ */}
+          {tab === 'resumen' && (
           <section id="ws-resumen" className="ws-section">
             <div className="ws-resumen-top">
               <div className="ws-score-block">
@@ -973,7 +1013,7 @@ export default function RestauranteWorkspace() {
                       >
                         Crear propuesta
                       </button>
-                      <button type="button" onClick={() => scrollTo('ws-diagnostico')}>Ver diagnóstico</button>
+                      <button type="button" onClick={() => setTab('hallazgos')}>Ver diagnóstico</button>
                     </div>
                   </article>
                 )) : (
@@ -992,7 +1032,9 @@ export default function RestauranteWorkspace() {
               </div>
             </div>
           </section>
+          )}
 
+          {tab === 'inteligencia' && (
           <section id="ws-inteligencia" className="ws-section consulting-intelligence">
             <div className="ws-section-head">
               <div className="ws-section-title-wrap">
@@ -1032,7 +1074,7 @@ export default function RestauranteWorkspace() {
                 )}
 
                 {consultoriaFase1.consultor?.diagnostic && (
-                  <div className={`consultant-plan${planConsultorOpen ? ' is-expanded' : ''}`}>
+                  <div className={`consultant-plan is-historic${planConsultorOpen ? ' is-expanded' : ''}`}>
                     <div className="consultant-plan-head">
                       <div>
                         <button
@@ -1044,20 +1086,17 @@ export default function RestauranteWorkspace() {
                           <h4>Plan consultor</h4>
                           <span className="consultant-plan-chevron">{planConsultorOpen ? '−' : '+'}</span>
                         </button>
+                        {consultoriaFase1.ultima?.created_at && (
+                          <p className="consultant-plan-dateline">
+                            Plan guardado el {new Date(consultoriaFase1.ultima.created_at).toLocaleDateString('es-ES')} · valoración de entonces
+                          </p>
+                        )}
                         <p>{consultoriaFase1.consultor.diagnostic.resumen_ejecutivo}</p>
                       </div>
                       <button type="button" onClick={copiarPlanConsultor}>Copiar resumen para cliente</button>
                     </div>
                     <div className="consultant-plan-body">
                     <div className="consultant-plan-status">
-                      <div>
-                        <span>Prioridad</span>
-                        <strong>{consultoriaFase1.consultor.diagnostic.prioridad}</strong>
-                      </div>
-                      <div>
-                        <span>Score</span>
-                        <strong>{consultoriaFase1.consultor.diagnostic.score}</strong>
-                      </div>
                       <div>
                         <span>Problema principal</span>
                         <strong>{consultoriaFase1.consultor.diagnostic.problema_principal}</strong>
@@ -1409,10 +1448,12 @@ export default function RestauranteWorkspace() {
               </>
             )}
           </section>
+          )}
 
           {/* ═══════════════════════════════════════
-              SECCIÓN: DIAGNÓSTICO
+              SECCIÓN: HALLAZGOS
           ═══════════════════════════════════════ */}
+          {tab === 'hallazgos' && (
           <section id="ws-diagnostico" className="ws-section">
             <h3 className="ws-section-title">Hallazgos</h3>
 
@@ -1438,7 +1479,7 @@ export default function RestauranteWorkspace() {
                         <button
                           className="ws-alerta-proponer"
                           onClick={() => {
-                            scrollTo('ws-propuestas')
+                            setTab('propuestas')
                             abrirFormNuevo({ titulo: alerta.titulo, motivo: alerta.detalle + '\n\nAcción: ' + alerta.accion, prioridad: prioridad === 'Alta' ? 'alta' : prioridad === 'Media' ? 'media' : 'baja' })
                           }}
                         >
@@ -1617,10 +1658,12 @@ export default function RestauranteWorkspace() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ═══════════════════════════════════════
-              SECCIÓN: PROPUESTAS
+              SECCIÓN: MATCHING
           ═══════════════════════════════════════ */}
+          {tab === 'matching' && (
           <section id="ws-matching" className="ws-section">
             <div className="ws-section-head">
               <div className="ws-section-title-wrap">
@@ -1787,7 +1830,9 @@ export default function RestauranteWorkspace() {
               )
             })()}
           </section>
+          )}
 
+          {tab === 'propuestas' && (
           <section id="ws-propuestas" className="ws-section">
             <div className="ws-section-head">
               <h3 className="ws-section-title">Propuestas</h3>
@@ -1954,10 +1999,12 @@ export default function RestauranteWorkspace() {
               </div>
             )}
           </section>
+          )}
 
           {/* ═══════════════════════════════════════
               SECCIÓN: SELECCIÓN JUANJO
           ═══════════════════════════════════════ */}
+          {tab === 'seleccion' && (
           <section id="ws-seleccion" className="ws-section">
             <div className="ws-section-head">
               <h3 className="ws-section-title">Selección Juanjo</h3>
@@ -2015,16 +2062,18 @@ export default function RestauranteWorkspace() {
               <div className="ws-empty-block">Sin vinos en la selección de este restaurante.</div>
             )}
           </section>
+          )}
 
           {/* ═══════════════════════════════════════
               SECCIÓN: INFORME
           ═══════════════════════════════════════ */}
+          {tab === 'informe' && (
           <section id="ws-informe" className="ws-section">
             <div className="ws-section-head">
               <h3 className="ws-section-title">Informe ejecutivo</h3>
               <div className="report-inline-actions">
                 <button type="button" onClick={copiarInformeEjecutivo}>Copiar resumen</button>
-                <button type="button" onClick={() => window.print()} aria-label="Imprimir esta página">Imprimir</button>
+                <button type="button" onClick={() => imprimirInforme()} aria-label="Imprimir esta página">Imprimir</button>
                 <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" className="ws-btn-secondary">Abrir version imprimible</a>
               </div>
             </div>
@@ -2084,6 +2133,7 @@ export default function RestauranteWorkspace() {
               </div>
             </div>
           </section>
+          )}
 
           <section id="ws-politica-precio" className="ws-section">
             <div className="ws-section-head">
