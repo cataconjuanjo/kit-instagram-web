@@ -1557,8 +1557,8 @@ export default function Estadisticas() {
       nombre: vino.nombre || nombre,
       bodega: vino.bodega || '',
       notas: vino.notas_cata || '',
-      precio: vino.precio_botella ? eur(vino.precio_botella) : '',
-      coste: vino.coste_compra ? eur(vino.coste_compra) : '',
+      precio: vino.precio_botella ? eur(vino.precio_botella, 2) : '',
+      coste: vino.coste_compra ? eur(vino.coste_compra, 2) : '',
       stock: vino.stock !== null && vino.stock !== undefined ? String(vino.stock) : '',
     }
   }

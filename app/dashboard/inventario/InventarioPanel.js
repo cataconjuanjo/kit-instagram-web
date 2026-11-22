@@ -21,6 +21,12 @@ function normalizar(texto = '') {
 function eur(valor) {
   return formatoMoneda(valor, { decimales: 0 })
 }
+// G: costes UNITARIOS se muestran con 2 decimales (p. ej. 8,50 €), no
+// redondeados a entero. Los totales (inmovilizado, diferencias) siguen
+// con 0 decimales porque suman decenas/centenas.
+function eurUnit(valor) {
+  return formatoMoneda(valor, { decimales: 2 })
+}
 function haceDiasISO(dias) {
   const d = new Date()
   d.setDate(d.getDate() - dias)
@@ -388,7 +394,7 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
                       <div className={styles.inventoryCardHead}>
                         <div>
                           <h3>{vino.nombre}</h3>
-                          <p>{vino.bodega || 'Sin bodega'} · stock app {stockActual} · coste {eur(vino.coste_compra)} · venta {eur(vino.precio_botella)}</p>
+                          <p>{vino.bodega || 'Sin bodega'} · stock app {stockActual} · coste {eurUnit(vino.coste_compra)} · venta {eurUnit(vino.precio_botella)}</p>
                         </div>
                         <span className={`${styles.inventoryDelta} ${diferencia > 0 ? styles.inventoryDeltaPositive : diferencia < 0 ? styles.inventoryDeltaNegative : ''}`}>
                           {!tieneConteo || Number.isNaN(diferencia) ? 'Pendiente' : diferencia > 0 ? `+${diferencia}` : String(diferencia)}

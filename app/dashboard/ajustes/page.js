@@ -63,6 +63,35 @@ export default function AjustesHub() {
   const actividadIniciada = Boolean(restaurante?.actividad_real_desde)
   const cartaPublicada = restaurante?.carta_publica_activa !== false
 
+  // G: Cada ítem solo pasa a "Listo" si hay una señal REAL registrada.
+  // Antes de este fix, varios ítems no declaraban `pendiente`, por lo
+  // que la UI los pintaba "Listo" de oficio (ejemplos observados en
+  // un restaurante recién creado: "QR probado en móvil", "Marca
+  // revisada", "Acceso de sala revisado" o "Referencias completas"
+  // marcados en verde sin acción). Convención ahora: si no sabemos
+  // responder con un valor fiable, el ítem queda `pendiente: true`.
+  //
+  // Señales fiables disponibles hoy:
+  //   - Actividad real → `restaurantes.actividad_real_desde`
+  //   - PIN sala      → `restaurantes.camarero_pin_bloqueo_activo`
+  //   - Marca         → `restaurantes.logo_url` (si hay logo subido,
+  //                     el usuario ha pasado por la pantalla de marca)
+  //   - Carta pública → `restaurantes.carta_publica_activa`
+  //
+  // Señales SIN fuente fiable → `pendiente: true` siempre (el usuario
+  // los marca al pulsar los enlaces y hacer la acción):
+  //   - QR probado en móvil (no hay columna qr_probado_en)
+  //   - Referencias completas (no se conoce agregado de coste/
+  //     proveedor/stock_minimo a este nivel del dashboard)
+  //   - Mapa estrella/joya revisado (no hay columna)
+  //   - Inventario preparado (no hay columna; el conteo inicial
+  //     vive en bodega > inventario; lo documenta el checklist de
+  //     Inicio en la pantalla principal)
+  const tieneLogo = Boolean(restaurante?.logo_url)
+  const marcaDetalle = tieneLogo
+    ? 'Logo subido. Revisa colores y banner para dejarla al punto.'
+    : 'Sube el logo y revisa colores y banner.'
+
   const checklist = perfilBodega ? [
     {
       titulo: 'Actividad real definida',
@@ -70,13 +99,13 @@ export default function AjustesHub() {
       href: '#actividad-real',
       pendiente: !actividadIniciada,
     },
-    { titulo: 'Referencias completas', detalle: 'Revisa coste, proveedor, stock mínimo y perfil comercial.', href: '/dashboard/vinos?filtro=pendientes' },
-    { titulo: 'Mapa estrella/joya revisado', detalle: 'Detecta estrellas, joyas, caballos de batalla y referencias a archivar.', href: '/dashboard/menu-engineering' },
-    { titulo: 'Inventario preparado', detalle: 'Conteo físico, bajo mínimo y capital inmovilizado.', href: '/dashboard/inventario' },
+    { titulo: 'Referencias completas', detalle: 'Revisa coste, proveedor, stock mínimo y perfil comercial.', href: '/dashboard/vinos?filtro=pendientes', pendiente: true },
+    { titulo: 'Mapa estrella/joya revisado', detalle: 'Detecta estrellas, joyas, caballos de batalla y referencias a archivar.', href: '/dashboard/menu-engineering', pendiente: true },
+    { titulo: 'Inventario preparado', detalle: 'Conteo físico, bajo mínimo y capital inmovilizado.', href: '/dashboard/inventario', pendiente: true },
   ] : [
-    { titulo: 'QR probado en móvil', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta directa.', href: '/dashboard/qr' },
-    { titulo: 'Marca revisada', detalle: 'Logo, colores, banner y estilo visual de la carta.', href: '/dashboard/personalizar' },
-    { titulo: 'Acceso de sala revisado', detalle: pinConfigurado ? 'El modo camarero pide PIN.' : 'El modo camarero queda abierto sin PIN.', href: '#pin-sala' },
+    { titulo: 'QR probado en móvil', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta directa.', href: '/dashboard/qr', pendiente: true },
+    { titulo: 'Marca revisada', detalle: marcaDetalle, href: '/dashboard/personalizar', pendiente: !tieneLogo },
+    { titulo: 'Acceso de sala revisado', detalle: pinConfigurado ? 'El modo camarero pide PIN.' : 'El modo camarero queda abierto sin PIN.', href: '#pin-sala', pendiente: !pinConfigurado },
     { titulo: cartaPublicada ? 'Carta pública abierta' : 'Carta en borrador', detalle: cartaPublicada ? 'Comprueba que precios, platos y enlaces cargan bien.' : 'Publícala desde QR cuando marca, precios y contenido estén revisados.', href: cartaPublicada ? destino : '/dashboard/qr', pendiente: !cartaPublicada },
   ]
   const checklistPendiente = checklist.some(item => item.pendiente)

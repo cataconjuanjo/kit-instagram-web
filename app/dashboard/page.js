@@ -18,6 +18,7 @@ import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationRea
 import { fetchAllPages } from '../lib/fetchAllPages'
 import { formatoMoneda } from '../lib/formatoEs'
 import { margenBrutoPct } from '../lib/wineEconomics'
+import { estadoConteoInicial } from '../lib/conteoInicial'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -77,7 +78,11 @@ function fmtUnidad(tieneCopa, tieneBot, total) {
   return total === 1 ? 'ud.' : 'uds.'
 }
 
-function semanaActualLabel() {
+// G: calcula el rango ROLLING de 7 días TERMINADO AYER (no es la
+// semana ISO en curso ni la semana natural lunes-domingo). Por eso
+// el título de la sección dice "Últimos 7 días" y no "Esta semana",
+// y la etiqueta aclara el periodo exacto.
+function rangoUltimos7DiasLabel() {
   const inicio = haceDiasMadrid(7)
   const fin = haceDiasMadrid(1)
   const [, mI, dI] = inicio.split('-').map(Number)
@@ -224,6 +229,14 @@ function DashboardHome() {
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [tareasOcultas, setTareasOcultas] = useState([])
+  // G: estado del conteo inicial para el checklist.
+  //   'hecho'       → no mostrar el paso (auto-hide).
+  //   'pendiente'   → mostrar.
+  //   null/'desconocido' → no mostrar (política "nunca avisar con
+  //                 dato desconocido" — preferimos ocultar antes que
+  //                 insistir por error sobre un restaurante que ya
+  //                 hizo su conteo).
+  const [estadoConteoIni, setEstadoConteoIni] = useState(null)
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [etiquetaDia, setEtiquetaDia] = useState('hoy')
   const [radarAcciones, setRadarAcciones] = useState([])
@@ -610,6 +623,44 @@ function DashboardHome() {
   }
 
   // Polling tras pago exitoso: espera a que el webhook actualice subscription_status
+  // G: ¿se hizo ya el conteo inicial? Usamos el MISMO endpoint que
+  // Bodega > Conteo (`GET /api/conteos`). La consulta directa a
+  // `restaurant_economic_settings` desde el cliente devolvía `data=null`
+  // en el preview (probable RLS del cliente que no deja leer esa
+  // tabla, aunque la columna sí la ve el admin via service_role del
+  // endpoint). El endpoint pasa por `requireRestaurantAccess` y
+  // devuelve tanto `control_stock_desde` como la lista de `conteos`
+  // del restaurante — lógica de decisión en `lib/conteoInicial.js`.
+  //
+  // Si el admin ha cambiado de restaurante vía `?restaurante_id=…`,
+  // ese ID YA es el `restaurante.id` (el cargar() del dashboard lee
+  // ese query param al traer el restaurante — línea 507-509). Por
+  // tanto llamar al endpoint con `restaurante.id` respeta el
+  // restaurante activo tanto para propietarios como para admin.
+  useEffect(() => {
+    if (!restaurante?.id) return
+    let vivo = true
+    ;(async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess?.session?.access_token || ''
+        const res = await fetch(`/api/conteos?restaurante_id=${restaurante.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!vivo) return
+        if (!res.ok) { setEstadoConteoIni(null); return }
+        const body = await res.json().catch(() => null)
+        if (!vivo) return
+        const estado = estadoConteoInicial(body)
+        // 'desconocido' → null (no se muestra el paso); otros → el string.
+        setEstadoConteoIni(estado === 'desconocido' ? null : estado)
+      } catch {
+        if (vivo) setEstadoConteoIni(null)
+      }
+    })()
+    return () => { vivo = false }
+  }, [restaurante?.id])
+
   useEffect(() => {
     if (!checkoutOk || !restaurante) return
     if (restaurante.subscription_status !== 'pending') return
@@ -716,12 +767,20 @@ function DashboardHome() {
     ? [
         { id: 'bodega_vinos', titulo: 'Cargar referencias de bodega', texto: 'Importa o crea los vinos con stock inicial, precio y datos principales.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
         { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestión.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
+        // G: conteo inicial. Se muestra DESPUÉS de cargar vinos y
+        // ANTES de los partes reales — así el usuario entiende el
+        // orden correcto de activación de la bodega.
+        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock. Los partes cerrados antes del conteo tampoco se reaplican.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || estadoConteoIni !== 'pendiente' },
       ]
     : [
         { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio visible antes de publicar.', href: '/dashboard/vinos?importar=1', autoHide: () => cartaPublicable },
         { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
         { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
         { id: 'bodega', titulo: 'Completar margen, proveedor y stock', texto: 'Coste, proveedor y stock actual convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 },
+        // G: conteo inicial para perfiles no-bodega que también
+        // tienen bodega como feature (sumiller, acompañado). Si el
+        // perfil no tiene bodega, autoHide ya oculta por `feature`.
+        { id: 'conteo_inicial', titulo: 'Hacer conteo inicial de bodega', texto: 'Hasta este conteo, las ventas de los partes de servicio NO descuentan stock.', href: '/dashboard/bodega?panel=conteo', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || estadoConteoIni !== 'pendiente' },
         { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => cartaPublicada },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
@@ -908,8 +967,8 @@ function DashboardHome() {
       <div className={styles.wrap}>
         {restaurante && (
           <header className={styles.pageHeader}>
-            <h1 className={styles.pageH1}>Esta semana en {restaurante.nombre || 'tu restaurante'}</h1>
-            <p className={styles.pageSub}>{semanaActualLabel()}. Lo esencial para decidir hoy.</p>
+            <h1 className={styles.pageH1}>Últimos 7 días en {restaurante.nombre || 'tu restaurante'}</h1>
+            <p className={styles.pageSub}>{rangoUltimos7DiasLabel()}. Lo esencial para decidir hoy.</p>
           </header>
         )}
 
@@ -1018,7 +1077,16 @@ function DashboardHome() {
                   </div>
                 )}
                 {bajoMinimo.length === 0 && propuestasActivas.length === 0 && (
-                  <p className={styles.decideEmpty}>Todo en orden. Sin avisos activos.</p>
+                  // G: diferenciar restaurante VACÍO (0 vinos
+                  // activos) de restaurante con vinos y sin avisos.
+                  // Antes mostraba "Todo en orden" en un restaurante
+                  // sin cargar vinos, dando falsa sensación de que
+                  // todo iba bien.
+                  <p className={styles.decideEmpty}>
+                    {vinosActivos.length === 0
+                      ? 'Aún no has cargado vinos. Los avisos aparecerán cuando tengas referencias activas.'
+                      : 'Todo en orden. Sin avisos activos.'}
+                  </p>
                 )}
               </div>
             </article>

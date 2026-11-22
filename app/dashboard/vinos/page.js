@@ -1174,12 +1174,27 @@ async function aplicarAccionMasiva(confirmado = false) {
         <section className={styles.workflowStrip}>
           <div>
             <p className={styles.eyebrow}>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</p>
-            <h2>{prioridadVinos ? `${totalPendientesVinos} ${totalPendientesVinos === 1 ? 'vino por completar' : 'vinos por completar'}` : 'La base de vinos está limpia'}</h2>
-            <p>
-              {prioridadVinos
-                ? `${prioridadVinos.count} referencias necesitan atención.`
-                : 'No hay bloqueos visibles en precio, perfil, etiqueta, stock, coste o proveedor.'}
-            </p>
+            {/* G: con 0 vinos NO decimos "la base está limpia"
+                (es engañoso en restaurante nuevo): decimos que aún
+                no se han cargado y damos la ruta. */}
+            {vinosActivos.length === 0 ? (
+              <>
+                <h2>Aún no has cargado vinos</h2>
+                <p>
+                  Añade tu primer vino manualmente o importa la carta desde un proveedor
+                  o factura. Hasta tener vinos activos, no se puede medir margen ni stock.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>{prioridadVinos ? `${totalPendientesVinos} ${totalPendientesVinos === 1 ? 'vino por completar' : 'vinos por completar'}` : 'La base de vinos está limpia'}</h2>
+                <p>
+                  {prioridadVinos
+                    ? `${prioridadVinos.count} referencias necesitan atención.`
+                    : 'No hay bloqueos visibles en precio, perfil, etiqueta, stock, coste o proveedor.'}
+                </p>
+              </>
+            )}
           </div>
           <div className={styles.workflowStats}>
             <article>

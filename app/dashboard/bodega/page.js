@@ -1650,7 +1650,12 @@ export default function ControlBodega() {
                     </td>
                   )
                 }
-                const eurCell = v => v ? eur(v) : <span className={bStyles.tdEmpty}>—</span>
+                // G2: costes y PVP UNITARIOS a 2 decimales (es-ES).
+                // Antes usaba `eur(v)` (0 decimales) → 8,50 € se veía
+                // como "9 €" en las columnas Coste € / PVP bot. € /
+                // PVP copa €. `eurDetalle` ya está definido arriba
+                // (línea 45) para precisamente este caso.
+                const eurCell = v => v ? eurDetalle(v) : <span className={bStyles.tdEmpty}>—</span>
                 const saldoCopas = Number(botellaMap[vino.id]?.copas_restantes ?? 0)
                 const saldoTxt = Number.isInteger(saldoCopas)
                   ? String(saldoCopas)
@@ -1688,7 +1693,10 @@ export default function ControlBodega() {
                     {!vistaSimple && (
                       <td className={bStyles.tdPvpSug}>
                         {preciosSug ? (
-                          <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)}</span>
+                          // G2: PVP sugerido unitario a 2 decimales
+                          // (la columna hermana de copa, línea 1703,
+                          // ya usa eurDetalle).
+                          <span className={bStyles.pvpSugValor}>{eurDetalle(preciosSug.botella)}</span>
                         ) : <span className={bStyles.tdEmpty}>—</span>}
                       </td>
                     )}
@@ -1794,7 +1802,7 @@ export default function ControlBodega() {
             onClose={() => !guardando && setEditando(null)}
             eyebrow="Control de bodega"
             title={`Editar ${editando.nombre}`}
-            description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eur(editando.precio_botella)}`}
+            description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eurDetalle(editando.precio_botella)}`}
             footer={
               <>
                 <button type="button" className={styles.ghost} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
@@ -1817,6 +1825,15 @@ export default function ControlBodega() {
                 <label className={styles.label}>Stock actual</label>
                 <input className={styles.input} type="number" min="0" value={editando.stock} onChange={e => setEditando({ ...editando, stock: e.target.value })} />
                 <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>Botellas reales ahora mismo.</p>
+                {/* G: aviso bajo el campo Stock. Este valor NO
+                    descuenta ventas hasta que se haga el conteo
+                    inicial en Bodega > Inventario > Conteo. Es solo
+                    texto; el flujo de descuento se mantiene intacto. */}
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b5620', background: '#fff8e8', border: '1px solid #e8d495', borderRadius: 4, padding: '4px 8px' }}>
+                  Este stock no descuenta ventas hasta que hagas el{' '}
+                  <a href="/dashboard/bodega?panel=conteo" style={{ color: '#6b5620', textDecoration: 'underline', fontWeight: 600 }}>conteo inicial</a>
+                  {' '}en Bodega.
+                </p>
               </div>
               <div>
                 <label className={styles.label}>Stock mínimo (aviso)</label>
