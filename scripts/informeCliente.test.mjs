@@ -192,6 +192,67 @@ describe('Filtrado de señales INTERNAS (fase K-fix)', () => {
   })
 })
 
+describe('Rama palancas (fase L): € por prioridad y suma cuadra con el total', () => {
+  it('la cifra principal es la suma de las palancas mostradas (no la cruda)', () => {
+    const palancas = [
+      { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false },
+      { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 630, esInterna: false },
+      { id: 'propuestas_abiertas', titulo: 'Cerrar propuestas comerciales abiertas', euros: 240, esInterna: true },
+    ]
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas,
+    })
+    // 'propuestas_abiertas' es interna → se filtra. Total = 540+630.
+    assert.equal(r.prioridades.length, 2)
+    const extraidos = r.prioridades.map(p => Number(String(p.euros || '').replace(/[^\d]/g, '')))
+    const sumaPrioridades = extraidos.reduce((s, n) => s + n, 0)
+    const total = Number(String(r.cifraPrincipal.valor || '').replace(/[^\d]/g, ''))
+    assert.equal(sumaPrioridades, total, 'La suma de prioridades debe cuadrar con el total')
+  })
+
+  it('una palanca con euros = 0 no aparece (no se muestra "0 €")', () => {
+    const palancas = [
+      { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false },
+      { id: 'sin_coste', titulo: 'Vinos sin coste registrado', euros: 0, esInterna: false },
+    ]
+    const r = construirInformeCliente({ restaurante: { nombre: 'X' }, palancas })
+    assert.equal(r.prioridades.length, 1)
+    // Ninguna prioridad debe tener "0 €" como su cifra.
+    for (const p of r.prioridades) {
+      assert.notEqual(p.euros, '0 €')
+    }
+  })
+
+  it('con 3+ palancas útiles muestra hasta 3', () => {
+    const palancas = [
+      { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 500, esInterna: false },
+      { id: 'sin_coste', titulo: 'Vinos sin coste registrado', euros: 400, esInterna: false },
+      { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 300, esInterna: false },
+      { id: 'otra', titulo: 'Otra palanca', euros: 200, esInterna: false },
+    ]
+    const r = construirInformeCliente({ restaurante: { nombre: 'X' }, palancas })
+    assert.equal(r.prioridades.length, 3)
+  })
+
+  it('el informe con palancas pasa auditarInformeCliente', () => {
+    const palancas = [
+      { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false },
+      { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 630, esInterna: false },
+      { id: 'propuestas_abiertas', titulo: 'Cerrar propuestas comerciales abiertas', euros: 240, esInterna: true },
+    ]
+    const r = construirInformeCliente({ restaurante: { nombre: 'Casa Marisma', ciudad: 'Málaga' }, palancas })
+    const audit = auditarInformeCliente(r)
+    assert.equal(audit.limpio, true, `Banderas: ${audit.banderas.join('; ')}`)
+  })
+
+  it('palancas vacías: no hay prioridades y cifra principal null', () => {
+    const r = construirInformeCliente({ restaurante: { nombre: 'X' }, palancas: [] })
+    assert.equal(r.prioridades.length, 0)
+    assert.equal(r.cifraPrincipal.valor, null)
+  })
+})
+
 describe('Degradación del informe cuando faltan datos', () => {
   it('sin oportunidad y sin prioridades, sigue produciendo objeto válido', () => {
     const r = construirInformeCliente({ restaurante: { nombre: 'X' } })

@@ -4,6 +4,11 @@
 
 import { limpiarRutasTecnicas } from './consultoriaMetricas.js'
 
+function toNumber(n) {
+  const v = Number(n)
+  return Number.isFinite(v) ? v : 0
+}
+
 function toEuro(n) {
   const v = Number(n)
   if (!Number.isFinite(v) || v <= 0) return null
@@ -93,30 +98,51 @@ function fraseParaCliente(prioridad) {
 
 // Construye el objeto del informe para el cliente a partir de:
 //   restaurante: { nombre, ciudad, provincia, ... }
-//   oportunidadEuros: número (recuperación anual estimada)
-//   prioridades: array de { titulo, euros, detalle, accion }  (hasta 3)
-//   seguimiento: salida de agregarSeguimiento (opcional)
-//   proximoContacto: ISO date (opcional)
+//   oportunidadEuros: número (recuperación anual estimada, usado solo si no
+//     se pasan palancas con desglose).
+//   prioridades: array crudo de alertas del motor (compat con llamadores
+//     antiguos que no conocen palancas).
+//   palancas: array nuevo (fase L) con desglose por palanca de la
+//     oportunidad económica. Cada palanca { id, titulo, euros, esInterna }.
+//     Si se pasa, ES la fuente de prioridades: cuadra la suma con el total.
+//   seguimiento: salida de agregarSeguimiento (opcional).
+//   proximoContacto: ISO date (opcional).
 export function construirInformeCliente({
   restaurante,
   oportunidadEuros,
   prioridades = [],
+  palancas = null,
   seguimiento = null,
   proximoContacto = null,
   fecha = new Date(),
 } = {}) {
-  // FASE K-fix: filtrar señales INTERNAS (cliente caliente, propuestas
-  // abiertas, sin contacto, alertas…). El informe para el dueño solo
-  // debe hablar de SU carta (precios, costes, copas, bodegas locales,
-  // reposición, margen…). Si tras filtrar quedan menos de 3, se
-  // muestran las que haya.
-  const soloCarta = (prioridades || []).filter(p => p && !esSenalInterna(p))
-  const prioridadesLimpias = soloCarta.slice(0, 3).map((p, i) => ({
-    numero: i + 1,
-    titulo: tituloParaCliente(p.titulo),
-    detalle: fraseParaCliente(p),
-    euros: toEuro(p.euros),
-  }))
+  // Rama fase L: si recibimos palancas, las usamos (tienen € por palanca).
+  // Filtramos las marcadas como internas (p.ej. 'propuestas_abiertas') y
+  // nos quedamos con las que tienen euros > 0. La cifra principal es la
+  // suma de las palancas mostradas (cuadra por construcción).
+  let prioridadesLimpias
+  let totalMostrado = toNumber(oportunidadEuros)
+  if (Array.isArray(palancas)) {
+    const utilesCliente = palancas.filter(p => p && !p.esInterna && toNumber(p.euros) > 0)
+    const topTres = utilesCliente.slice(0, 3)
+    totalMostrado = topTres.reduce((s, p) => s + toNumber(p.euros), 0)
+    prioridadesLimpias = topTres.map((p, i) => ({
+      numero: i + 1,
+      titulo: tituloParaCliente(p.titulo),
+      detalle: fraseParaCliente({ detalle: p.detalle || '', accion: p.accion || '' }),
+      euros: toEuro(p.euros),
+    }))
+  } else {
+    // Rama fase K (legacy): prioridades crudas del motor, sin € fiable.
+    // FASE K-fix: filtrar señales INTERNAS.
+    const soloCarta = (prioridades || []).filter(p => p && !esSenalInterna(p))
+    prioridadesLimpias = soloCarta.slice(0, 3).map((p, i) => ({
+      numero: i + 1,
+      titulo: tituloParaCliente(p.titulo),
+      detalle: fraseParaCliente(p),
+      euros: toEuro(p.euros),
+    }))
+  }
 
   const seguimientoResumen = seguimiento ? {
     enviadas: Number(seguimiento.porEstado?.enviada || 0) + Number(seguimiento.porEstado?.aceptada || 0) + Number(seguimiento.porEstado?.implantada || 0),
@@ -134,8 +160,8 @@ export function construirInformeCliente({
       ubicacion: [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · '),
     },
     cifraPrincipal: {
-      valor: toEuro(oportunidadEuros),
-      frase: fraseCifraPrincipal(toEuro(oportunidadEuros)),
+      valor: toEuro(totalMostrado),
+      frase: fraseCifraPrincipal(toEuro(totalMostrado)),
     },
     prioridades: prioridadesLimpias,
     seguimiento: seguimientoResumen,

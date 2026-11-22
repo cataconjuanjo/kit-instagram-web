@@ -77,6 +77,55 @@ export function calcAlertasCriticas({ conteoPersistido, alertasDb, analisis } = 
   return { valor: estimado, fuente: 'estimado' }
 }
 
+// ---- Oportunidad económica desglosada por palanca ------------------------
+// Antes vivía inline en consultoria/page.js como `oportunidadRadar`:
+//   (margenBajo * 180) + (sinCoste * 60) + (propuestas * 120) + (copaFaltante * 90)
+// Lo movemos al helper único para que el informe del cliente pueda pintar
+// el € por prioridad y que la suma CUADRE con el total.
+//
+// Cada palanca lleva:
+//   id: estable para filtros (p. ej. 'propuestas_abiertas' se filtra en el
+//     informe del cliente por ser señal comercial interna).
+//   titulo: lenguaje de dueño.
+//   euros: estimado anual.
+//   esInterna: true si es jerga comercial (no se muestra al cliente).
+//
+// Si `persistidoTotal` es > 0 (viene de ejecutivo.resumen.recuperacion_anual_
+// estimada), lo usamos como total y escalamos las palancas heurísticas para
+// que sumen exacto. Si no hay persistido, total = suma cruda.
+export function calcPalancasOportunidad({ metricas, propuestasAbiertas, persistidoTotal } = {}) {
+  const m = metricas || {}
+  const vinos = toNumber(m.vinos)
+  const copaActuales = toNumber(m.copa)
+  const copaFaltante = Math.max(0, Math.round(vinos * 0.12) - copaActuales)
+  const propuestas = toNumber(propuestasAbiertas)
+
+  const crudas = [
+    { id: 'margen_bajo',   titulo: 'Vinos con margen bajo', esInterna: false, euros: toNumber(m.margenBajo) * 180 },
+    { id: 'sin_coste',     titulo: 'Vinos sin coste registrado (impide medir margen real)', esInterna: false, euros: toNumber(m.sinCoste) * 60 },
+    { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', esInterna: false, euros: copaFaltante * 90 },
+    { id: 'propuestas_abiertas', titulo: 'Cerrar propuestas comerciales abiertas', esInterna: true, euros: propuestas * 120 },
+  ].filter(p => p.euros > 0)
+
+  const sumaCruda = crudas.reduce((s, p) => s + p.euros, 0)
+  const persistido = toNumber(persistidoTotal)
+  const total = persistido > 0 ? Math.round(persistido) : sumaCruda
+
+  // Si hay persistido, escalamos las palancas para que sumen exacto.
+  if (persistido > 0 && sumaCruda > 0) {
+    const factor = total / sumaCruda
+    for (const p of crudas) p.euros = Math.round(p.euros * factor)
+    // Absorber el resto del redondeo en la palanca con más peso para que
+    // suma === total (si no, pueden quedar ±1-2 € sueltos).
+    crudas.sort((a, b) => b.euros - a.euros)
+    const resto = total - crudas.reduce((s, p) => s + p.euros, 0)
+    if (crudas[0]) crudas[0].euros += resto
+  }
+
+  crudas.sort((a, b) => b.euros - a.euros)
+  return { total, palancas: crudas }
+}
+
 // ---- Candidatos por copa --------------------------------------------------
 // 1) Snapshot copa persistido si existe (suma de los 3 cubos)
 // 2) campo ejecutivo
