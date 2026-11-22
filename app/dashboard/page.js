@@ -618,24 +618,30 @@ function DashboardHome() {
   }
 
   // Polling tras pago exitoso: espera a que el webhook actualice subscription_status
-  // G: ¿hay conteo inicial cerrado? Un sondeo barato con count:'exact',
-  // head:true (no trae filas). Si falla (tabla no accesible), se deja
-  // como null y el ítem del checklist no aparece. Solo perfilBodega
-  // lo necesita en el checklist; para los demás perfiles, el ítem
-  // "Completar margen, proveedor y stock" ya existe.
+  // G: ¿hay conteo inicial cerrado? La fuente de verdad canónica es
+  // `restaurant_economic_settings.control_stock_desde` — la MISMA
+  // que consulta Bodega > Conteo para decidir "Primer conteo
+  // pendiente" (ver app/api/conteos/route.js:34 y
+  // app/dashboard/bodega/ConteoInventario.js:196). Cuando el
+  // propietario cierra el conteo inicial, el backend fija este
+  // timestamp; mientras siga NULL, el conteo está pendiente.
+  //
+  // La query previa (G) consultaba `conteos_inventario` directamente
+  // con tipo/estado — podía devolver 0 por diferencias de schema o
+  // RLS y dejaba el ítem visible aunque el conteo estuviera hecho.
   useEffect(() => {
     if (!restaurante?.id) return
     let vivo = true
     supabase
-      .from('conteos_inventario')
-      .select('id', { count: 'exact', head: true })
+      .from('restaurant_economic_settings')
+      .select('control_stock_desde')
       .eq('restaurante_id', restaurante.id)
-      .eq('tipo', 'inicial')
-      .eq('estado', 'cerrado')
-      .then(({ count, error }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
         if (!vivo) return
         if (error) { setConteoInicialHecho(null); return }
-        setConteoInicialHecho((count || 0) > 0)
+        // control_stock_desde != null → conteo inicial hecho.
+        setConteoInicialHecho(data?.control_stock_desde != null)
       })
     return () => { vivo = false }
   }, [restaurante?.id])
