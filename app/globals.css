@@ -17906,3 +17906,115 @@ a.supplier-btn-primary {
   font-size: 0.85rem;
   color: rgba(255, 250, 241, 0.38);
 }
+
+/* FASE J - Bloque 2: solapamientos en cabeceras de seccion y en mapping-row */
+.ws-section-head {
+  gap: 20px;
+  align-items: flex-start;
+}
+.ws-section-title-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ws-section-title-wrap .ws-section-title { margin: 0; }
+.ws-section-lead {
+  margin: 0;
+  color: var(--ink-muted, #666);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.mapping-row-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+.mapping-row-summary > div:first-child { flex: 1 1 220px; }
+.mapping-row-summary .mapping-bar { flex: 1 1 140px; min-width: 120px; }
+.mapping-row-summary .mapping-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.mapping-row-summary .mapping-tags b { margin: 0; }
+.mapping-row-summary .mapping-tags em {
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--ink-muted, #666);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* FASE J - Bloque 2: sidebar skeleton (sustituye 'Sin restaurantes activos / 0' durante loading) */
+.admin-sidebar-skeleton-line {
+  height: 12px;
+  margin: 6px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.12), rgba(0,0,0,0.05));
+  background-size: 200% 100%;
+  animation: adminSidebarSkeleton 1.2s ease-in-out infinite;
+}
+@keyframes adminSidebarSkeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar-skeleton-line { animation: none; }
+}
+
+/* FASE J - Bloque 2: botones kioskos unificados con la paleta de botones secundarios */
+.admin-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(0,0,0,0.12));
+  background: #fff;
+  color: var(--ink, #222);
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.admin-btn-ghost:hover { background: rgba(0,0,0,0.04); }
+.admin-btn-ghost[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* FASE J - Mi dia */
+.radar-mi-dia {
+  border: 1px solid var(--line, rgba(0,0,0,0.1));
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  background: #fff;
+}
+.radar-mi-dia h3 { margin: 0 0 4px; font-size: 1rem; font-weight: 950; }
+.radar-mi-dia .mi-dia-lead { margin: 0 0 12px; color: var(--ink-muted, #666); font-size: 0.85rem; }
+.radar-mi-dia ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.radar-mi-dia li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.03);
+}
+.radar-mi-dia li .mi-dia-info { display: flex; flex-direction: column; min-width: 0; }
+.radar-mi-dia li .mi-dia-info strong { font-size: 0.92rem; }
+.radar-mi-dia li .mi-dia-info span { font-size: 0.82rem; color: var(--ink-muted, #666); }
+.radar-mi-dia li a {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ink, #1c1c1c);
+  color: #fff;
+  font-size: 0.82rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.radar-mi-dia-empty { color: var(--ink-muted, #666); font-size: 0.88rem; margin: 0; }

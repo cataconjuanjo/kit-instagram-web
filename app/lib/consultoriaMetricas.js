@@ -217,4 +217,49 @@ export function esExcluidoDeAgregado(restaurante) {
   return EXCLUIR_AGREGADO_SLUGS.has(slug) || EXCLUIR_AGREGADO_IDS.has(id)
 }
 
+// ---- Sanitizador de rutas técnicas ---------------------------------------
+// El texto que ve el cliente no debe contener rutas internas como
+// "/dashboard/vinos?filtro=pendientes". Las sustituimos por lenguaje natural.
+const SUSTITUCIONES_RUTAS = [
+  { regex: /\/dashboard\/vinos\?filtro=pendientes/g, reemplazo: 'revisa los precios de los vinos pendientes' },
+  { regex: /\/dashboard\/vinos\?filtro=[^\s)]+/g, reemplazo: 'revisa los vinos en la bodega' },
+  { regex: /\/dashboard\/platos\?filtro=[^\s)]+/g, reemplazo: 'revisa los platos pendientes' },
+  { regex: /\/dashboard\/bodega[^\s)]*/g, reemplazo: 'entra en la bodega' },
+  { regex: /\/dashboard\/catalogo[^\s)]*/g, reemplazo: 'revisa el catálogo' },
+  { regex: /\/dashboard\/cierre[^\s)]*/g, reemplazo: 'revisa el cierre del día' },
+  { regex: /\/dashboard\/menu-engineering[^\s)]*/g, reemplazo: 'revisa el menú de maridajes' },
+  { regex: /\/dashboard\/sala[^\s)]*/g, reemplazo: 'revisa el modo sala' },
+  { regex: /\/dashboard\/simulador[^\s)]*/g, reemplazo: 'abre el simulador' },
+  { regex: /\/dashboard\/estadisticas[^\s)]*/g, reemplazo: 'revisa las estadísticas' },
+  { regex: /\/dashboard\/[^\s)]+/g, reemplazo: 'revisa el panel del restaurante' },
+]
+
+export function limpiarRutasTecnicas(texto) {
+  if (!texto) return ''
+  let resultado = String(texto)
+  for (const { regex, reemplazo } of SUSTITUCIONES_RUTAS) {
+    resultado = resultado.replace(regex, reemplazo)
+  }
+  return resultado
+}
+
+// ---- Deduplicación de acciones -------------------------------------------
+// Dos acciones son duplicadas si coinciden restaurante_id + tipo + origen.
+// Devuelve el array deduplicado manteniendo la primera aparición.
+export function deduplicarAcciones(acciones = []) {
+  const vistas = new Set()
+  const salida = []
+  for (const accion of acciones) {
+    if (!accion) continue
+    const restaurante = String(accion.restaurante_id || accion.restauranteId || '')
+    const tipo = String(accion.tipo || '')
+    const origen = String(accion.origen || '')
+    const clave = `${restaurante}::${tipo}::${origen}`
+    if (vistas.has(clave)) continue
+    vistas.add(clave)
+    salida.push(accion)
+  }
+  return salida
+}
+
 export const _internal = { EXCLUIR_AGREGADO_SLUGS, EXCLUIR_AGREGADO_IDS, floor }

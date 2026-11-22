@@ -88,13 +88,18 @@ export default function AdminSugerenciasPage() {
         <div className="ws-header-left">
           <Link href="/admin/consultoria" className="ws-back">Radar</Link>
           <div>
-            <h2 className="ws-title">Buzón de sugerencias</h2>
-            <span className="ws-sub">Feedback directo de los restaurantes para decidir qué corregir y qué construir después.</span>
+            <h2 className="ws-title">Buzón del consultor</h2>
+            <span className="ws-sub">Sugerencias enviadas desde los restaurantes.</span>
           </div>
         </div>
         <div className="ws-header-actions">
           <span className="ws-badge">{sugerencias.filter(item => item.estado === 'nueva').length} nuevas</span>
         </div>
+      </div>
+
+      <div className="actions-filterbar" role="tablist" aria-label="Pestañas del buzón">
+        <Link href="/admin/alertas" role="tab" aria-selected="false">Alertas</Link>
+        <Link href="/admin/sugerencias" className="is-active" role="tab" aria-selected="true">Sugerencias</Link>
       </div>
 
       <section className="ws-section">

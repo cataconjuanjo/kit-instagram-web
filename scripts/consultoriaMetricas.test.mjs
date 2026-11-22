@@ -16,6 +16,8 @@ import {
   seleccionarTareasMiDia,
   seleccionarMatchesAutoaplicables,
   esExcluidoDeAgregado,
+  limpiarRutasTecnicas,
+  deduplicarAcciones,
 } from '../app/lib/consultoriaMetricas.js'
 
 // Entrada común que simula a Casa Marisma con sus 36 "MEDIA".
@@ -215,6 +217,46 @@ describe('seleccionarMatchesAutoaplicables', () => {
   it('ignora matches sin wineId', () => {
     const matches = [{ score: 99 }, { wineId: '2', score: 99 }]
     assert.equal(seleccionarMatchesAutoaplicables(matches).length, 1)
+  })
+})
+
+describe('limpiarRutasTecnicas', () => {
+  it('sustituye /dashboard/vinos?filtro=pendientes por lenguaje natural', () => {
+    const entrada = 'Completar precios. Entra en /dashboard/vinos?filtro=pendientes y actualiza.'
+    const salida = limpiarRutasTecnicas(entrada)
+    assert.ok(!salida.includes('/dashboard'))
+    assert.ok(salida.includes('revisa los precios'))
+  })
+  it('sustituye /dashboard/platos?filtro=X', () => {
+    assert.ok(!limpiarRutasTecnicas('Ve a /dashboard/platos?filtro=sin-foto').includes('/dashboard'))
+  })
+  it('fallback genérico', () => {
+    const r = limpiarRutasTecnicas('Mira /dashboard/otra-cosa-rara ahora')
+    assert.ok(r.includes('revisa el panel del restaurante'))
+    assert.ok(!r.includes('/dashboard'))
+  })
+  it('respeta texto sin rutas', () => {
+    assert.equal(limpiarRutasTecnicas('Texto normal sin rutas.'), 'Texto normal sin rutas.')
+  })
+})
+
+describe('deduplicarAcciones', () => {
+  it('elimina duplicados por restaurante+tipo+origen', () => {
+    const acciones = [
+      { restaurante_id: 'r1', tipo: 'costes_pendientes', origen: 'alerts', titulo: 'A' },
+      { restaurante_id: 'r1', tipo: 'costes_pendientes', origen: 'alerts', titulo: 'B' }, // duplicado
+      { restaurante_id: 'r1', tipo: 'costes_pendientes', origen: 'recomendacion', titulo: 'C' }, // distinto origen
+      { restaurante_id: 'r2', tipo: 'costes_pendientes', origen: 'alerts', titulo: 'D' }, // distinto restaurante
+    ]
+    const res = deduplicarAcciones(acciones)
+    assert.equal(res.length, 3)
+    assert.equal(res[0].titulo, 'A') // mantiene el primero
+  })
+  it('acepta array vacío', () => {
+    assert.deepEqual(deduplicarAcciones([]), [])
+  })
+  it('ignora entradas falsy', () => {
+    assert.deepEqual(deduplicarAcciones([null, undefined, { restaurante_id: 'r', tipo: 't', origen: 'o' }]).length, 1)
   })
 })
 

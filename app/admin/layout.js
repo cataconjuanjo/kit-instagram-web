@@ -19,6 +19,7 @@ function writeLS(key, val) {
 
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
+  const [restaurantesCargados, setRestaurantesCargados] = useState(false)
   const [tiendas, setTiendas] = useState([])
   const [loadingId, setLoadingId] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -47,7 +48,7 @@ export default function AdminLayout({ children }) {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data?.user?.email || ''))
     supabase.from('restaurantes').select('id, nombre, ciudad, email, subscription_status').order('nombre')
-      .then(({ data }) => setRestaurantes(data || []))
+      .then(({ data }) => { setRestaurantes(data || []); setRestaurantesCargados(true) })
     supabase.from('tiendas').select('id, nombre, slug, ciudad, activo, subscription_status, plan').order('nombre')
       .then(({ data }) => setTiendas(data || []))
   }, [])
@@ -146,13 +147,6 @@ export default function AdminLayout({ children }) {
             >
               Simulador cartas
             </Link>
-            <Link
-              href="/admin/sugerencias"
-              className={`${styles.navLink} ${pathname === '/admin/sugerencias' ? styles.navActive : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              Buzón sugerencias
-            </Link>
           </li>
 
           <li className={styles.navGroup}>
@@ -164,7 +158,7 @@ export default function AdminLayout({ children }) {
             >
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M1.5 10.5V5L5.5 1.5 9.5 5v5.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M4 10.5V7.5h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
               <span className={styles.navGroupHeaderBtnText}>Restaurantes</span>
-              <span className={styles.navGroupCount}>{restaurantes.length}</span>
+              <span className={styles.navGroupCount} aria-live="polite">{restaurantesCargados ? restaurantes.length : '…'}</span>
               <svg className={`${styles.navGroupChevron} ${restCollapsed ? styles.navGroupChevronCollapsed : ''}`} width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
             {!restCollapsed && (
@@ -176,7 +170,13 @@ export default function AdminLayout({ children }) {
                 >
                   Accesos
                 </Link>
-                {shownRestaurants.length > 0 ? (
+                {!restaurantesCargados ? (
+                  <div aria-busy="true" aria-label="Cargando restaurantes" style={{ padding: '4px 10px' }}>
+                    <div className="admin-sidebar-skeleton-line" style={{ width: '70%' }} />
+                    <div className="admin-sidebar-skeleton-line" style={{ width: '55%' }} />
+                    <div className="admin-sidebar-skeleton-line" style={{ width: '65%' }} />
+                  </div>
+                ) : shownRestaurants.length > 0 ? (
                   <ul className={styles.subList}>
                     {shownRestaurants.map(r => {
                       const statusLabel = r.subscription_status === 'active' ? 'Activo' : 'En prueba'

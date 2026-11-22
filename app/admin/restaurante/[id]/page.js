@@ -19,6 +19,7 @@ import {
   calcCandidatosCopa,
   calcAlertasCriticas,
   calcPuntuacion,
+  limpiarRutasTecnicas,
 } from '../../../lib/consultoriaMetricas'
 import OpenCartaPruebaButton from '../../../dashboard/OpenCartaPruebaButton'
 
@@ -969,13 +970,13 @@ export default function RestauranteWorkspace() {
       '',
       'Alertas principales:',
       ...(alertasMotor.length
-        ? alertasMotor.slice(0, 5).map((alerta, index) => `${index + 1}. ${alerta.titulo}: ${alerta.accion_sugerida || alerta.detalle}`)
-        : ['Sin alertas abiertas en el motor.']),
+        ? alertasMotor.slice(0, 5).map((alerta, index) => `${index + 1}. ${alerta.titulo}: ${limpiarRutasTecnicas(alerta.accion_sugerida || alerta.detalle)}`)
+        : ['Sin alertas abiertas por resolver.']),
       '',
-      'Oportunidades economicas:',
+      'Oportunidades económicas:',
       ...(oportunidades.length
-        ? oportunidades.slice(0, 5).map((item, index) => `${index + 1}. ${item.titulo}: ${item.accion} (${Number(item.impacto_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR estimados)`)
-        : ['Sin oportunidades cuantificadas todavia.']),
+        ? oportunidades.slice(0, 5).map((item, index) => `${index + 1}. ${item.titulo}: ${limpiarRutasTecnicas(item.accion)} (${Number(item.impacto_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR estimados)`)
+        : ['Sin oportunidades cuantificadas todavía.']),
     ].filter(Boolean)
     navigator.clipboard.writeText(lineas.join('\n'))
   }
@@ -1163,10 +1164,9 @@ export default function RestauranteWorkspace() {
 
           <section id="ws-inteligencia" className="ws-section consulting-intelligence">
             <div className="ws-section-head">
-              <div>
-                <p className="admin-kicker">Fase 1 - Motor persistente</p>
-                <h3 className="ws-section-title">Consultoria inteligente</h3>
-                <p className="ws-match-sub">Calcula KPIs, guarda histórico, detecta problemas, genera recomendaciones y clasifica referencias con datos de los últimos 30 dias.</p>
+              <div className="ws-section-title-wrap">
+                <h3 className="ws-section-title">Diagnóstico del restaurante</h3>
+                <p className="ws-section-lead">Calcula KPIs, detecta problemas, genera recomendaciones y clasifica referencias con los últimos 30 días.</p>
               </div>
               <button className="ws-btn-primary" onClick={recalcularConsultoriaFase1} disabled={recalculandoFase1}>
                 {recalculandoFase1 ? 'Recalculando...' : 'Recalcular y guardar'}
@@ -1174,10 +1174,10 @@ export default function RestauranteWorkspace() {
             </div>
 
             {errorFase1 && <p className="admin-alert admin-alert-error">{errorFase1}</p>}
-            {cargandoFase1 && <div className="ws-empty-block">Cargando ultima foto analitica...</div>}
+            {cargandoFase1 && <div className="ws-empty-block">Cargando datos guardados...</div>}
             {!cargandoFase1 && !consultoriaFase1?.ultima && (
               <div className="ws-empty-block">
-                Aun no hay historico guardado. Pulsa &ldquo;Recalcular y guardar&rdquo; para crear la primera foto analitica.
+                Todavía no hay datos guardados para este restaurante. Pulsa &ldquo;Recalcular y guardar&rdquo; para generar el primer análisis.
               </div>
             )}
 
@@ -1661,8 +1661,10 @@ export default function RestauranteWorkspace() {
                       </span>
                     </div>
                     <div className="mapping-bar"><i style={{ width: `${Math.min(100, (diagnostico.wineMapping.referencias.actual / Math.max(1, diagnostico.wineMapping.referencias.maximo)) * 100)}%` }} /></div>
-                    <b>{diagnostico.wineMapping.referencias.estado}</b>
-                    <em>x1-x1,5 ticket</em>
+                    <div className="mapping-tags">
+                      <b>{diagnostico.wineMapping.referencias.estado}</b>
+                      <em>Precio vino × 1–1,5 del ticket</em>
+                    </div>
                   </div>
                 )}
                 {diagnostico.ticket.valor != null && diagnostico.wineMapping.reequilibrio && (
@@ -1790,11 +1792,11 @@ export default function RestauranteWorkspace() {
           ═══════════════════════════════════════ */}
           <section id="ws-matching" className="ws-section">
             <div className="ws-section-head">
-              <div>
-                <h3 className="ws-section-title">Matching carta - catalogo proveedor</h3>
-                <p className="ws-match-sub">Cruza vinos del restaurante con catalogos cargados para completar proveedor, coste, referencia y formato sin pedirle mas trabajo al encargado.</p>
+              <div className="ws-section-title-wrap">
+                <h3 className="ws-section-title">Cruce de carta con catálogo del proveedor</h3>
+                <p className="ws-section-lead">Completa proveedor, coste, referencia y formato sin pedirle más trabajo al encargado.</p>
               </div>
-              <Link href="/admin/proveedores" className="ws-btn-secondary">Gestionar catalogos</Link>
+              <Link href="/admin/proveedores" className="ws-btn-secondary">Gestionar catálogos</Link>
             </div>
 
             <div className="admin-create-form ws-form-grid ws-match-tools">
