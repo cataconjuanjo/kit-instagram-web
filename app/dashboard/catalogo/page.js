@@ -117,8 +117,11 @@ export default function CatalogoProveedores() {
   if (loading) return <LoadingState />
   if (!restaurante) return null
 
+  // El endpoint de proveedores-catalogo oculta coste_estimado salvo al consultor;
+  // en lado restaurante el valor viene undefined/null y los bloques derivados se ocultan.
   const valorCatalogo = items.reduce((sum, item) => sum + (Number(item.coste_estimado) || 0), 0)
   const conPrecio = items.filter(item => Number(item.coste_estimado) > 0).length
+  const mostrarCoste = valorCatalogo > 0
   const margenMedio = conPrecio
     ? Math.round(items.reduce((sum, item) => sum + (Number(item.margen) || 0), 0) / conPrecio)
     : 0
@@ -155,7 +158,9 @@ export default function CatalogoProveedores() {
           <div className={styles.stat}><p className={styles.statValue}>{total}</p><p className={styles.statLabel}>Referencias encontradas</p></div>
           <div className={styles.stat}><p className={styles.statValue}>{proveedores.length}</p><p className={styles.statLabel}>Distribuidores</p></div>
           <div className={styles.stat}><p className={styles.statValue}>{margenMedio || '-' }%</p><p className={styles.statLabel}>Margen medio sugerido</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(valorCatalogo)}</p><p className={styles.statLabel}>Coste de esta página</p></div>
+          {mostrarCoste && (
+            <div className={styles.stat}><p className={styles.statValue}>{eur(valorCatalogo)}</p><p className={styles.statLabel}>Coste de esta página</p></div>
+          )}
         </section>
 
         <section className={styles.panel} style={{ marginBottom: 16 }}>
@@ -199,7 +204,9 @@ export default function CatalogoProveedores() {
                       <span className={styles.badge}>{item.margen != null ? `${item.margen}% margen` : 'Sin PVP'}</span>
                     </div>
                     <div className={styles.actionRow} style={{ marginTop: 12 }}>
-                      <span className={styles.badge}>Coste {eur(item.coste_estimado)}</span>
+                      {Number(item.coste_estimado) > 0 && (
+                        <span className={styles.badge}>Coste {eur(item.coste_estimado)}</span>
+                      )}
                       <span className={styles.badge}>PVP {eur(item.pvp_recomendado)}</span>
                       <Link className={styles.secondary} href={llevarCartaHref(item)}>Llevar a carta</Link>
                       <Link className={styles.ghost} href={crearFichaHref(item)}>Crear ficha</Link>
