@@ -255,7 +255,12 @@ export async function GET(req) {
     let vinosQuery = supabase
       .from('proveedor_catalogo_vinos')
       .select(SELECT_CATALOGO_VINO)
+      // Tiebreaker por id: sin él, seleccionarTodo() paginaba con un
+      // order() ambiguo (muchas filas comparten created_at por imports en
+      // bloque) y PostgREST devolvía rows solapadas entre páginas; el
+      // dedup por v.id del cliente hacía desaparecer 210 refs en silencio.
       .order('created_at', { ascending: false })
+      .order('id')
     if (proveedorIdFiltro) vinosQuery = vinosQuery.eq('proveedor_id', proveedorIdFiltro)
 
     const vinos = await seleccionarTodo(vinosQuery)
