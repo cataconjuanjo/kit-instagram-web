@@ -34,7 +34,8 @@ const pdfParse = require('pdf-parse/lib/pdf-parse.js')
 
 try { process.loadEnvFile(path.join(__dirname, '..', '.env.local')) } catch {}
 
-const MODELO = 'claude-sonnet-4-6'
+const MODELO = process.env.PDF_EXTRACTION_MODEL || 'claude-sonnet-4-6'
+console.error(`[pdf-a-json] modelo: ${MODELO}`)
 const MAX_TOKENS_POR_BLOQUE = 16000
 const LIMITE_REFS_POR_BLOQUE = 400
 

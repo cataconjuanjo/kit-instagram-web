@@ -354,7 +354,7 @@ export async function POST(req) {
     }
 
     try {
-      const modelo = 'claude-sonnet-4-6'
+      const modelo = process.env.PDF_EXTRACTION_MODEL || 'claude-sonnet-4-6'
       const message = await anthropic.messages.create({
         model: modelo,
         max_tokens: 16000,
