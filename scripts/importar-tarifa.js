@@ -427,16 +427,29 @@ async function main() {
     .from('tarifa').select('id, periodo, estado')
     .eq('proveedor_id', proveedorId).eq('estado', 'publicada').maybeSingle()
 
-  // 5. Ofertas de la tarifa anterior con contexto
+  // 5. Ofertas de la tarifa anterior con contexto.
+  // Paginado con .order('id') obligatorio: sin él, un proveedor con
+  // >1000 ofertas perdía filas en silencio -> las no devueltas se
+  // cuentan como bajas falsas y los favoritos ligados a ellas se dan
+  // por huérfanos (bloque 11 explicaba el mismo síntoma en el admin).
   let prevOfertas = []
   if (prevTarifa) {
-    const { data: po } = await supabase
-      .from('oferta')
-      .select(`id, codigo_articulo, coste, disponibilidad, referencia_origen_id, vino_anada_id,
-               vino_anada:vino_anada_id(anada, formato_ml, vino:vino_id(nombre, bodega:bodega_id(nombre))),
-               pcv:referencia_origen_id(favorito, nombre)`)
-      .eq('tarifa_id', prevTarifa.id)
-    prevOfertas = po || []
+    const PAGE = 1000
+    let desde = 0
+    while (true) {
+      const { data: po } = await supabase
+        .from('oferta')
+        .select(`id, codigo_articulo, coste, disponibilidad, referencia_origen_id, vino_anada_id,
+                 vino_anada:vino_anada_id(anada, formato_ml, vino:vino_id(nombre, bodega:bodega_id(nombre))),
+                 pcv:referencia_origen_id(favorito, nombre)`)
+        .eq('tarifa_id', prevTarifa.id)
+        .order('id')
+        .range(desde, desde + PAGE - 1)
+      if (!po || po.length === 0) break
+      prevOfertas.push(...po)
+      if (po.length < PAGE) break
+      desde += PAGE
+    }
   }
 
   // Construir mapas de resolución
@@ -638,11 +651,25 @@ async function main() {
   // Capturar favoritos actuales ANTES de tocar nada, para re-mapeo post-publicación.
   // Estrategia: nos fiamos de codigo_articulo (hard, confianza 1.0) y, en su defecto,
   // de claveDura. Si no coincide, emitimos warning con el nombre huérfano.
-  const { data: favoritosPrevios } = await supabase
-    .from('proveedor_catalogo_vinos')
-    .select('id, nombre, bodega, formato, anada, referencia, favorito')
-    .eq('proveedor_id', proveedorId)
-    .eq('favorito', true)
+  // Paginado con .order('id') obligatorio por la misma razón que prevOfertas.
+  const favoritosPrevios = []
+  {
+    const PAGE = 1000
+    let desde = 0
+    while (true) {
+      const { data: pagina } = await supabase
+        .from('proveedor_catalogo_vinos')
+        .select('id, nombre, bodega, formato, anada, referencia, favorito')
+        .eq('proveedor_id', proveedorId)
+        .eq('favorito', true)
+        .order('id')
+        .range(desde, desde + PAGE - 1)
+      if (!pagina || pagina.length === 0) break
+      favoritosPrevios.push(...pagina)
+      if (pagina.length < PAGE) break
+      desde += PAGE
+    }
+  }
   const favsIndexCodigo = new Map()
   const favsIndexClave = new Map()
   for (const f of (favoritosPrevios || [])) {
@@ -737,11 +764,26 @@ async function main() {
   let huerfanos = 0
   let reMapeados = 0
   if (favoritosPrevios && favoritosPrevios.length) {
-    const { data: actuales } = await supabase
-      .from('proveedor_catalogo_vinos')
-      .select('id, nombre, bodega, formato, anada, referencia, favorito')
-      .eq('proveedor_id', proveedorId)
-    const existe = new Map((actuales || []).map(r => [r.id, r]))
+    // Paginado con .order('id') obligatorio: un proveedor con >1000 refs
+    // perdería filas aquí y daría favoritos por huérfanos falsos.
+    const actuales = []
+    {
+      const PAGE = 1000
+      let desde = 0
+      while (true) {
+        const { data: pagina } = await supabase
+          .from('proveedor_catalogo_vinos')
+          .select('id, nombre, bodega, formato, anada, referencia, favorito')
+          .eq('proveedor_id', proveedorId)
+          .order('id')
+          .range(desde, desde + PAGE - 1)
+        if (!pagina || pagina.length === 0) break
+        actuales.push(...pagina)
+        if (pagina.length < PAGE) break
+        desde += PAGE
+      }
+    }
+    const existe = new Map(actuales.map(r => [r.id, r]))
     for (const fav of favoritosPrevios) {
       // 1) Si la fila favorita original sigue existiendo, nada que hacer.
       if (existe.has(fav.id) && existe.get(fav.id).favorito) continue
