@@ -47,7 +47,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
-    "next": "16.4.3",
+    "next": "16.4.6",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "6.5.438",
     "qrcode": "^1.5.4",
