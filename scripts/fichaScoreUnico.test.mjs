@@ -36,11 +36,13 @@ describe('Ficha: una sola puntuación visible', () => {
 
   it('cuando se renderiza el snapshot histórico, lleva etiqueta de fecha', () => {
     // Si existe el bloque consultant-plan-status, debe acompañarse de la
-    // dateline "Plan guardado el ... · valoración de entonces".
+    // dateline con fecha. Fase L renombró el texto a "Plan histórico ·
+    // guardado el <fecha>", así que aceptamos cualquiera de las dos
+    // redacciones (histórica o actual).
     const haySnapshot = /consultant-plan-status/.test(src)
     if (!haySnapshot) return // si se elimina todo el plan guardado, mejor.
-    const hayDateline = /consultant-plan-dateline/.test(src) && /Plan guardado el /.test(src)
-    assert.ok(hayDateline, 'El snapshot del plan guardado se muestra sin etiqueta "Plan guardado el ...".')
+    const hayDateline = /consultant-plan-dateline/.test(src) && /guardado el /.test(src)
+    assert.ok(hayDateline, 'El snapshot del plan guardado se muestra sin etiqueta "guardado el ...".')
   })
 
   it('el bloque consultant-plan-status ya no incluye Score', () => {

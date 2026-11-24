@@ -19,6 +19,7 @@ import {
   calcCandidatosCopa,
   calcAlertasCriticas,
   calcPuntuacion,
+  calcPalancasOportunidad,
   limpiarRutasTecnicas,
   seleccionarMatchesParaAutoAplicar,
 } from '../../../lib/consultoriaMetricas'
@@ -371,6 +372,7 @@ export default function RestauranteWorkspace() {
   const [accionesMobileOpen, setAccionesMobileOpen] = useState(false)
   const [sigMovOpen, setSigMovOpen] = useState(false)
   const [planConsultorOpen, setPlanConsultorOpen] = useState(false)
+  const [comparandoRegenerar, setComparandoRegenerar] = useState(false)
   const [politica, setPolitica] = useState(null)
   const [politicaDraft, setPoliticaDraft] = useState('')
   const [guardandoPolitica, setGuardandoPolitica] = useState(false)
@@ -1340,9 +1342,49 @@ export default function RestauranteWorkspace() {
                           <span className="consultant-plan-chevron">{planConsultorOpen ? '−' : '+'}</span>
                         </button>
                         {consultoriaFase1.ultima?.created_at && (
-                          <p className="consultant-plan-dateline">
-                            Plan guardado el {new Date(consultoriaFase1.ultima.created_at).toLocaleDateString('es-ES')} · valoración de entonces
-                          </p>
+                          <div className="consultant-plan-historic-aviso">
+                            <p className="consultant-plan-dateline">
+                              Plan histórico · guardado el {new Date(consultoriaFase1.ultima.created_at).toLocaleDateString('es-ES')}. El análisis actual puede diferir ({calcPuntuacion(analisis).score} · {calcPuntuacion(analisis).prioridad}).
+                            </p>
+                            {!comparandoRegenerar && (
+                              <button
+                                type="button"
+                                className="ws-btn-secondary"
+                                onClick={() => setComparandoRegenerar(true)}
+                              >
+                                Regenerar plan
+                              </button>
+                            )}
+                            {comparandoRegenerar && (
+                              <div className="consultant-plan-regenerar">
+                                <p>
+                                  Vas a guardar un plan nuevo con el análisis actual. El plan guardado
+                                  de {new Date(consultoriaFase1.ultima.created_at).toLocaleDateString('es-ES')} quedará
+                                  sustituido al confirmar.
+                                </p>
+                                <div className="consultant-plan-regenerar-actions">
+                                  <button
+                                    type="button"
+                                    className="ws-btn-secondary"
+                                    onClick={() => setComparandoRegenerar(false)}
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="ws-btn-primary"
+                                    disabled={recalculandoFase1}
+                                    onClick={async () => {
+                                      await recalcularConsultoriaFase1()
+                                      setComparandoRegenerar(false)
+                                    }}
+                                  >
+                                    {recalculandoFase1 ? 'Guardando…' : 'Guardar como plan nuevo'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                         <p>{consultoriaFase1.consultor.diagnostic.resumen_ejecutivo}</p>
                       </div>
@@ -2441,23 +2483,23 @@ export default function RestauranteWorkspace() {
           <section id="ws-informe-cliente" className={`ws-informe-cliente${modoInformeCliente ? ' is-visible' : ''}`} aria-hidden={!modoInformeCliente}>
             {(() => {
               const agg = agregarSeguimiento(seguimientos || [])
-              const oportunidad = consultoriaFase1?.oportunidad?.snapshot?.recuperacion_anual_estimada
+              const persistido = consultoriaFase1?.oportunidad?.snapshot?.recuperacion_anual_estimada
                 || analisis?.ejecutivo?.resumen?.recuperacion_anual_estimada
                 || 0
-              const prioridades = (alertas || []).slice(0, 3).map(a => ({
-                titulo: a.titulo,
-                detalle: a.detalle,
-                accion: a.accion,
-                euros: null,
-              }))
+              // FASE L cambio 1: desglose por palanca desde el motor único.
+              // La suma de las palancas mostradas CUADRA con la cifra principal.
+              const { palancas } = calcPalancasOportunidad({
+                metricas,
+                propuestasAbiertas: (propuestasAbiertas || []).length,
+                persistidoTotal: persistido,
+              })
               const proximo = (contactos || [])
                 .map(c => c.proximo_contacto)
                 .filter(Boolean)
                 .sort()[0] || null
               const informe = construirInformeCliente({
                 restaurante,
-                oportunidadEuros: oportunidad,
-                prioridades,
+                palancas,
                 seguimiento: agg,
                 proximoContacto: proximo,
               })
@@ -2472,7 +2514,7 @@ export default function RestauranteWorkspace() {
                     <p>{informe.cifraPrincipal.frase}</p>
                   </section>
                   <section className="informe-cliente-prioridades">
-                    <h2>Las 3 prioridades</h2>
+                    <h2>{informe.encabezadoPrioridades || 'Prioridades'}</h2>
                     {informe.prioridades.length === 0 && <p>No hay prioridades abiertas. La carta está sana.</p>}
                     <ol>
                       {informe.prioridades.map(p => (

@@ -4,15 +4,51 @@
 
 import { limpiarRutasTecnicas } from './consultoriaMetricas.js'
 
+function toNumber(n) {
+  const v = Number(n)
+  return Number.isFinite(v) ? v : 0
+}
+
 function toEuro(n) {
   const v = Number(n)
   if (!Number.isFinite(v) || v <= 0) return null
   return `${Math.round(v).toLocaleString('es-ES')} €`
 }
 
-function fraseCifraPrincipal(euros) {
+function fraseCifraPrincipal(euros, numPrioridades = 3, { palancasConImporte = [], haySoloDatos = false, totalConImporte = 0 } = {}) {
+  // FASE L-fix 2: cuando hay una partida de datos (soloDatos) y la cifra
+  // recuperable es pequeña (< 500 €), la frase estándar "Si trabajamos las
+  // N prioridades… recuperar 90 €" suena a poco y mezcla una prioridad con
+  // importe y otra sin él. Usamos una redacción distinta que explica por
+  // qué falta la cifra grande.
+  if (haySoloDatos && totalConImporte < 500) {
+    if (totalConImporte > 0 && euros) {
+      const idPrincipal = palancasConImporte[0]?.id || ''
+      let ambito = 'al año'
+      if (idPrincipal === 'copa_faltante') ambito = 'al año en vino por copa'
+      else if (idPrincipal === 'margen_bajo') ambito = 'al año en margen de botella'
+      return `Para medir el margen real de tu carta, primero necesitamos los costes de compra. Con ellos podremos cuantificar la oportunidad completa; ya identificamos ${euros} ${ambito}.`
+    }
+    return 'Para medir el margen real de tu carta, primero necesitamos los costes de compra. Con ellos cuantificaremos la oportunidad completa.'
+  }
   if (!euros) return 'Oportunidad anual pendiente de cuantificar con tu equipo.'
-  return `Si trabajamos las 3 prioridades este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+  if (numPrioridades <= 0) {
+    return `Trabajando las oportunidades detectadas este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+  }
+  if (numPrioridades === 1) {
+    return `Si trabajamos la prioridad detectada este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+  }
+  return `Si trabajamos las ${numPrioridades} prioridades este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+}
+
+// Encabezado de la sección de prioridades en el informe. Se calcula aquí
+// para que coincida siempre con la lista pintada y con el conteo de la
+// frase principal. 0 → "Prioridades", 1 → "La prioridad", N → "Las N
+// prioridades".
+function encabezadoPrioridadesTexto(n) {
+  if (!n || n <= 0) return 'Prioridades'
+  if (n === 1) return 'La prioridad'
+  return `Las ${n} prioridades`
 }
 
 function limpiarTextoCliente(texto) {
@@ -93,30 +129,66 @@ function fraseParaCliente(prioridad) {
 
 // Construye el objeto del informe para el cliente a partir de:
 //   restaurante: { nombre, ciudad, provincia, ... }
-//   oportunidadEuros: número (recuperación anual estimada)
-//   prioridades: array de { titulo, euros, detalle, accion }  (hasta 3)
-//   seguimiento: salida de agregarSeguimiento (opcional)
-//   proximoContacto: ISO date (opcional)
+//   oportunidadEuros: número (recuperación anual estimada, usado solo si no
+//     se pasan palancas con desglose).
+//   prioridades: array crudo de alertas del motor (compat con llamadores
+//     antiguos que no conocen palancas).
+//   palancas: array nuevo (fase L) con desglose por palanca de la
+//     oportunidad económica. Cada palanca { id, titulo, euros, esInterna }.
+//     Si se pasa, ES la fuente de prioridades: cuadra la suma con el total.
+//   seguimiento: salida de agregarSeguimiento (opcional).
+//   proximoContacto: ISO date (opcional).
 export function construirInformeCliente({
   restaurante,
   oportunidadEuros,
   prioridades = [],
+  palancas = null,
   seguimiento = null,
   proximoContacto = null,
   fecha = new Date(),
 } = {}) {
-  // FASE K-fix: filtrar señales INTERNAS (cliente caliente, propuestas
-  // abiertas, sin contacto, alertas…). El informe para el dueño solo
-  // debe hablar de SU carta (precios, costes, copas, bodegas locales,
-  // reposición, margen…). Si tras filtrar quedan menos de 3, se
-  // muestran las que haya.
-  const soloCarta = (prioridades || []).filter(p => p && !esSenalInterna(p))
-  const prioridadesLimpias = soloCarta.slice(0, 3).map((p, i) => ({
-    numero: i + 1,
-    titulo: tituloParaCliente(p.titulo),
-    detalle: fraseParaCliente(p),
-    euros: toEuro(p.euros),
-  }))
+  // Rama fase L: si recibimos palancas, las usamos.
+  // FASE L-fix: se separan dos grupos:
+  //   (a) palancas con IMPORTE RECUPERABLE: suman a la cifra principal y
+  //       se pintan con € al lado.
+  //   (b) palancas marcadas como `soloDatos: true` (p.ej. 'sin_coste'):
+  //       se pintan como partida de datos SIN importe, no suman a la
+  //       cifra principal, y van al final de la lista.
+  // Las esInterna=true se descartan igual que antes.
+  let prioridadesLimpias
+  let totalMostrado = toNumber(oportunidadEuros)
+  if (Array.isArray(palancas)) {
+    const clienteBase = palancas.filter(p => p && !p.esInterna)
+    const conImporte = clienteBase.filter(p => !p.soloDatos && toNumber(p.euros) > 0)
+    const soloDatos = clienteBase.filter(p => p.soloDatos && toNumber(p.euros) > 0)
+
+    // Primero las con importe (ya vienen ordenadas desc del motor), luego
+    // partida de datos. Máximo 3 en total.
+    const ordenadas = [...conImporte, ...soloDatos].slice(0, 3)
+    // Cifra principal = SOLO suma de las con importe efectivamente mostradas.
+    const conImporteMostradas = ordenadas.filter(p => !p.soloDatos)
+    const haySoloDatosMostradas = ordenadas.some(p => p.soloDatos)
+    totalMostrado = conImporteMostradas.reduce((s, p) => s + toNumber(p.euros), 0)
+    var ctxFrase = { palancasConImporte: conImporteMostradas, haySoloDatos: haySoloDatosMostradas, totalConImporte: totalMostrado }
+    prioridadesLimpias = ordenadas.map((p, i) => ({
+      numero: i + 1,
+      titulo: tituloParaCliente(p.titulo),
+      detalle: fraseParaCliente({ detalle: p.detalle || '', accion: p.accion || '' }),
+      euros: p.soloDatos ? null : toEuro(p.euros),
+      soloDatos: !!p.soloDatos,
+    }))
+  } else {
+    // Rama fase K (legacy): prioridades crudas del motor, sin € fiable.
+    // FASE K-fix: filtrar señales INTERNAS.
+    const soloCarta = (prioridades || []).filter(p => p && !esSenalInterna(p))
+    prioridadesLimpias = soloCarta.slice(0, 3).map((p, i) => ({
+      numero: i + 1,
+      titulo: tituloParaCliente(p.titulo),
+      detalle: fraseParaCliente(p),
+      euros: toEuro(p.euros),
+      soloDatos: false,
+    }))
+  }
 
   const seguimientoResumen = seguimiento ? {
     enviadas: Number(seguimiento.porEstado?.enviada || 0) + Number(seguimiento.porEstado?.aceptada || 0) + Number(seguimiento.porEstado?.implantada || 0),
@@ -134,9 +206,18 @@ export function construirInformeCliente({
       ubicacion: [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · '),
     },
     cifraPrincipal: {
-      valor: toEuro(oportunidadEuros),
-      frase: fraseCifraPrincipal(toEuro(oportunidadEuros)),
+      valor: toEuro(totalMostrado),
+      // El número de la frase SIEMPRE coincide con las prioridades que
+      // se listan arriba (incluida la partida de datos si aparece).
+      frase: fraseCifraPrincipal(
+        toEuro(totalMostrado),
+        prioridadesLimpias.length,
+        typeof ctxFrase !== 'undefined' ? ctxFrase : undefined,
+      ),
     },
+    // Encabezado dinámico de la sección "Prioridades" en la vista: la
+    // ficha lo renderiza tal cual, en vez del literal "Las 3 prioridades".
+    encabezadoPrioridades: encabezadoPrioridadesTexto(prioridadesLimpias.length),
     prioridades: prioridadesLimpias,
     seguimiento: seguimientoResumen,
     proximoContacto: proximoContacto ? new Date(proximoContacto).toLocaleDateString('es-ES') : null,

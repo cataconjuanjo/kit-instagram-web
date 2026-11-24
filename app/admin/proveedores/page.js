@@ -1186,7 +1186,7 @@ function ProveedoresPageContent() {
                         </label>
                       </div>
                       {proveedorForm.ambito_reparto === 'provincias' && (
-                        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 4, maxHeight: 220, overflowY: 'auto', border: '1px solid #e0d4bc', borderRadius: 6, padding: '8px 12px' }}>
+                        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 4, maxHeight: 220, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 6, padding: '8px 12px' }}>
                           {PROVINCIAS_ES.map(prov => (
                             <label key={prov.codigo} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13 }}>
                               <input
@@ -1259,7 +1259,7 @@ function ProveedoresPageContent() {
                     </div>
                     <div style={{ display: 'grid', gap: 8, minWidth: 280 }}>
                       {grupo.refs.map((vino, index) => (
-                        <div key={vino.id} className="admin-card supplier-offer" style={{ padding: 12, background: index === 0 && vino.costeNumero > 0 ? '#f3ead8' : '#fff' }}>
+                        <div key={vino.id} className="admin-card supplier-offer" style={{ padding: 12, background: index === 0 && vino.costeNumero > 0 ? 'var(--canvas)' : '#fff' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                             <div>
                               <strong>{vino.proveedorNombre}</strong>
@@ -1323,7 +1323,7 @@ function ProveedoresPageContent() {
                   accept=".pdf,.csv,.xlsx,.xls,image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                   onChange={e => procesarCatalogoProveedor(e.target.files)}
                   disabled={leyendoCatalogo || !proveedorImportacion}
-                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--line)', borderRadius: 12, padding: 10, background: proveedorImportacion ? '#fff' : '#f3f3f3' }}
+                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--line)', borderRadius: 12, padding: 10, background: proveedorImportacion ? '#fff' : 'var(--soft)' }}
                 />
               </label>
               {!proveedorImportacion && <p className="admin-alert admin-alert-error">Selecciona o crea un proveedor antes de subir el catálogo.</p>}
@@ -1788,7 +1788,7 @@ function ProveedoresPageContent() {
                                 ) : <span className="supplier-pvp-empty">—</span>}
                                 <div className="supplier-row-actions">
                                   {vino.favorito && !vino.activo && (
-                                    <span title="Favorito sin proveedor activo" style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fbbf24', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>Sin proveedor</span>
+                                    <span title="Favorito sin proveedor activo" style={{ fontSize: 10, background: 'var(--wine-soft)', color: 'var(--wine-deep)', border: '1px solid var(--gold)', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>Sin proveedor</span>
                                   )}
                                   <button type="button" className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`} onClick={() => toggleFavorito(vino)} title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'} disabled={togglingFavorito.has(vino.id)}>
                                     {vino.favorito ? '★' : '☆'}
@@ -1832,7 +1832,7 @@ function ProveedoresPageContent() {
                               </div>
                               {/* Favorito */}
                               {vino.favorito && !vino.activo && (
-                                <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fbbf24', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap', fontWeight: 600 }}>Sin proveedor activo</span>
+                                <span style={{ fontSize: 10, background: 'var(--wine-soft)', color: 'var(--wine-deep)', border: '1px solid var(--gold)', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap', fontWeight: 600 }}>Sin proveedor activo</span>
                               )}
                               <button
                                 type="button"
@@ -1903,7 +1903,7 @@ function ProveedoresPageContent() {
                             <strong className="supplier-cell-num">{rb ? `${rb.copa.toFixed(2)} €` : '—'}</strong>
                             <div className="supplier-row-menu">
                               {vino.favorito && !vino.activo && (
-                                <span title="Favorito sin proveedor activo" style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fbbf24', borderRadius: 4, padding: '1px 5px', fontWeight: 600, alignSelf: 'center' }}>Sin proveedor</span>
+                                <span title="Favorito sin proveedor activo" style={{ fontSize: 10, background: 'var(--wine-soft)', color: 'var(--wine-deep)', border: '1px solid var(--gold)', borderRadius: 4, padding: '1px 5px', fontWeight: 600, alignSelf: 'center' }}>Sin proveedor</span>
                               )}
                               <button
                                 type="button"
@@ -1978,7 +1978,7 @@ function ProveedoresPageContent() {
                     <div className="supplier-row-stats">
                       <span className="supplier-row-badge">{conteoPorProveedor[proveedor.id] || 0} refs</span>
                       {proveedor.ambito_reparto === 'provincias' && (!proveedor.provincias || proveedor.provincias.length === 0) && (
-                        <span className="supplier-row-badge" style={{ background: '#f3ead8', color: '#74223d', border: '1px solid #e0c9a0' }}>Reparto pendiente</span>
+                        <span className="supplier-row-badge" style={{ background: 'var(--canvas)', color: 'var(--wine)', border: '1px solid var(--line)' }}>Reparto pendiente</span>
                       )}
                       <span className={`supplier-row-status${proveedor.visible_restaurantes ? ' is-public' : ''}`}>
                         {proveedor.visible_restaurantes ? 'Visible' : 'Privado'}
