@@ -1,4 +1,5 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
+import { isConsultorFromAuth } from '../../_lib/isConsultor'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
 import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
@@ -13,6 +14,7 @@ export async function GET(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const esConsultor = isConsultorFromAuth(auth)
 
     const { data: restaurante } = await supabaseAdmin
       .from('restaurantes')
@@ -69,9 +71,10 @@ export async function GET(req) {
         catalogoMap[cv.id] = {
           proveedor_id:      prov?.id      || null,
           proveedor_nombre:  prov?.nombre  || 'Proveedor desconocido',
-          proveedor_email:   prov?.email   || null,
-          proveedor_contacto: prov?.contacto || null,
-          proveedor_telefono: prov?.telefono || null,
+          // Contacto comercial sólo para consultor.
+          proveedor_email:   esConsultor ? (prov?.email   || null) : null,
+          proveedor_contacto: esConsultor ? (prov?.contacto || null) : null,
+          proveedor_telefono: esConsultor ? (prov?.telefono || null) : null,
           proveedor_tipo:    'catalogo',
         }
       }
@@ -106,7 +109,9 @@ export async function GET(req) {
       if (linea.catalogo_vino_id && catalogoMap[linea.catalogo_vino_id]) {
         const grupo = grupoPorOfertaId.get(String(linea.catalogo_vino_id))
         const ofertaSeleccionada = grupo?.ofertas.find(oferta => String(oferta.id) === String(linea.catalogo_vino_id))
-        const ofertasComparacion = (grupo?.ofertas || []).map(oferta => ({
+        // Comparativa interna: incluye costes para rankear. El objeto expuesto al
+        // cliente oculta costes salvo que la sesión sea consultor.
+        const ofertasRaw = (grupo?.ofertas || []).map(oferta => ({
           id: oferta.id,
           proveedor_id: oferta.proveedor?.id || oferta.proveedor_id || null,
           proveedor_nombre: oferta.proveedor?.nombre || 'Sin proveedor',
@@ -114,20 +119,27 @@ export async function GET(req) {
           disponibilidad: oferta.disponibilidad || null,
           updated_at: oferta.updated_at || null,
         }))
-        const conPrecio = ofertasComparacion.filter(oferta => oferta.coste_por_botella !== null)
+        const conPrecio = ofertasRaw.filter(oferta => oferta.coste_por_botella !== null)
         const mejor = conPrecio.sort((a, b) => a.coste_por_botella - b.coste_por_botella)[0] || null
         const costeSeleccionado = costePorBotella(ofertaSeleccionada) ?? (Number(linea.coste_compra) > 0 ? Number(linea.coste_compra) : null)
         const diferencia = costeSeleccionado !== null && mejor
           ? Math.max(0, costeSeleccionado - mejor.coste_por_botella)
           : 0
+        const ofertasComparacion = esConsultor
+          ? ofertasRaw
+          : ofertasRaw.map(({ coste_por_botella, ...resto }) => resto)
+        // Para restaurante: nunca devuelvas coste_por_botella puntual, ni
+        // "mejor_precio_disponible" / "diferencia_mejor_precio" / "ahorro_potencial"
+        // porque son costes del proveedor o derivadas que permitirían reconstruirlos.
+        // "proveedor_mas_barato" sí sale: es orientación sin exponer importe.
         return {
           ...linea,
           ...catalogoMap[linea.catalogo_vino_id],
           ofertas_comparacion: ofertasComparacion,
-          mejor_precio_disponible: mejor?.coste_por_botella || null,
-          diferencia_mejor_precio: diferencia,
+          mejor_precio_disponible: esConsultor ? (mejor?.coste_por_botella || null) : null,
+          diferencia_mejor_precio: esConsultor ? diferencia : null,
           proveedor_mas_barato: mejor?.proveedor_nombre || null,
-          ahorro_potencial: diferencia > 0 ? diferencia * 6 : 0,
+          ahorro_potencial: esConsultor ? (diferencia > 0 ? diferencia * 6 : 0) : null,
         }
       }
       if (linea.vino_id && vinosMap[linea.vino_id]) {

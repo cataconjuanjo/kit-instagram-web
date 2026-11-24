@@ -1,4 +1,5 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
+import { isConsultorFromAuth } from '../../_lib/isConsultor'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
@@ -14,6 +15,7 @@ export async function POST(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const esConsultor = isConsultorFromAuth(auth)
 
     const { data: restaurante, error: restError } = await supabaseAdmin
       .from('restaurantes')
@@ -55,6 +57,8 @@ export async function POST(req) {
     const econConfig = econSettings || {}
 
     if (providerIds.length > 0) {
+      // coste_estimado se usa server-side para calcular PVP sugerido y no debe
+      // llegar al cliente salvo que sea consultor.
       const { data: vinos } = await supabaseAdmin
         .from('proveedor_catalogo_vinos')
         .select('id, nombre, bodega, tipo, region, uva, anada, referencia, formato, coste_estimado, pvp_recomendado, pvp_copa, proveedor_id')
@@ -68,8 +72,10 @@ export async function POST(req) {
         const coste = Number(v.coste_estimado) || 0
         const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
         const pvpBotella = calc?.botella || 0
+        const base = { ...v }
+        if (!esConsultor) delete base.coste_estimado
         catalogo.push({
-          ...v,
+          ...base,
           pvp_recomendado: pvpBotella,
           pvp_copa: calc?.copa || 0,
         })
