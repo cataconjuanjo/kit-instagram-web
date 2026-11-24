@@ -6,9 +6,9 @@ import { createClient } from '@supabase/supabase-js'
 
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!url) { console.error('Falta NEXT_PUBLIC_SUPABASE_URL'); process.exit(1) }
+  if (!url) { console.error('Falta NEXT_PUBLIC_SUPABASE_URL'); process.exitCode = 1; return }
   const svc = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!svc) { console.error('Falta SUPABASE_SERVICE_ROLE_KEY'); process.exit(1) }
+  if (!svc) { console.error('Falta SUPABASE_SERVICE_ROLE_KEY'); process.exitCode = 1; return }
 
   const supabase = createClient(url, svc, { auth: { autoRefreshToken: false, persistSession: false } })
 
@@ -52,4 +52,4 @@ async function main() {
   }, null, 2))
 }
 
-main().catch((err) => { console.error(err); process.exit(1) })
+main().catch((err) => { console.error(err); process.exitCode = 1 })
