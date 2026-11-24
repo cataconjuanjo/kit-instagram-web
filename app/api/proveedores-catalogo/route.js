@@ -147,6 +147,7 @@ export async function GET(req) {
         .in('proveedor_id', searchableProviderIds)
         .eq('activo', true)
         .order('nombre')
+        .order('id')
         .range(from, to)
       if (error) throw error
       items = (data || []).map(decorate)
@@ -162,6 +163,7 @@ export async function GET(req) {
           .in('proveedor_id', searchableProviderIds)
           .eq('activo', true)
           .order('nombre')
+          .order('id')
           .range(from, from + chunkSize - 1)
         if (error) throw error
         const rows = data || []
