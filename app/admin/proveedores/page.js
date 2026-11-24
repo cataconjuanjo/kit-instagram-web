@@ -160,7 +160,7 @@ async function tokenAdmin() {
   return sessionData?.session?.access_token
 }
 
-const LIMITE_PDF_DIRECTO_MB = 3
+const LIMITE_PDF_DIRECTO_MB = 5
 const REFERENCIAS_POR_PAGINA = 60
 const RANGOS_PRECIO = [
   { id: '', label: 'Todos los precios' },
@@ -856,7 +856,7 @@ function ProveedoresPageContent() {
     }
     if (file.size > LIMITE_PDF_DIRECTO_MB * 1024 * 1024) {
       setCatalogoNombre(file.name)
-      setErrorCatalogo(`El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. Para catálogos grandes, abre el PDF, copia el texto de las páginas de tarifa y pégalo abajo.`)
+      setErrorCatalogo(`El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. Para PDFs mayores de ${LIMITE_PDF_DIRECTO_MB} MB o con más de ~400 referencias, usa el CLI \`scripts/importar-tarifa.js\`. También puedes abrir el PDF, copiar el texto de las páginas de tarifa y pegarlo abajo.`)
       if (catalogoRef.current) catalogoRef.current.value = ''
       return
     }
