@@ -7,13 +7,38 @@
  *   node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json> --pdf <ruta.pdf> --apply
  *
  * Por defecto opera en --dry-run: calcula el diff e imprime el informe sin escribir nada.
- * Con --apply: crea la tarifa en DB, inserta linea_cruda, crea ofertas nuevas y archiva la anterior.
+ * Con --apply: crea la tarifa en DB, inserta linea_cruda, crea ofertas nuevas, archiva la
+ * anterior, mantiene proveedor_catalogo_vinos (pcv) y rellena oferta.referencia_origen_id.
  *
  * Formato de entrada:
  *   a) Array JSON de líneas (formato histórico, compatible).
  *   b) Objeto { pdf_sha256, pdf_origen, vinos: [...] } producido por scripts/pdf-a-json.js.
  *      Si llega esta forma, el campo pdf_sha256 se usa para idempotencia
  *      (tarifa.fichero_hash) y el pdf_origen rellena tarifa.fichero_origen.
+ *
+ * Prerrequisitos:
+ *   - Las bodegas que aparezcan en el fichero deben existir en la tabla `bodega`.
+ *     Si no, la línea queda como `pendiente_mapeo` y NO se crea oferta ni vino
+ *     canónico. El dry-run lista las bodegas no reconocidas y propone el SQL
+ *     idempotente para insertarlas.
+ *
+ * Qué toca --apply en la BD (resumen):
+ *   - `tarifa`:            crea una nueva en 'borrador' → 'publicada', archiva
+ *                          la anterior si existía.
+ *   - `linea_cruda`:       una fila por línea del fichero (incluye pendientes).
+ *   - `vino`, `bodega`, `vino_anada`: resuelve o crea los canónicos.
+ *   - `oferta`:            crea una por línea procesable.  Después enlaza
+ *                          `oferta.referencia_origen_id` al pcv resuelto.
+ *   - `proveedor_catalogo_vinos`: UPSERT por `(proveedor_id, referencia)` o,
+ *                          en su defecto, por `claveDura(nombre, bodega, formato_ml, anada)`.
+ *                          El update conserva campos de usuario (favorito,
+ *                          notas, pvp_recomendado, pvp_copa, motivo, ambito).
+ *
+ * Orden de pasos sugerido:
+ *   1. `node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json>` (dry-run)
+ *   2. Revisar sección BODEGAS NO RECONOCIDAS; si hay, ejecutar el SQL sugerido.
+ *   3. Re-ejecutar dry-run para confirmar que ya no hay bodegas fuera.
+ *   4. `--apply` (añadiendo `--pdf <ruta.pdf>` si procede).
  */
 
 'use strict'
@@ -23,6 +48,7 @@ const fs     = require('fs')
 const path   = require('path')
 const crypto = require('crypto')
 const { fetchPaginado } = require('./lib/paginadoSupabase')
+const { resolverPcv } = require('./lib/upsertPcv')
 
 try { process.loadEnvFile(path.join(__dirname, '..', '.env.local')) } catch {}
 
@@ -142,10 +168,14 @@ async function resolverOCrearVinoAnada(supabase, nombreCrudo, bodegaCruda, anada
   const bodegaNorm = normalizar(bodegaCruda)
 
   // Bodega
+  // Bloque A3: el ILIKE directo contra 'nombre' no matchea cuando la tabla
+  // guarda la bodega con tildes y el crudo viene sin acentos (o viceversa),
+  // y creaba bodegas duplicadas. Aplicamos el mismo normalizador que usa el
+  // dedup del paso 7b: cargar bodegas del proveedor y filtrar en memoria.
   let bodegaId = null
   if (bodegaNorm) {
-    const { data: bdExist } = await supabase
-      .from('bodega').select('id').ilike('nombre', bodegaNorm).maybeSingle()
+    const { data: todas } = await supabase.from('bodega').select('id, nombre')
+    const bdExist = (todas || []).find(b => normalizar(b.nombre) === bodegaNorm) || null
     if (bdExist) {
       bodegaId = bdExist.id
     } else {
@@ -189,7 +219,7 @@ async function resolverOCrearVinoAnada(supabase, nombreCrudo, bodegaCruda, anada
 
 // ── Informe de impacto ─────────────────────────────────────────────────────────
 
-function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto }) {
+function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto, previsionPcv, bodegasNoReconocidas }) {
   const LINE = sep('═')
   const fav = item => item.esFavorito ? '  ★ FAVORITO ' : '  • '
 
@@ -296,6 +326,33 @@ function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, baj
     for (const a of dedupBodega) {
       console.log(`  • ${a.nombre_crudo} — bodega "${a.bodega_cruda || ''}" no reconocida`)
     }
+  }
+
+  // PREVISIÓN pcv (bloque A4)
+  if (previsionPcv) {
+    console.log(`\nPREVISIÓN CATÁLOGO (proveedor_catalogo_vinos)`)
+    console.log(sep())
+    console.log(`  · Se crearían:      ${previsionPcv.crearian}`)
+    console.log(`  · Se actualizarían: ${previsionPcv.actualizarian}`)
+  }
+
+  // BODEGAS NO RECONOCIDAS (bloque A4)
+  if (Array.isArray(bodegasNoReconocidas) && bodegasNoReconocidas.length) {
+    console.log(`\nBODEGAS NO RECONOCIDAS (${bodegasNoReconocidas.length}):`)
+    console.log(sep())
+    for (const b of bodegasNoReconocidas) {
+      const sufijo = b.refs === 1 ? '1 ref' : `${b.refs} refs`
+      console.log(`  · "${b.nombre}"           -- aparece en ${sufijo}`)
+    }
+    const valores = bodegasNoReconocidas
+      .map(b => `('${b.nombre.replace(/'/g, "''")}')`)
+      .join(', ')
+    console.log(`\nSQL sugerido (idempotente; requiere UNIQUE(nombre) en bodega):`)
+    console.log(`  insert into bodega (nombre)`)
+    console.log(`    values ${valores}`)
+    console.log(`    on conflict (nombre) do nothing;`)
+    console.log(`\nNota: si tu tabla bodega NO tiene UNIQUE(nombre), el ON CONFLICT`)
+    console.log(`no aplica. Comprueba manualmente que no existen antes del insert.`)
   }
 
   // RESUMEN
@@ -613,9 +670,45 @@ async function main() {
     }
   }
 
+  // 8b. Previsión pcv + bodegas no reconocidas (bloque A4)
+  //     Mostramos en el informe cuántas filas de proveedor_catalogo_vinos
+  //     se crearían / actualizarían si el usuario pasara a --apply.
+  const previsionPcv = { crearian: 0, actualizarian: 0 }
+  // Cargamos TODO el pcv del proveedor una vez para hacer el match local.
+  const { data: pcvProv } = await supabase
+    .from('proveedor_catalogo_vinos')
+    .select('id, nombre, bodega, formato, anada, referencia')
+    .eq('proveedor_id', proveedorId)
+  const pcvPorReferencia = new Map()
+  const pcvPorClave = new Map()
+  for (const row of (pcvProv || [])) {
+    if (row.referencia) pcvPorReferencia.set(String(row.referencia), row)
+    const mlRow = formatoAMl(row.formato)
+    const anadaRow = row.anada && /^\d+$/.test(String(row.anada)) ? parseInt(row.anada, 10) : null
+    pcvPorClave.set(claveDura(row.nombre, row.bodega || '', mlRow, anadaRow), row)
+  }
+  const procesablesParaPcv = procesables.filter(({ obj }) => !dedupPendientes.some(d => d.codigo_articulo === obj.codigo_articulo))
+  for (const { obj, v } of procesablesParaPcv) {
+    const porRef   = obj.codigo_articulo && pcvPorReferencia.has(String(obj.codigo_articulo))
+    const porClave = !porRef && pcvPorClave.has(claveDura(obj.nombre_crudo, obj.bodega_cruda || '', v.ml, v.anada))
+    if (porRef || porClave) previsionPcv.actualizarian++
+    else previsionPcv.crearian++
+  }
+
+  // Bodegas no reconocidas: las mismas que pasan al bucket pendiente_mapeo
+  // en 7b. Aquí agregamos con conteo por nombre crudo.
+  const bodegasNoReconocidasMap = new Map()
+  for (const d of dedupPendientes.filter(d => d.razon === 'bodega_no_reconocida')) {
+    const key = d.bodega_cruda || '(sin bodega)'
+    bodegasNoReconocidasMap.set(key, (bodegasNoReconocidasMap.get(key) || 0) + 1)
+  }
+  const bodegasNoReconocidas = Array.from(bodegasNoReconocidasMap.entries())
+    .map(([nombre, refs]) => ({ nombre, refs }))
+    .sort((a, b) => b.refs - a.refs)
+
   // 9. Imprimir informe
   const pendientes = pendientesMapeo.map(({ obj, v }) => ({ linea: v.linea, nombre_crudo: obj.nombre_crudo, zona_cruda: obj.zona_cruda }))
-  imprimirInforme({ proveedor: prov, periodo: periodoArg, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto })
+  imprimirInforme({ proveedor: prov, periodo: periodoArg, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto, previsionPcv, bodegasNoReconocidas })
 
   if (!apply) {
     console.log('→ Dry-run. Ejecuta con --apply para publicar.\n')
@@ -683,8 +776,11 @@ async function main() {
   }))
   await supabase.from('linea_cruda').insert(lineaRows)
 
-  // 10c. Crear nuevas ofertas para líneas procesables
+  // 10c. Crear nuevas ofertas para líneas procesables.
+  // ofertaInputs guarda el contexto (obj, v, vinoAnadaId) para el paso 10c-bis,
+  // donde resolvemos pcv y enlazamos oferta.referencia_origen_id.
   const ofertaRows = []
+  const ofertaInputs = []
   for (const { obj, v, match, esFavorito, confianza } of [
     ...procesables.filter(({ obj }) => !codigosDedupPendiente.has(obj.codigo_articulo)).map(({ obj, v }) => {
       let match2 = null
@@ -714,8 +810,130 @@ async function main() {
       coste: v.coste,
       disponibilidad: obj.disponibilidad || null,
     })
+    ofertaInputs.push({ obj, v, vinoAnadaId })
   }
-  if (ofertaRows.length) await supabase.from('oferta').insert(ofertaRows)
+
+  let ofertasCreadasConId = []
+  if (ofertaRows.length) {
+    const { data: insertadas, error: errOfer } = await supabase
+      .from('oferta').insert(ofertaRows).select('id, codigo_articulo, vino_anada_id')
+    if (errOfer) throw errOfer
+    ofertasCreadasConId = Array.isArray(insertadas) ? insertadas : []
+  }
+
+  // 10c-bis. Mantener proveedor_catalogo_vinos (pcv) + enlazar
+  // oferta.referencia_origen_id → pcv.id. Sin esto, las vistas del panel admin,
+  // del catálogo del restaurante y del simulador siguen viendo 0 refs del
+  // proveedor tras publicar una tarifa nueva (problema reportado 2026-11).
+  let pcvCreadas = 0
+  let pcvActualizadas = 0
+  let ofertasEnlazadas = 0
+  // Cache de bodegas por nombre normalizado para no re-consultar. Lo leemos
+  // una sola vez (bloque A3 ya cargó algo similar para el dedup, pero el
+  // scope allí es distinto).
+  let bodegasCacheArr = null
+  async function bodegaIdPorNombre(nombre) {
+    if (!nombre) return null
+    const norm = normalizar(nombre)
+    if (!bodegasCacheArr) {
+      const { data } = await supabase.from('bodega').select('id, nombre')
+      bodegasCacheArr = Array.isArray(data) ? data : []
+    }
+    const match = bodegasCacheArr.find(b => normalizar(b.nombre) === norm)
+    return match ? match.id : null
+  }
+
+  // Indexamos las ofertas recién creadas por codigo_articulo (único en
+  // tarifa) y por vino_anada_id (fallback) para ligar cada ofertaInput con
+  // su id real.
+  const ofertasPorCodigo = new Map()
+  const ofertasPorVinoAnada = new Map()
+  for (const o of ofertasCreadasConId) {
+    if (o.codigo_articulo) ofertasPorCodigo.set(String(o.codigo_articulo), o)
+    if (o.vino_anada_id)   ofertasPorVinoAnada.set(String(o.vino_anada_id), o)
+  }
+
+  for (const { obj, v, vinoAnadaId } of ofertaInputs) {
+    const ofertaReg = (obj.codigo_articulo && ofertasPorCodigo.get(String(obj.codigo_articulo)))
+      || (vinoAnadaId && ofertasPorVinoAnada.get(String(vinoAnadaId)))
+      || null
+    if (!ofertaReg) continue
+    const nombreVino = obj.nombre_crudo || ''
+    const bodegaTxt  = obj.bodega_cruda || null
+    const bodega_id  = await bodegaIdPorNombre(bodegaTxt)
+    const region = (obj.region_cruda || obj.zona_cruda || null)
+    const pais   = obj.pais || null
+    const anadaTxt = v.anada != null ? String(v.anada) : (obj.anada ? String(obj.anada) : null)
+    // Buscar vino_id (bloque A1: la FK a vino se rellena si estaba null)
+    let vinoIdResolver = null
+    if (vinoAnadaId) {
+      const { data: va } = await supabase
+        .from('vino_anada').select('vino_id').eq('id', vinoAnadaId).maybeSingle()
+      vinoIdResolver = va?.vino_id || null
+    }
+
+    const claveDuraBag = {
+      _nombre: normalizar(nombreVino),
+      _bodega: normalizar(bodegaTxt || ''),
+      _formatoMl: v.ml,
+      _anada: v.anada,
+      matches(row) {
+        const rowMl = formatoAMl(row.formato)
+        const rowAnada = row.anada == null ? null
+          : (String(row.anada).match(/^\d+$/) ? parseInt(row.anada, 10) : null)
+        return normalizar(row.nombre) === this._nombre
+          && normalizar(row.bodega || '') === this._bodega
+          && rowMl === this._formatoMl
+          && (rowAnada ?? null) === (this._anada ?? null)
+      },
+    }
+
+    const datosInsert = {
+      nombre: nombreVino,
+      bodega: bodegaTxt,
+      bodega_id: bodega_id || null,
+      vino_id: vinoIdResolver,
+      tipo:   obj.tipo || null,
+      region: region,
+      uva:    obj.uva || null,
+      anada:  anadaTxt,
+      referencia: obj.codigo_articulo ? String(obj.codigo_articulo) : null,
+      formato: obj.formato_crudo || null,
+      coste_estimado: v.coste,
+      disponibilidad: obj.disponibilidad || null,
+      activo: true,
+      pais: pais,
+    }
+    const datosUpdate = {
+      coste_estimado: v.coste,
+      disponibilidad: obj.disponibilidad || '',   // vacío = no sobrescribir (upsertPcv lo filtra)
+      anada: anadaTxt,
+      formato: obj.formato_crudo || null,
+      activo: true,
+      vino_id: vinoIdResolver,  // solo si estaba null (upsertPcv lo controla)
+    }
+
+    try {
+      const { accion, id: pcvId } = await resolverPcv({
+        supabase,
+        proveedor_id: proveedorId,
+        codigo_articulo: obj.codigo_articulo || null,
+        claveDura: claveDuraBag,
+        datosInsert,
+        datosUpdate,
+      })
+      if (accion === 'insert') pcvCreadas++
+      else if (accion === 'update') pcvActualizadas++
+
+      if (pcvId) {
+        const { error: errLink } = await supabase
+          .from('oferta').update({ referencia_origen_id: pcvId }).eq('id', ofertaReg.id)
+        if (!errLink) ofertasEnlazadas++
+      }
+    } catch (e) {
+      console.error(`  ⚠  pcv upsert falló para "${nombreVino}": ${e.message || e}`)
+    }
+  }
 
   // 10d. Bajas: actualizar modelo canónico (oferta.disponibilidad) y modelo display (proveedor_catalogo_vinos.activo)
   // oferta.disponibilidad — el modelo canónico que leen bloque 6 y el filtro geográfico del bloque 8
@@ -832,6 +1050,10 @@ async function main() {
   console.log(`  · Desaparecidas (bajas): ${bajas.length}`)
   console.log(`  · Favoritos re-mapeados: ${reMapeados} de ${favoritosPrevios?.length || 0}; huérfanos: ${huerfanos}`)
   console.log(`  · IVA dudoso: ${ivaDudoso}`)
+  console.log(`  · pcv creadas: ${pcvCreadas}`)
+  console.log(`  · pcv actualizadas: ${pcvActualizadas}`)
+  const marcaOfer = ofertasEnlazadas !== ofertaRows.length ? '  ⚠ discrepancia' : ''
+  console.log(`  · ofertas enlazadas a pcv: ${ofertasEnlazadas}${marcaOfer}`)
 }
 
 main().catch(err => { console.error(`\nError: ${err.message}`); process.exit(1) })
