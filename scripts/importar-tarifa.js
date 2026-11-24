@@ -143,10 +143,14 @@ async function resolverOCrearVinoAnada(supabase, nombreCrudo, bodegaCruda, anada
   const bodegaNorm = normalizar(bodegaCruda)
 
   // Bodega
+  // Bloque A3: el ILIKE directo contra 'nombre' no matchea cuando la tabla
+  // guarda la bodega con tildes y el crudo viene sin acentos (o viceversa),
+  // y creaba bodegas duplicadas. Aplicamos el mismo normalizador que usa el
+  // dedup del paso 7b: cargar bodegas del proveedor y filtrar en memoria.
   let bodegaId = null
   if (bodegaNorm) {
-    const { data: bdExist } = await supabase
-      .from('bodega').select('id').ilike('nombre', bodegaNorm).maybeSingle()
+    const { data: todas } = await supabase.from('bodega').select('id, nombre')
+    const bdExist = (todas || []).find(b => normalizar(b.nombre) === bodegaNorm) || null
     if (bdExist) {
       bodegaId = bdExist.id
     } else {
