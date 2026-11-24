@@ -330,7 +330,11 @@ describe('FASE L-fix: conteo coherente + partida de datos sin importe', () => {
       ],
     })
     assert.equal(r.cifraPrincipal.valor, null)
-    assert.ok(/pendiente de cuantificar/i.test(r.cifraPrincipal.frase))
+    // Fase L-fix 2: cuando sólo hay partida de datos, la frase alternativa
+    // es la de datos ("Para medir el margen real…"), no la original de
+    // "pendiente de cuantificar".
+    assert.ok(/Para medir el margen real/.test(r.cifraPrincipal.frase),
+      `Frase inesperada: ${r.cifraPrincipal.frase}`)
     assert.equal(r.prioridades.length, 1)
     assert.equal(r.prioridades[0].soloDatos, true)
     assert.equal(r.prioridades[0].euros, null, 'La partida de datos NO debe llevar "€"')
@@ -359,6 +363,125 @@ describe('FASE L-fix: conteo coherente + partida de datos sin importe', () => {
         { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false, soloDatos: false },
         { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 90, esInterna: false, soloDatos: false },
         { id: 'sin_coste', titulo: 'Completar costes', euros: 4800, esInterna: false, soloDatos: true },
+      ],
+    })
+    const audit = auditarInformeCliente(r)
+    assert.equal(audit.limpio, true, `Banderas: ${audit.banderas.join('; ')}`)
+  })
+})
+
+describe('FASE L-fix 2: encabezado dinámico de la sección "Prioridades"', () => {
+  it('con 1 prioridad → "La prioridad"', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false, soloDatos: false },
+      ],
+    })
+    assert.equal(r.encabezadoPrioridades, 'La prioridad')
+  })
+
+  it('con 2 prioridades → "Las 2 prioridades"', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false, soloDatos: false },
+        { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 630, esInterna: false, soloDatos: false },
+      ],
+    })
+    assert.equal(r.encabezadoPrioridades, 'Las 2 prioridades')
+  })
+
+  it('con 3 prioridades → "Las 3 prioridades"', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false, soloDatos: false },
+        { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 630, esInterna: false, soloDatos: false },
+        { id: 'sin_coste', titulo: 'Completar costes', euros: 4800, esInterna: false, soloDatos: true },
+      ],
+    })
+    assert.equal(r.encabezadoPrioridades, 'Las 3 prioridades')
+  })
+
+  it('con 0 prioridades → "Prioridades"', () => {
+    const r = construirInformeCliente({ restaurante: { nombre: 'X' }, palancas: [] })
+    assert.equal(r.encabezadoPrioridades, 'Prioridades')
+  })
+
+  it('el encabezado coincide con el conteo de la frase principal', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false, soloDatos: false },
+        { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 630, esInterna: false, soloDatos: false },
+      ],
+    })
+    // Encabezado "Las 2 prioridades" ↔ frase con "las 2 prioridades".
+    assert.ok(/Las 2 prioridades/.test(r.encabezadoPrioridades))
+    assert.ok(/las 2 prioridades/.test(r.cifraPrincipal.frase))
+  })
+})
+
+describe('FASE L-fix 2: frase alternativa cuando hay datos sin medir y cifra < 500 €', () => {
+  it('CASO Lo de Carmen hoy (solo copa_faltante 90 € + sin_coste): nueva frase', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'Lo de Carmen' },
+      palancas: [
+        { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 90, esInterna: false, soloDatos: false },
+        { id: 'sin_coste', titulo: 'Completar los costes de compra para medir el margen real', euros: 4800, esInterna: false, soloDatos: true },
+      ],
+    })
+    assert.ok(/Para medir el margen real/.test(r.cifraPrincipal.frase),
+      `Esperaba la frase alternativa de datos. Fue: ${r.cifraPrincipal.frase}`)
+    assert.ok(/90 € al año en vino por copa/.test(r.cifraPrincipal.frase))
+    // Sin "undefined", sin "0 €".
+    const txt = JSON.stringify(r)
+    assert.ok(!/undefined/i.test(txt))
+    assert.ok(!/\b0 €/.test(txt))
+  })
+
+  it('sin palancas con importe (solo sin_coste): frase alternativa sin cantidad', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'sin_coste', titulo: 'Completar costes', euros: 4800, esInterna: false, soloDatos: true },
+      ],
+    })
+    assert.equal(r.cifraPrincipal.frase, 'Para medir el margen real de tu carta, primero necesitamos los costes de compra. Con ellos cuantificaremos la oportunidad completa.')
+    assert.equal(r.cifraPrincipal.valor, null)
+  })
+
+  it('cifra con importe ≥ 500 €: mantiene la frase actual aunque haya soloDatos', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 540, esInterna: false, soloDatos: false },
+        { id: 'sin_coste', titulo: 'Completar costes', euros: 4800, esInterna: false, soloDatos: true },
+      ],
+    })
+    assert.ok(/Si trabajamos las 2 prioridades/.test(r.cifraPrincipal.frase))
+    assert.ok(!/Para medir el margen real/.test(r.cifraPrincipal.frase))
+  })
+
+  it('margen bajo < 500 € y sin_coste: menciona "margen de botella"', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'X' },
+      palancas: [
+        { id: 'margen_bajo', titulo: 'Vinos con margen bajo', euros: 180, esInterna: false, soloDatos: false },
+        { id: 'sin_coste', titulo: 'Completar costes', euros: 4800, esInterna: false, soloDatos: true },
+      ],
+    })
+    assert.ok(/Para medir el margen real/.test(r.cifraPrincipal.frase))
+    assert.ok(/al año en margen de botella/.test(r.cifraPrincipal.frase))
+  })
+
+  it('el informe con frase alternativa de datos pasa auditarInformeCliente', () => {
+    const r = construirInformeCliente({
+      restaurante: { nombre: 'Lo de Carmen' },
+      palancas: [
+        { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', euros: 90, esInterna: false, soloDatos: false },
+        { id: 'sin_coste', titulo: 'Completar los costes de compra para medir el margen real', euros: 4800, esInterna: false, soloDatos: true },
       ],
     })
     const audit = auditarInformeCliente(r)

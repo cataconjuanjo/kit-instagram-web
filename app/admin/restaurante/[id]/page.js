@@ -2514,7 +2514,7 @@ export default function RestauranteWorkspace() {
                     <p>{informe.cifraPrincipal.frase}</p>
                   </section>
                   <section className="informe-cliente-prioridades">
-                    <h2>Las 3 prioridades</h2>
+                    <h2>{informe.encabezadoPrioridades || 'Prioridades'}</h2>
                     {informe.prioridades.length === 0 && <p>No hay prioridades abiertas. La carta está sana.</p>}
                     <ol>
                       {informe.prioridades.map(p => (

@@ -15,7 +15,22 @@ function toEuro(n) {
   return `${Math.round(v).toLocaleString('es-ES')} €`
 }
 
-function fraseCifraPrincipal(euros, numPrioridades = 3) {
+function fraseCifraPrincipal(euros, numPrioridades = 3, { palancasConImporte = [], haySoloDatos = false, totalConImporte = 0 } = {}) {
+  // FASE L-fix 2: cuando hay una partida de datos (soloDatos) y la cifra
+  // recuperable es pequeña (< 500 €), la frase estándar "Si trabajamos las
+  // N prioridades… recuperar 90 €" suena a poco y mezcla una prioridad con
+  // importe y otra sin él. Usamos una redacción distinta que explica por
+  // qué falta la cifra grande.
+  if (haySoloDatos && totalConImporte < 500) {
+    if (totalConImporte > 0 && euros) {
+      const idPrincipal = palancasConImporte[0]?.id || ''
+      let ambito = 'al año'
+      if (idPrincipal === 'copa_faltante') ambito = 'al año en vino por copa'
+      else if (idPrincipal === 'margen_bajo') ambito = 'al año en margen de botella'
+      return `Para medir el margen real de tu carta, primero necesitamos los costes de compra. Con ellos podremos cuantificar la oportunidad completa; ya identificamos ${euros} ${ambito}.`
+    }
+    return 'Para medir el margen real de tu carta, primero necesitamos los costes de compra. Con ellos cuantificaremos la oportunidad completa.'
+  }
   if (!euros) return 'Oportunidad anual pendiente de cuantificar con tu equipo.'
   if (numPrioridades <= 0) {
     return `Trabajando las oportunidades detectadas este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
@@ -24,6 +39,16 @@ function fraseCifraPrincipal(euros, numPrioridades = 3) {
     return `Si trabajamos la prioridad detectada este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
   }
   return `Si trabajamos las ${numPrioridades} prioridades este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+}
+
+// Encabezado de la sección de prioridades en el informe. Se calcula aquí
+// para que coincida siempre con la lista pintada y con el conteo de la
+// frase principal. 0 → "Prioridades", 1 → "La prioridad", N → "Las N
+// prioridades".
+function encabezadoPrioridadesTexto(n) {
+  if (!n || n <= 0) return 'Prioridades'
+  if (n === 1) return 'La prioridad'
+  return `Las ${n} prioridades`
 }
 
 function limpiarTextoCliente(texto) {
@@ -142,7 +167,9 @@ export function construirInformeCliente({
     const ordenadas = [...conImporte, ...soloDatos].slice(0, 3)
     // Cifra principal = SOLO suma de las con importe efectivamente mostradas.
     const conImporteMostradas = ordenadas.filter(p => !p.soloDatos)
+    const haySoloDatosMostradas = ordenadas.some(p => p.soloDatos)
     totalMostrado = conImporteMostradas.reduce((s, p) => s + toNumber(p.euros), 0)
+    var ctxFrase = { palancasConImporte: conImporteMostradas, haySoloDatos: haySoloDatosMostradas, totalConImporte: totalMostrado }
     prioridadesLimpias = ordenadas.map((p, i) => ({
       numero: i + 1,
       titulo: tituloParaCliente(p.titulo),
@@ -182,8 +209,15 @@ export function construirInformeCliente({
       valor: toEuro(totalMostrado),
       // El número de la frase SIEMPRE coincide con las prioridades que
       // se listan arriba (incluida la partida de datos si aparece).
-      frase: fraseCifraPrincipal(toEuro(totalMostrado), prioridadesLimpias.length),
+      frase: fraseCifraPrincipal(
+        toEuro(totalMostrado),
+        prioridadesLimpias.length,
+        typeof ctxFrase !== 'undefined' ? ctxFrase : undefined,
+      ),
     },
+    // Encabezado dinámico de la sección "Prioridades" en la vista: la
+    // ficha lo renderiza tal cual, en vez del literal "Las 3 prioridades".
+    encabezadoPrioridades: encabezadoPrioridadesTexto(prioridadesLimpias.length),
     prioridades: prioridadesLimpias,
     seguimiento: seguimientoResumen,
     proximoContacto: proximoContacto ? new Date(proximoContacto).toLocaleDateString('es-ES') : null,
