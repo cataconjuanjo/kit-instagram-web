@@ -194,7 +194,7 @@ async function resolverOCrearVinoAnada(supabase, nombreCrudo, bodegaCruda, anada
 
 // ── Informe de impacto ─────────────────────────────────────────────────────────
 
-function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto }) {
+function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto, previsionPcv, bodegasNoReconocidas }) {
   const LINE = sep('═')
   const fav = item => item.esFavorito ? '  ★ FAVORITO ' : '  • '
 
@@ -301,6 +301,33 @@ function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, baj
     for (const a of dedupBodega) {
       console.log(`  • ${a.nombre_crudo} — bodega "${a.bodega_cruda || ''}" no reconocida`)
     }
+  }
+
+  // PREVISIÓN pcv (bloque A4)
+  if (previsionPcv) {
+    console.log(`\nPREVISIÓN CATÁLOGO (proveedor_catalogo_vinos)`)
+    console.log(sep())
+    console.log(`  · Se crearían:      ${previsionPcv.crearian}`)
+    console.log(`  · Se actualizarían: ${previsionPcv.actualizarian}`)
+  }
+
+  // BODEGAS NO RECONOCIDAS (bloque A4)
+  if (Array.isArray(bodegasNoReconocidas) && bodegasNoReconocidas.length) {
+    console.log(`\nBODEGAS NO RECONOCIDAS (${bodegasNoReconocidas.length}):`)
+    console.log(sep())
+    for (const b of bodegasNoReconocidas) {
+      const sufijo = b.refs === 1 ? '1 ref' : `${b.refs} refs`
+      console.log(`  · "${b.nombre}"           -- aparece en ${sufijo}`)
+    }
+    const valores = bodegasNoReconocidas
+      .map(b => `('${b.nombre.replace(/'/g, "''")}')`)
+      .join(', ')
+    console.log(`\nSQL sugerido (idempotente; requiere UNIQUE(nombre) en bodega):`)
+    console.log(`  insert into bodega (nombre)`)
+    console.log(`    values ${valores}`)
+    console.log(`    on conflict (nombre) do nothing;`)
+    console.log(`\nNota: si tu tabla bodega NO tiene UNIQUE(nombre), el ON CONFLICT`)
+    console.log(`no aplica. Comprueba manualmente que no existen antes del insert.`)
   }
 
   // RESUMEN
@@ -618,9 +645,45 @@ async function main() {
     }
   }
 
+  // 8b. Previsión pcv + bodegas no reconocidas (bloque A4)
+  //     Mostramos en el informe cuántas filas de proveedor_catalogo_vinos
+  //     se crearían / actualizarían si el usuario pasara a --apply.
+  const previsionPcv = { crearian: 0, actualizarian: 0 }
+  // Cargamos TODO el pcv del proveedor una vez para hacer el match local.
+  const { data: pcvProv } = await supabase
+    .from('proveedor_catalogo_vinos')
+    .select('id, nombre, bodega, formato, anada, referencia')
+    .eq('proveedor_id', proveedorId)
+  const pcvPorReferencia = new Map()
+  const pcvPorClave = new Map()
+  for (const row of (pcvProv || [])) {
+    if (row.referencia) pcvPorReferencia.set(String(row.referencia), row)
+    const mlRow = formatoAMl(row.formato)
+    const anadaRow = row.anada && /^\d+$/.test(String(row.anada)) ? parseInt(row.anada, 10) : null
+    pcvPorClave.set(claveDura(row.nombre, row.bodega || '', mlRow, anadaRow), row)
+  }
+  const procesablesParaPcv = procesables.filter(({ obj }) => !dedupPendientes.some(d => d.codigo_articulo === obj.codigo_articulo))
+  for (const { obj, v } of procesablesParaPcv) {
+    const porRef   = obj.codigo_articulo && pcvPorReferencia.has(String(obj.codigo_articulo))
+    const porClave = !porRef && pcvPorClave.has(claveDura(obj.nombre_crudo, obj.bodega_cruda || '', v.ml, v.anada))
+    if (porRef || porClave) previsionPcv.actualizarian++
+    else previsionPcv.crearian++
+  }
+
+  // Bodegas no reconocidas: las mismas que pasan al bucket pendiente_mapeo
+  // en 7b. Aquí agregamos con conteo por nombre crudo.
+  const bodegasNoReconocidasMap = new Map()
+  for (const d of dedupPendientes.filter(d => d.razon === 'bodega_no_reconocida')) {
+    const key = d.bodega_cruda || '(sin bodega)'
+    bodegasNoReconocidasMap.set(key, (bodegasNoReconocidasMap.get(key) || 0) + 1)
+  }
+  const bodegasNoReconocidas = Array.from(bodegasNoReconocidasMap.entries())
+    .map(([nombre, refs]) => ({ nombre, refs }))
+    .sort((a, b) => b.refs - a.refs)
+
   // 9. Imprimir informe
   const pendientes = pendientesMapeo.map(({ obj, v }) => ({ linea: v.linea, nombre_crudo: obj.nombre_crudo, zona_cruda: obj.zona_cruda }))
-  imprimirInforme({ proveedor: prov, periodo: periodoArg, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto })
+  imprimirInforme({ proveedor: prov, periodo: periodoArg, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto, previsionPcv, bodegasNoReconocidas })
 
   if (!apply) {
     console.log('→ Dry-run. Ejecuta con --apply para publicar.\n')
