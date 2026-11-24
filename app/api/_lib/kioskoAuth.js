@@ -1,6 +1,5 @@
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'cataconjuanjo@gmail.com').toLowerCase()
+import { getAdminEmail } from './isConsultor'
 
 export const ADMIN_TIENDA_SELECT =
   'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, billing_failed_at, billing_grace_until, propietario_email, email, features'
@@ -28,7 +27,7 @@ export function pickWritableVinoFields(body) {
 }
 
 export function isKioskoAdminEmail(email) {
-  return Boolean(email && email.toLowerCase() === ADMIN_EMAIL)
+  return Boolean(email && email.toLowerCase() === getAdminEmail())
 }
 
 export async function getKioskoUser(request) {

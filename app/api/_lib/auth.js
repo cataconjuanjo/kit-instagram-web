@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { getAdminEmail } from './isConsultor'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const adminEmail = process.env.ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 
 export async function getUserFromRequest(req) {
   const auth = req.headers.get('authorization') || ''
@@ -25,7 +25,7 @@ export async function requireRestaurantAccess(req, adminSupabase, restauranteId)
   if (auth.error) return auth
 
   const email = (auth.user.email || '').toLowerCase()
-  if (email === adminEmail.toLowerCase()) return auth
+  if (email === getAdminEmail()) return auth
 
   if (!restauranteId) return { error: 'restaurante_id obligatorio', status: 400 }
 
