@@ -87,12 +87,18 @@ export function calcAlertasCriticas({ conteoPersistido, alertasDb, analisis } = 
 //   id: estable para filtros (p. ej. 'propuestas_abiertas' se filtra en el
 //     informe del cliente por ser señal comercial interna).
 //   titulo: lenguaje de dueño.
-//   euros: estimado anual.
+//   euros: estimado anual (para el Radar interno).
 //   esInterna: true si es jerga comercial (no se muestra al cliente).
+//   soloDatos: true cuando es un COSTE DE NO TENER DATOS, no un margen
+//     recuperable. El informe del cliente la trata como partida sin
+//     importe (ver app/lib/informeCliente.js). Caso canónico: sin_coste.
+//     El Radar sigue usando `euros` como siempre para su cifra total
+//     interna; no cambia nada en el Radar.
 //
 // Si `persistidoTotal` es > 0 (viene de ejecutivo.resumen.recuperacion_anual_
-// estimada), lo usamos como total y escalamos las palancas heurísticas para
-// que sumen exacto. Si no hay persistido, total = suma cruda.
+// estimada), el escalado proporcional se aplica SOLO a las palancas con
+// importe recuperable (no a soloDatos). El `total` devuelto mantiene la
+// semántica anterior: persistido si existe, sumaCruda en caso contrario.
 export function calcPalancasOportunidad({ metricas, propuestasAbiertas, persistidoTotal } = {}) {
   const m = metricas || {}
   const vinos = toNumber(m.vinos)
@@ -101,28 +107,40 @@ export function calcPalancasOportunidad({ metricas, propuestasAbiertas, persisti
   const propuestas = toNumber(propuestasAbiertas)
 
   const crudas = [
-    { id: 'margen_bajo',   titulo: 'Vinos con margen bajo', esInterna: false, euros: toNumber(m.margenBajo) * 180 },
-    { id: 'sin_coste',     titulo: 'Vinos sin coste registrado (impide medir margen real)', esInterna: false, euros: toNumber(m.sinCoste) * 60 },
-    { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa', esInterna: false, euros: copaFaltante * 90 },
-    { id: 'propuestas_abiertas', titulo: 'Cerrar propuestas comerciales abiertas', esInterna: true, euros: propuestas * 120 },
+    { id: 'margen_bajo',   titulo: 'Vinos con margen bajo',                                   esInterna: false, soloDatos: false, euros: toNumber(m.margenBajo) * 180 },
+    { id: 'sin_coste',     titulo: 'Completar los costes de compra para medir el margen real', esInterna: false, soloDatos: true,  euros: toNumber(m.sinCoste) * 60 },
+    { id: 'copa_faltante', titulo: 'Más vinos ofrecidos por copa',                            esInterna: false, soloDatos: false, euros: copaFaltante * 90 },
+    { id: 'propuestas_abiertas', titulo: 'Cerrar propuestas comerciales abiertas',            esInterna: true,  soloDatos: false, euros: propuestas * 120 },
   ].filter(p => p.euros > 0)
 
   const sumaCruda = crudas.reduce((s, p) => s + p.euros, 0)
   const persistido = toNumber(persistidoTotal)
   const total = persistido > 0 ? Math.round(persistido) : sumaCruda
 
-  // Si hay persistido, escalamos las palancas para que sumen exacto.
+  // Escalado solo sobre las palancas recuperables (con importe real).
+  // Las `soloDatos: true` mantienen su euros crudo: no representan
+  // dinero recuperable, representan el "coste de no medir".
   if (persistido > 0 && sumaCruda > 0) {
-    const factor = total / sumaCruda
-    for (const p of crudas) p.euros = Math.round(p.euros * factor)
-    // Absorber el resto del redondeo en la palanca con más peso para que
-    // suma === total (si no, pueden quedar ±1-2 € sueltos).
-    crudas.sort((a, b) => b.euros - a.euros)
-    const resto = total - crudas.reduce((s, p) => s + p.euros, 0)
-    if (crudas[0]) crudas[0].euros += resto
+    const conImporte = crudas.filter(p => !p.soloDatos)
+    const sumaConImporte = conImporte.reduce((s, p) => s + p.euros, 0)
+    if (sumaConImporte > 0) {
+      const factor = total / sumaCruda
+      for (const p of conImporte) p.euros = Math.round(p.euros * factor)
+      // Absorber resto del redondeo en la palanca con-importe de mayor peso
+      // para que la suma (conImporte_post_escalado + soloDatos_cruda) encaje
+      // dentro de ±1 € del total deseado.
+      conImporte.sort((a, b) => b.euros - a.euros)
+      const sumaAhora = crudas.reduce((s, p) => s + p.euros, 0)
+      const resto = total - sumaAhora
+      if (conImporte[0]) conImporte[0].euros += resto
+    }
   }
 
-  crudas.sort((a, b) => b.euros - a.euros)
+  crudas.sort((a, b) => {
+    // Primero por soloDatos (false antes), luego por euros desc.
+    if (a.soloDatos !== b.soloDatos) return a.soloDatos ? 1 : -1
+    return b.euros - a.euros
+  })
   return { total, palancas: crudas }
 }
 

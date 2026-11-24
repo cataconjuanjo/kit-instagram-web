@@ -86,14 +86,72 @@ describe('calcPalancasOportunidad', () => {
     assert.equal(r.palancas.length, 0)
   })
 
-  it('las palancas vienen ordenadas por euros desc', () => {
+  it('FASE L-fix: sin_coste viene marcada como soloDatos:true', () => {
+    const r = calcPalancasOportunidad({
+      metricas: { vinos: 50, copa: 2, margenBajo: 0, sinCoste: 80 },
+      propuestasAbiertas: 0,
+    })
+    const sc = r.palancas.find(p => p.id === 'sin_coste')
+    assert.ok(sc, 'sin_coste debería aparecer')
+    assert.equal(sc.soloDatos, true)
+  })
+
+  it('FASE L-fix: las palancas recuperables son soloDatos:false', () => {
+    const r = calcPalancasOportunidad({
+      metricas: { vinos: 100, copa: 5, margenBajo: 3, sinCoste: 2 },
+      propuestasAbiertas: 2,
+    })
+    for (const p of r.palancas) {
+      if (p.id === 'sin_coste') continue
+      assert.equal(p.soloDatos, false, `${p.id} no debería ser soloDatos`)
+    }
+  })
+
+  it('FASE L-fix: el escalado con persistido NO toca la palanca soloDatos', () => {
+    // Caso Lo de Carmen-like: sinCoste alto (80*60=4800), margen bajo (8*180=1440),
+    // copa faltante 1*90=90. SumaCruda = 6330. Persistido = 4890 (valor del preview).
+    const r = calcPalancasOportunidad({
+      metricas: { vinos: 100, copa: 11, margenBajo: 8, sinCoste: 80 },
+      propuestasAbiertas: 0,
+      persistidoTotal: 4890,
+    })
+    const sc = r.palancas.find(p => p.id === 'sin_coste')
+    assert.equal(sc.euros, 4800, 'sin_coste debe conservar su euros crudo (80 * 60)')
+    // El total devuelto sigue siendo el persistido (no se cambia el Radar).
+    assert.equal(r.total, 4890)
+  })
+
+  it('FASE L-fix: las con-importe siguen ordenadas por euros desc; soloDatos al final', () => {
+    const r = calcPalancasOportunidad({
+      metricas: { vinos: 80, copa: 2, margenBajo: 5, sinCoste: 80 },
+      propuestasAbiertas: 1,
+    })
+    // Los no-soloDatos deben ir antes que sin_coste.
+    const indiceSinCoste = r.palancas.findIndex(p => p.id === 'sin_coste')
+    const indiceMargenBajo = r.palancas.findIndex(p => p.id === 'margen_bajo')
+    assert.ok(indiceMargenBajo < indiceSinCoste, 'margen_bajo debe ir antes que sin_coste')
+  })
+
+  it('las palancas vienen ordenadas por euros desc DENTRO de cada grupo', () => {
+    // FASE L-fix: las soloDatos pueden tener más € que las con-importe
+    // pero SIEMPRE van al final. Dentro de cada grupo, euros desc.
     const r = calcPalancasOportunidad({
       metricas: { vinos: 200, copa: 1, margenBajo: 10, sinCoste: 50 },
       propuestasAbiertas: 0,
     })
-    for (let i = 1; i < r.palancas.length; i++) {
-      assert.ok(r.palancas[i].euros <= r.palancas[i - 1].euros,
-        `No ordenado: ${r.palancas[i-1].id} (${r.palancas[i-1].euros}) < ${r.palancas[i].id} (${r.palancas[i].euros})`)
+    const conImp = r.palancas.filter(p => !p.soloDatos)
+    const datos = r.palancas.filter(p => p.soloDatos)
+    for (let i = 1; i < conImp.length; i++) {
+      assert.ok(conImp[i].euros <= conImp[i - 1].euros, 'con-importe mal ordenado')
+    }
+    for (let i = 1; i < datos.length; i++) {
+      assert.ok(datos[i].euros <= datos[i - 1].euros, 'soloDatos mal ordenado')
+    }
+    // Y las soloDatos tras las con-importe.
+    const posPrimeraDato = r.palancas.findIndex(p => p.soloDatos)
+    const posUltimaConImp = r.palancas.map(p => p.soloDatos).lastIndexOf(false)
+    if (posPrimeraDato >= 0 && posUltimaConImp >= 0) {
+      assert.ok(posPrimeraDato > posUltimaConImp, 'soloDatos deben ir al final')
     }
   })
 })

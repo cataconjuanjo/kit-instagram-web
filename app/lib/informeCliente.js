@@ -15,9 +15,15 @@ function toEuro(n) {
   return `${Math.round(v).toLocaleString('es-ES')} €`
 }
 
-function fraseCifraPrincipal(euros) {
+function fraseCifraPrincipal(euros, numPrioridades = 3) {
   if (!euros) return 'Oportunidad anual pendiente de cuantificar con tu equipo.'
-  return `Si trabajamos las 3 prioridades este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+  if (numPrioridades <= 0) {
+    return `Trabajando las oportunidades detectadas este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+  }
+  if (numPrioridades === 1) {
+    return `Si trabajamos la prioridad detectada este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
+  }
+  return `Si trabajamos las ${numPrioridades} prioridades este trimestre, estimamos recuperar ${euros} al año en margen y rotación.`
 }
 
 function limpiarTextoCliente(texto) {
@@ -116,21 +122,33 @@ export function construirInformeCliente({
   proximoContacto = null,
   fecha = new Date(),
 } = {}) {
-  // Rama fase L: si recibimos palancas, las usamos (tienen € por palanca).
-  // Filtramos las marcadas como internas (p.ej. 'propuestas_abiertas') y
-  // nos quedamos con las que tienen euros > 0. La cifra principal es la
-  // suma de las palancas mostradas (cuadra por construcción).
+  // Rama fase L: si recibimos palancas, las usamos.
+  // FASE L-fix: se separan dos grupos:
+  //   (a) palancas con IMPORTE RECUPERABLE: suman a la cifra principal y
+  //       se pintan con € al lado.
+  //   (b) palancas marcadas como `soloDatos: true` (p.ej. 'sin_coste'):
+  //       se pintan como partida de datos SIN importe, no suman a la
+  //       cifra principal, y van al final de la lista.
+  // Las esInterna=true se descartan igual que antes.
   let prioridadesLimpias
   let totalMostrado = toNumber(oportunidadEuros)
   if (Array.isArray(palancas)) {
-    const utilesCliente = palancas.filter(p => p && !p.esInterna && toNumber(p.euros) > 0)
-    const topTres = utilesCliente.slice(0, 3)
-    totalMostrado = topTres.reduce((s, p) => s + toNumber(p.euros), 0)
-    prioridadesLimpias = topTres.map((p, i) => ({
+    const clienteBase = palancas.filter(p => p && !p.esInterna)
+    const conImporte = clienteBase.filter(p => !p.soloDatos && toNumber(p.euros) > 0)
+    const soloDatos = clienteBase.filter(p => p.soloDatos && toNumber(p.euros) > 0)
+
+    // Primero las con importe (ya vienen ordenadas desc del motor), luego
+    // partida de datos. Máximo 3 en total.
+    const ordenadas = [...conImporte, ...soloDatos].slice(0, 3)
+    // Cifra principal = SOLO suma de las con importe efectivamente mostradas.
+    const conImporteMostradas = ordenadas.filter(p => !p.soloDatos)
+    totalMostrado = conImporteMostradas.reduce((s, p) => s + toNumber(p.euros), 0)
+    prioridadesLimpias = ordenadas.map((p, i) => ({
       numero: i + 1,
       titulo: tituloParaCliente(p.titulo),
       detalle: fraseParaCliente({ detalle: p.detalle || '', accion: p.accion || '' }),
-      euros: toEuro(p.euros),
+      euros: p.soloDatos ? null : toEuro(p.euros),
+      soloDatos: !!p.soloDatos,
     }))
   } else {
     // Rama fase K (legacy): prioridades crudas del motor, sin € fiable.
@@ -141,6 +159,7 @@ export function construirInformeCliente({
       titulo: tituloParaCliente(p.titulo),
       detalle: fraseParaCliente(p),
       euros: toEuro(p.euros),
+      soloDatos: false,
     }))
   }
 
@@ -161,7 +180,9 @@ export function construirInformeCliente({
     },
     cifraPrincipal: {
       valor: toEuro(totalMostrado),
-      frase: fraseCifraPrincipal(toEuro(totalMostrado)),
+      // El número de la frase SIEMPRE coincide con las prioridades que
+      // se listan arriba (incluida la partida de datos si aparece).
+      frase: fraseCifraPrincipal(toEuro(totalMostrado), prioridadesLimpias.length),
     },
     prioridades: prioridadesLimpias,
     seguimiento: seguimientoResumen,
