@@ -1163,7 +1163,16 @@ function ProveedoresPageContent() {
                     </div>
                     <div className="supplier-visibility-block">
                       <label className="admin-hub-switch">
-                        <input type="checkbox" checked={proveedorForm.visible_restaurantes} onChange={e => cambiarProveedor('visible_restaurantes', e.target.checked)} />
+                        {/* B1: casilla "Privado" (checked = !visible_restaurantes).
+                            La etiqueta describe el estado resultante tras la próxima
+                            escritura; el badge del listado sigue usando el mismo campo
+                            `visible_restaurantes`, por lo que listado y formulario no
+                            pueden desincronizarse. */}
+                        <input
+                          type="checkbox"
+                          checked={!proveedorForm.visible_restaurantes}
+                          onChange={e => cambiarProveedor('visible_restaurantes', !e.target.checked)}
+                        />
                         <div>
                           <strong>{proveedorForm.visible_restaurantes ? 'Visible para restaurantes' : 'Privado — solo consultor'}</strong>
                           <span>{proveedorForm.visible_restaurantes ? 'El restaurante puede ver este proveedor y su catálogo de referencias.' : 'Los precios de compra permanecen ocultos para el restaurante.'}</span>
