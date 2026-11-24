@@ -4,11 +4,28 @@ import * as XLSX from 'xlsx'
 import { createClient } from '@supabase/supabase-js'
 import { registrarConsumoAnthropic } from '../../../lib/anthropicUsage'
 
+// maxDuration 300 asume plan Pro; si vercel.json baja esto, hay que alinearlo.
+// dynamic='force-dynamic' impide que Next cachee respuestas de una API admin
+// que depende de un POST autenticado contra Supabase.
+export const maxDuration = 300
+export const dynamic = 'force-dynamic'
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 7_500_000
+// LIMITE_REFS_PANEL: tope admitido en el panel. Si la extracción llega aquí,
+// casi seguro el PDF supera lo que Claude puede devolver sin truncar.
+// Para catálogos grandes, el flujo recomendado es el CLI scripts/importar-tarifa.js.
+const LIMITE_REFS_PANEL = 180
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+
+function respuestaTruncada() {
+  return Response.json({
+    error: 'EXTRACCION_TRUNCADA',
+    detalle: 'La extracción de tarifa superó el tope del panel. Usa scripts/importar-tarifa.js para catálogos grandes.',
+  }, { status: 413 })
+}
 
 const PROMPT_EXTRACCION = `Extrae un catalogo de vinos de distribuidor.
 
@@ -265,7 +282,7 @@ function extraerCatalogoHeuristico(texto) {
       notas: despuesPrecio.slice(0, 180),
     })
 
-    if (vinos.length >= 180) break
+    if (vinos.length >= LIMITE_REFS_PANEL) break
   }
 
   return vinos
@@ -292,7 +309,10 @@ export async function POST(req) {
       return Response.json({ vinos: [], error: 'Archivo no recibido' }, { status: 400 })
     }
     if (data && String(data).length > MAX_BASE64_LENGTH) {
-      return Response.json({ vinos: [], error: 'Archivo demasiado grande. Usa un PDF de hasta 5 MB o pega el texto de la tarifa.' }, { status: 413 })
+      return Response.json({
+        vinos: [],
+        error: 'Archivo demasiado grande. Para PDFs mayores de 5 MB o con más de ~400 referencias, usa el CLI `scripts/importar-tarifa.js`. Pide instrucciones al consultor.',
+      }, { status: 413 })
     }
 
     let entrada
@@ -334,7 +354,7 @@ export async function POST(req) {
     }
 
     try {
-      const modelo = 'claude-sonnet-4-6'
+      const modelo = process.env.PDF_EXTRACTION_MODEL || 'claude-sonnet-4-6'
       const message = await anthropic.messages.create({
         model: modelo,
         max_tokens: 16000,
@@ -354,7 +374,17 @@ export async function POST(req) {
         metadata: { proveedor: proveedorNombre || null },
       })
 
+      // Truncamiento del modelo: no podemos confiar en el JSON extraído.
+      if (message.stop_reason === 'max_tokens') {
+        return respuestaTruncada()
+      }
+
       const vinos = extraerJson(message.content?.[0]?.text)
+      // Si el extractor LLM se queda exactamente en el tope, consideramos
+      // que ha habido truncamiento silencioso.
+      if (Array.isArray(vinos) && vinos.length >= LIMITE_REFS_PANEL) {
+        return respuestaTruncada()
+      }
       if (Array.isArray(vinos) && vinos.length) {
         return Response.json({ vinos, metodo: 'ia' })
       }
@@ -365,6 +395,9 @@ export async function POST(req) {
 
     if (textoFuente) {
       const vinos = extraerCatalogoHeuristico(textoFuente)
+      if (vinos.length >= LIMITE_REFS_PANEL) {
+        return respuestaTruncada()
+      }
       if (vinos.length) {
         return Response.json({
           vinos,

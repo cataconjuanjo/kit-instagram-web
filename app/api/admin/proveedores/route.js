@@ -84,11 +84,18 @@ async function propagarCambiosCatalogo(supabase, catalogoVinoId, payload) {
 }
 
 async function seleccionarTodo(query, chunkSize = 1000) {
+  // Orden determinista obligatorio: añadimos .order('id') como último
+  // criterio para que la paginación nunca solape filas entre páginas por
+  // empates en otros criterios de orden (bloque 11). Si el caller ya
+  // ordena por id, la cláusula extra es redundante y segura; el objetivo
+  // es que ninguna query futura paginada por este helper pueda nacer sin
+  // desempate estable.
+  const determinista = query.order('id')
   let from = 0
   let rows = []
 
   while (true) {
-    const { data, error } = await query.range(from, from + chunkSize - 1)
+    const { data, error } = await determinista.range(from, from + chunkSize - 1)
     if (error) throw error
     rows = rows.concat(data || [])
     if (!data || data.length < chunkSize) break
@@ -255,7 +262,12 @@ export async function GET(req) {
     let vinosQuery = supabase
       .from('proveedor_catalogo_vinos')
       .select(SELECT_CATALOGO_VINO)
+      // Tiebreaker por id: sin él, seleccionarTodo() paginaba con un
+      // order() ambiguo (muchas filas comparten created_at por imports en
+      // bloque) y PostgREST devolvía rows solapadas entre páginas; el
+      // dedup por v.id del cliente hacía desaparecer 210 refs en silencio.
       .order('created_at', { ascending: false })
+      .order('id')
     if (proveedorIdFiltro) vinosQuery = vinosQuery.eq('proveedor_id', proveedorIdFiltro)
 
     const vinos = await seleccionarTodo(vinosQuery)

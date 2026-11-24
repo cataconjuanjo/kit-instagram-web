@@ -1,4 +1,5 @@
 import { requireRestaurantAccess } from '../_lib/auth'
+import { isConsultorFromAuth } from '../_lib/isConsultor'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { puedeUsar } from '../../lib/plans'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
@@ -14,6 +15,7 @@ export async function GET(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const esConsultor = isConsultorFromAuth(auth)
 
     const { data: restaurante, error: restError } = await supabaseAdmin
       .from('restaurantes')
@@ -134,6 +136,18 @@ export async function GET(req) {
 
     const hermanosMap = construirHermanosMap(hermanos)
 
+    // Para restaurantes: el proveedor se expone con nombre/zona/ámbito pero no
+    // con contacto comercial (email, teléfono). Y nunca sale coste_estimado.
+    const proveedorPublico = (p) => {
+      if (!p) return null
+      return {
+        id: p.id,
+        nombre: p.nombre,
+        zona: p.zona || null,
+        ambito_reparto: p.ambito_reparto || null,
+      }
+    }
+
     const result = (vinos || []).map(v => {
       const coste = costePorBotella(v)
       const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
@@ -142,13 +156,16 @@ export async function GET(req) {
       const sinProveedor = v.vino_id
         ? vinoIdsSinProveedor.has(v.vino_id)
         : !v.activo
+      const base = { ...v }
+      if (!esConsultor) delete base.coste_estimado
+      const proveedorFull = providerMap[v.proveedor_id] || null
       return {
-        ...v,
+        ...base,
         pvp_recomendado_origen: v.pvp_recomendado,
         pvp_copa_origen: v.pvp_copa,
         pvp_recomendado: pvpBotella,
         pvp_copa: calc?.copa || 0,
-        proveedor: providerMap[v.proveedor_id] || null,
+        proveedor: esConsultor ? proveedorFull : proveedorPublico(proveedorFull),
         precio_potencialmente_desactualizado: esPrecioDesactualizado(v, hermanosMap),
         sin_proveedor_activo: sinProveedor,
       }

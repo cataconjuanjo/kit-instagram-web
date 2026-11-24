@@ -7,6 +7,7 @@ import { experienciaPublicaDesdePlan } from '../../../../lib/experienceTemplates
 import { isInternationalWine } from '../../../../lib/wineRegion'
 import { limpiarMarcadorPerfiles, resolverPerfilesVino } from '../../../../lib/wineProfileTags'
 import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
+import { getAdminEmail } from '../../../_lib/isConsultor'
 
 // Valida que el bearer token corresponde al dueño del restaurante indicado.
 // Devuelve true si es dueño, false en cualquier otro caso (sin errores visibles).
@@ -22,7 +23,7 @@ async function esOwnerDelRestaurante(req, restauranteId) {
     if (error || !data?.user?.email) return false
     const email = data.user.email.toLowerCase()
     // El admin también puede ver el borrador de cualquier restaurante
-    if (email === (process.env.ADMIN_EMAIL || 'cataconjuanjo@gmail.com').toLowerCase()) return true
+    if (email === getAdminEmail()) return true
     const { data: rest } = await supabaseAdmin
       .from('restaurantes')
       .select('id')

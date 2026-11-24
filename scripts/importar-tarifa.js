@@ -4,16 +4,25 @@
  *
  * Uso:
  *   node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json> [--periodo YYYY-MM-DD] [--apply]
+ *   node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json> --pdf <ruta.pdf> --apply
  *
  * Por defecto opera en --dry-run: calcula el diff e imprime el informe sin escribir nada.
  * Con --apply: crea la tarifa en DB, inserta linea_cruda, crea ofertas nuevas y archiva la anterior.
+ *
+ * Formato de entrada:
+ *   a) Array JSON de líneas (formato histórico, compatible).
+ *   b) Objeto { pdf_sha256, pdf_origen, vinos: [...] } producido por scripts/pdf-a-json.js.
+ *      Si llega esta forma, el campo pdf_sha256 se usa para idempotencia
+ *      (tarifa.fichero_hash) y el pdf_origen rellena tarifa.fichero_origen.
  */
 
 'use strict'
 
 const { createClient } = require('@supabase/supabase-js')
-const fs   = require('fs')
-const path = require('path')
+const fs     = require('fs')
+const path   = require('path')
+const crypto = require('crypto')
+const { fetchPaginado } = require('./lib/paginadoSupabase')
 
 try { process.loadEnvFile(path.join(__dirname, '..', '.env.local')) } catch {}
 
@@ -307,17 +316,22 @@ async function main() {
 
   const proveedorId = getArg('--proveedor')
   const fichero     = getArg('--fichero')
+  const pdfPath     = getArg('--pdf')  // opcional: si se pasa en --apply, se sube al bucket tarifas-pdf
   const periodoArg  = getArg('--periodo') || new Date().toISOString().slice(0, 10)
   const apply       = hasFlag('--apply')
   const modo        = apply ? 'PUBLICADO' : 'DRY-RUN'
 
   if (!proveedorId || !fichero) {
-    console.error('Uso: node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json> [--periodo YYYY-MM-DD] [--apply]')
+    console.error('Uso: node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json> [--pdf <ruta.pdf>] [--periodo YYYY-MM-DD] [--apply]')
     process.exit(1)
   }
 
   if (!fs.existsSync(fichero)) {
     console.error(`Fichero no encontrado: ${fichero}`)
+    process.exit(1)
+  }
+  if (pdfPath && !fs.existsSync(pdfPath)) {
+    console.error(`PDF no encontrado: ${pdfPath}`)
     process.exit(1)
   }
 
@@ -338,11 +352,59 @@ async function main() {
   const zonasSet = new Set((zonasRef || []).map(z => normalizar(z.nombre_oficial)))
 
   // 3. Cargar y validar el fichero de entrada
-  let lineas
-  try { lineas = JSON.parse(fs.readFileSync(fichero, 'utf8')) } catch (e) {
+  let crudo
+  try { crudo = JSON.parse(fs.readFileSync(fichero, 'utf8')) } catch (e) {
     console.error(`Error al leer JSON: ${e.message}`); process.exit(1)
   }
-  if (!Array.isArray(lineas)) { console.error('El fichero debe ser un JSON array'); process.exit(1) }
+  // Soporta dos formatos: array simple o { pdf_sha256, pdf_origen, vinos: [...] }
+  let lineas = null
+  let pdfHashEntrada = null
+  let pdfOrigenEntrada = null
+  if (Array.isArray(crudo)) {
+    lineas = crudo
+  } else if (crudo && Array.isArray(crudo.vinos)) {
+    lineas = crudo.vinos
+    pdfHashEntrada = crudo.pdf_sha256 || null
+    pdfOrigenEntrada = crudo.pdf_origen || null
+  } else {
+    console.error('El fichero debe ser un JSON array o un objeto { vinos: [...] }')
+    process.exit(1)
+  }
+
+  // Idempotencia por hash del PDF: si ya hay una tarifa publicada de este proveedor
+  // con el mismo fichero_hash, abortar antes de nada.
+  if (pdfHashEntrada) {
+    const { data: tarifaMismo } = await supabase
+      .from('tarifa').select('id, periodo, estado')
+      .eq('proveedor_id', proveedorId)
+      .eq('fichero_hash', pdfHashEntrada)
+      .limit(1)
+    if (tarifaMismo && tarifaMismo.length) {
+      console.error(`\nEsa tarifa ya se cargó (fichero_hash=${pdfHashEntrada}, tarifa_id=${tarifaMismo[0].id}, estado=${tarifaMismo[0].estado}).`)
+      console.error('Nada que hacer.')
+      process.exit(0)
+    }
+  }
+
+  // Hash del PDF si lo trae el usuario vía --pdf (sobrescribe o complementa pdfHashEntrada)
+  let pdfHash = pdfHashEntrada
+  if (pdfPath) {
+    const buf = fs.readFileSync(pdfPath)
+    pdfHash = crypto.createHash('sha256').update(buf).digest('hex')
+    if (pdfHashEntrada && pdfHashEntrada !== pdfHash) {
+      console.error(`AVISO: el sha256 del PDF (${pdfHash}) no coincide con el declarado en el JSON (${pdfHashEntrada}). Se usará el del fichero real.`)
+    }
+    // Idempotencia de nuevo, ahora con hash calculado localmente
+    const { data: tarifaMismo } = await supabase
+      .from('tarifa').select('id, periodo, estado')
+      .eq('proveedor_id', proveedorId)
+      .eq('fichero_hash', pdfHash)
+      .limit(1)
+    if (tarifaMismo && tarifaMismo.length) {
+      console.error(`\nEsa tarifa ya se cargó (fichero_hash=${pdfHash}, tarifa_id=${tarifaMismo[0].id}).`)
+      process.exit(0)
+    }
+  }
 
   const codigosVistos = new Set()
   const validadas = lineas.map((obj, idx) => ({ obj, v: validarLinea(obj, idx, codigosVistos, zonasSet) }))
@@ -366,16 +428,24 @@ async function main() {
     .from('tarifa').select('id, periodo, estado')
     .eq('proveedor_id', proveedorId).eq('estado', 'publicada').maybeSingle()
 
-  // 5. Ofertas de la tarifa anterior con contexto
+  // 5. Ofertas de la tarifa anterior con contexto.
+  // Paginado con .order('id') obligatorio: sin él, un proveedor con
+  // >1000 ofertas perdía filas en silencio -> las no devueltas se
+  // cuentan como bajas falsas y los favoritos ligados a ellas se dan
+  // por huérfanos (bloque 11 explicaba el mismo síntoma en el admin).
   let prevOfertas = []
   if (prevTarifa) {
-    const { data: po } = await supabase
-      .from('oferta')
-      .select(`id, codigo_articulo, coste, disponibilidad, referencia_origen_id, vino_anada_id,
-               vino_anada:vino_anada_id(anada, formato_ml, vino:vino_id(nombre, bodega:bodega_id(nombre))),
-               pcv:referencia_origen_id(favorito, nombre)`)
-      .eq('tarifa_id', prevTarifa.id)
-    prevOfertas = po || []
+    prevOfertas = await fetchPaginado(
+      `oferta (tarifa_id=${prevTarifa.id})`,
+      (desde, limite) => supabase
+        .from('oferta')
+        .select(`id, codigo_articulo, coste, disponibilidad, referencia_origen_id, vino_anada_id,
+                 vino_anada:vino_anada_id(anada, formato_ml, vino:vino_id(nombre, bodega:bodega_id(nombre))),
+                 pcv:referencia_origen_id(favorito, nombre)`)
+        .eq('tarifa_id', prevTarifa.id)
+        .order('id')
+        .range(desde, desde + limite - 1),
+    )
   }
 
   // Construir mapas de resolución
@@ -555,12 +625,46 @@ async function main() {
   // 10. PUBLICAR
   console.log('Publicando...')
 
-  // 10a. Crear tarifa en borrador
+  // 10a. Crear tarifa en borrador.
+  // fichero_origen refleja el PDF de origen cuando se conoce (--pdf o pdf_origen
+  // dentro del JSON), si no, el propio JSON.
+  const ficheroOrigenFinal = pdfPath
+    ? `tarifas-pdf/${proveedorId}/pending.pdf` // se reescribe tras subir
+    : (pdfOrigenEntrada || path.basename(fichero))
   const { data: nuevaTarifa, error: tarifaErr } = await supabase
     .from('tarifa')
-    .insert({ proveedor_id: proveedorId, periodo: periodoArg, estado: 'borrador', fichero_origen: path.basename(fichero) })
+    .insert({
+      proveedor_id: proveedorId,
+      periodo: periodoArg,
+      estado: 'borrador',
+      fichero_origen: ficheroOrigenFinal,
+      // fichero_hash sólo si la columna existe tras aplicar 0012_bucket_tarifas_pdf.sql.
+      ...(pdfHash ? { fichero_hash: pdfHash } : {}),
+    })
     .select('id').single()
   if (tarifaErr) throw tarifaErr
+
+  // Capturar favoritos actuales ANTES de tocar nada, para re-mapeo post-publicación.
+  // Estrategia: nos fiamos de codigo_articulo (hard, confianza 1.0) y, en su defecto,
+  // de claveDura. Si no coincide, emitimos warning con el nombre huérfano.
+  // Paginado con .order('id') obligatorio por la misma razón que prevOfertas.
+  const favoritosPrevios = await fetchPaginado(
+    `proveedor_catalogo_vinos (favoritos de proveedor ${proveedorId})`,
+    (desde, limite) => supabase
+      .from('proveedor_catalogo_vinos')
+      .select('id, nombre, bodega, formato, anada, referencia, favorito')
+      .eq('proveedor_id', proveedorId)
+      .eq('favorito', true)
+      .order('id')
+      .range(desde, desde + limite - 1),
+  )
+  const favsIndexCodigo = new Map()
+  const favsIndexClave = new Map()
+  for (const f of (favoritosPrevios || [])) {
+    if (f.referencia) favsIndexCodigo.set(String(f.referencia), f)
+    const ml = formatoAMl(f.formato)
+    favsIndexClave.set(claveDura(f.nombre, f.bodega, ml, f.anada), f)
+  }
 
   // 10b. Insertar linea_cruda para todas las líneas (incluye pendientes mapeo)
   const todasLineas = validadas.filter(x => x.v.ok || x.v.pendienteMapeo)
@@ -638,6 +742,96 @@ async function main() {
   console.log(`✓  Tarifa ${nuevaTarifa.id} publicada`)
   console.log(`   ${ofertaRows.length} ofertas creadas · ${bajasConOrigen.length} referencias marcadas descatalogadas`)
   if (prevTarifa) console.log(`   Tarifa anterior ${prevTarifa.id} archivada`)
+
+  // 10f. Re-mapeo de favoritos en proveedor_catalogo_vinos.
+  // Algunos flujos pueden haber vuelto a crear filas (si aplica un reimport
+  // destructivo en el futuro). Por ahora proveedor_catalogo_vinos NO se toca
+  // salvo marcar activo=false en bajas; los favoritos se preservan automáticamente.
+  // Aun así re-aplicamos el flag por si existen filas nuevas (altas) que
+  // correspondan 1:1 con favoritos previos y haya que volver a marcar.
+  let huerfanos = 0
+  let reMapeados = 0
+  if (favoritosPrevios && favoritosPrevios.length) {
+    // Paginado con .order('id') obligatorio: un proveedor con >1000 refs
+    // perdería filas aquí y daría favoritos por huérfanos falsos.
+    const actuales = await fetchPaginado(
+      `proveedor_catalogo_vinos (actuales de proveedor ${proveedorId})`,
+      (desde, limite) => supabase
+        .from('proveedor_catalogo_vinos')
+        .select('id, nombre, bodega, formato, anada, referencia, favorito')
+        .eq('proveedor_id', proveedorId)
+        .order('id')
+        .range(desde, desde + limite - 1),
+    )
+    const existe = new Map(actuales.map(r => [r.id, r]))
+    for (const fav of favoritosPrevios) {
+      // 1) Si la fila favorita original sigue existiendo, nada que hacer.
+      if (existe.has(fav.id) && existe.get(fav.id).favorito) continue
+      // 2) Si la fila existe pero perdió el flag, re-aplicarlo.
+      if (existe.has(fav.id) && !existe.get(fav.id).favorito) {
+        await supabase.from('proveedor_catalogo_vinos').update({ favorito: true }).eq('id', fav.id)
+        reMapeados++
+        continue
+      }
+      // 3) Fila distinta: buscar por referencia (codigo_articulo) o claveDura.
+      let destino = null
+      if (fav.referencia) {
+        destino = (actuales || []).find(r => String(r.referencia) === String(fav.referencia))
+      }
+      if (!destino) {
+        const cFav = claveDura(fav.nombre, fav.bodega, formatoAMl(fav.formato), fav.anada)
+        destino = (actuales || []).find(r =>
+          claveDura(r.nombre, r.bodega, formatoAMl(r.formato), r.anada) === cFav
+        )
+      }
+      if (destino) {
+        await supabase.from('proveedor_catalogo_vinos').update({ favorito: true }).eq('id', destino.id)
+        reMapeados++
+      } else {
+        console.log(`   ⚠  Favorito huérfano (sin correspondencia tras publicar): "${fav.nombre}" (${fav.bodega || 'sin bodega'})`)
+        huerfanos++
+      }
+    }
+  }
+
+  // 10g. Guardar PDF original en el bucket tarifas-pdf si se indicó --pdf.
+  // Necesita que 0012_bucket_tarifas_pdf.sql esté aplicado (bucket + policies).
+  if (pdfPath) {
+    try {
+      const pdfBuf = fs.readFileSync(pdfPath)
+      const destino = `${proveedorId}/${nuevaTarifa.id}.pdf`
+      const { error: upErr } = await supabase.storage.from('tarifas-pdf').upload(destino, pdfBuf, {
+        contentType: 'application/pdf',
+        upsert: false,
+      })
+      if (upErr) {
+        console.log(`   ⚠  No se pudo subir el PDF al bucket: ${upErr.message}`)
+      } else {
+        const rutaFinal = `tarifas-pdf/${destino}`
+        await supabase.from('tarifa').update({ fichero_origen: rutaFinal }).eq('id', nuevaTarifa.id)
+        console.log(`   PDF subido a ${rutaFinal}`)
+      }
+    } catch (e) {
+      console.log(`   ⚠  Error subiendo PDF: ${e.message}`)
+    }
+  }
+
+  // 10h. Resumen final de completitud
+  const packs = lineas.filter(l => Number(l.unidades_por_caja) > 1).length
+  const ivaDudoso = lineas.filter(l => l.iva_dudoso === true).length
+  const sinPrecio = lineas.filter(l => !l.coste || Number(l.coste) <= 0).length
+  const nuevas = altas.length
+  const cambiadasPrecio = cambios.filter(c => c.tipo === 'precio').length
+  console.log('\nResumen de ingesta')
+  console.log(`  · Refs detectadas en fichero: ${lineas.length}`)
+  console.log(`  · Refs guardadas (ofertas): ${ofertaRows.length}${ofertaRows.length !== lineas.length ? '  ⚠ discrepancia' : ''}`)
+  console.log(`  · Sin precio: ${sinPrecio}`)
+  console.log(`  · Packs detectados (unidades_por_caja > 1): ${packs}`)
+  console.log(`  · Nuevas vs tarifa anterior: ${nuevas}`)
+  console.log(`  · Cambiadas (precio): ${cambiadasPrecio}`)
+  console.log(`  · Desaparecidas (bajas): ${bajas.length}`)
+  console.log(`  · Favoritos re-mapeados: ${reMapeados} de ${favoritosPrevios?.length || 0}; huérfanos: ${huerfanos}`)
+  console.log(`  · IVA dudoso: ${ivaDudoso}`)
 }
 
 main().catch(err => { console.error(`\nError: ${err.message}`); process.exit(1) })
