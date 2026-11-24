@@ -7,13 +7,38 @@
  *   node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json> --pdf <ruta.pdf> --apply
  *
  * Por defecto opera en --dry-run: calcula el diff e imprime el informe sin escribir nada.
- * Con --apply: crea la tarifa en DB, inserta linea_cruda, crea ofertas nuevas y archiva la anterior.
+ * Con --apply: crea la tarifa en DB, inserta linea_cruda, crea ofertas nuevas, archiva la
+ * anterior, mantiene proveedor_catalogo_vinos (pcv) y rellena oferta.referencia_origen_id.
  *
  * Formato de entrada:
  *   a) Array JSON de líneas (formato histórico, compatible).
  *   b) Objeto { pdf_sha256, pdf_origen, vinos: [...] } producido por scripts/pdf-a-json.js.
  *      Si llega esta forma, el campo pdf_sha256 se usa para idempotencia
  *      (tarifa.fichero_hash) y el pdf_origen rellena tarifa.fichero_origen.
+ *
+ * Prerrequisitos:
+ *   - Las bodegas que aparezcan en el fichero deben existir en la tabla `bodega`.
+ *     Si no, la línea queda como `pendiente_mapeo` y NO se crea oferta ni vino
+ *     canónico. El dry-run lista las bodegas no reconocidas y propone el SQL
+ *     idempotente para insertarlas.
+ *
+ * Qué toca --apply en la BD (resumen):
+ *   - `tarifa`:            crea una nueva en 'borrador' → 'publicada', archiva
+ *                          la anterior si existía.
+ *   - `linea_cruda`:       una fila por línea del fichero (incluye pendientes).
+ *   - `vino`, `bodega`, `vino_anada`: resuelve o crea los canónicos.
+ *   - `oferta`:            crea una por línea procesable.  Después enlaza
+ *                          `oferta.referencia_origen_id` al pcv resuelto.
+ *   - `proveedor_catalogo_vinos`: UPSERT por `(proveedor_id, referencia)` o,
+ *                          en su defecto, por `claveDura(nombre, bodega, formato_ml, anada)`.
+ *                          El update conserva campos de usuario (favorito,
+ *                          notas, pvp_recomendado, pvp_copa, motivo, ambito).
+ *
+ * Orden de pasos sugerido:
+ *   1. `node scripts/importar-tarifa.js --proveedor <uuid> --fichero <ruta.json>` (dry-run)
+ *   2. Revisar sección BODEGAS NO RECONOCIDAS; si hay, ejecutar el SQL sugerido.
+ *   3. Re-ejecutar dry-run para confirmar que ya no hay bodegas fuera.
+ *   4. `--apply` (añadiendo `--pdf <ruta.pdf>` si procede).
  */
 
 'use strict'
