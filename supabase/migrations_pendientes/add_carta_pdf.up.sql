@@ -12,8 +12,9 @@
 --   - `carta_descripcion`  (texto opcional de presentación que va bajo el
 --     logo en la primera página — p.ej. "Una selección pensada para cenas
 --     relajadas y buena conversación").
---   - `carta_mostrar_copa` (toggle para ocultar la columna COPA en la
---     carta impresa cuando el restaurante sólo vende por botella).
+--   - `carta_mostrar_copa` (toggle para MOSTRAR la columna COPA en la
+--     carta impresa; por defecto está desactivado — la gran mayoría de
+--     restaurantes imprime su carta sin precio por copa).
 --
 --   NO tocamos color_fondo/color_acento/tipografia/logo_url/carta_pie_texto:
 --   ya existen y se reutilizan tal cual. El color de texto del PDF se
@@ -24,9 +25,9 @@
 --   - ADD COLUMN IF NOT EXISTS: aditiva e idempotente (expand-only, R2).
 --   - Ambas columnas son opcionales:
 --       `carta_descripcion` NULL por defecto → no se imprime nada.
---       `carta_mostrar_copa` DEFAULT true → compat. retro: todos los
---       restaurantes siguen imprimiendo la columna de copa como hasta
---       ahora. Sólo quien lo desactive explícitamente verá el cambio.
+--       `carta_mostrar_copa` DEFAULT false → la carta imprimible NO
+--       muestra la columna COPA salvo que el sommelier lo active desde
+--       el panel. Es el comportamiento "carta clásica a la botella".
 --   - No se toca RLS ni ninguna policy. Las policies existentes de
 --     `restaurantes` usan `email`/`auth.jwt()` sobre la fila entera
 --     y cubren automáticamente las nuevas columnas.
@@ -34,9 +35,9 @@
 --
 -- COMPATIBILIDAD CON EL CÓDIGO
 --   La app degrada si las columnas NO existen:
---     - La página `/admin/carta-pdf/[slug]` lee los campos con
---       `?? defaults` y si la lectura falla con 42703 asume defaults
---       (carta_descripcion = '', carta_mostrar_copa = true).
+--     - La página `/admin/carta-pdf/[slug]` lee con fallback: si la
+--       lectura falla con 42703 reintenta sin esas columnas y asume
+--       defaults (carta_descripcion = '', carta_mostrar_copa = false).
 --     - El upsert en `/api/admin/carta-pdf-config` sólo incluye las
 --       claves si el restaurante responde que existen; si Postgres
 --       devuelve 42703 el PATCH se repite sin esas claves.
@@ -67,28 +68,41 @@
 --        AND column_name IN ('carta_descripcion', 'carta_mostrar_copa')
 --      ORDER BY column_name;
 --     -- carta_descripcion   text     NULL    YES
---     -- carta_mostrar_copa  boolean  true    NO
+--     -- carta_mostrar_copa  boolean  false   NO
 --
 -- COMPROBACIÓN POSTERIOR DE DATOS (ninguna fila debe haber perdido
 -- nada; las filas existentes reciben defaults):
 --     SELECT
 --       count(*)                                                  AS filas,
---       count(*) FILTER (WHERE carta_mostrar_copa IS TRUE)        AS con_copa,
+--       count(*) FILTER (WHERE carta_mostrar_copa IS FALSE)       AS sin_copa,
 --       count(*) FILTER (WHERE carta_descripcion IS NULL)         AS sin_desc
 --       FROM public.restaurantes;
---     -- "filas" debe coincidir con "con_copa" y con "sin_desc" (hasta
+--     -- "filas" debe coincidir con "sin_copa" y con "sin_desc" (hasta
 --     -- que algún restaurante los personalice). Si ya hay alguno
 --     -- personalizado via sql manual, ajusta la expectativa.
+--
+-- IDEMPOTENCIA (ajuste de DEFAULT si una versión previa aplicó TRUE):
+--   Si aplicaste una versión anterior de esta migración con DEFAULT true,
+--   el bloque ALTER COLUMN SET DEFAULT false de abajo corrige el default
+--   sin tocar los valores actuales de las filas. Esto se hace a propósito
+--   para no violar R2 (no UPDATE masivo). Un restaurante que haya
+--   quedado con carta_mostrar_copa = true seguirá con true hasta que un
+--   operador lo cambie explícitamente desde el panel.
 -- ─────────────────────────────────────────────────────────────────────────
 
 ALTER TABLE public.restaurantes
   ADD COLUMN IF NOT EXISTS carta_descripcion text;
 
 ALTER TABLE public.restaurantes
-  ADD COLUMN IF NOT EXISTS carta_mostrar_copa boolean NOT NULL DEFAULT true;
+  ADD COLUMN IF NOT EXISTS carta_mostrar_copa boolean NOT NULL DEFAULT false;
+
+-- Corrige el default si una aplicación previa lo dejó en TRUE.
+-- No modifica filas existentes (ver nota IDEMPOTENCIA arriba).
+ALTER TABLE public.restaurantes
+  ALTER COLUMN carta_mostrar_copa SET DEFAULT false;
 
 COMMENT ON COLUMN public.restaurantes.carta_descripcion IS
   'Texto opcional de presentación que aparece bajo el logo en la primera página de la carta PDF imprimible. Máx. recomendado 600 caracteres. NULL ≡ no se imprime.';
 
 COMMENT ON COLUMN public.restaurantes.carta_mostrar_copa IS
-  'Si TRUE, la carta PDF imprimible muestra la columna COPA además de BOTELLA. Si FALSE, oculta COPA (restaurantes que sólo venden por botella). Default TRUE para compatibilidad retro.';
+  'Si TRUE, la carta PDF imprimible muestra la columna COPA además de BOTELLA. Default FALSE: el comportamiento habitual es imprimir solo precio por botella; los restaurantes que vendan por copa pueden activarlo desde el panel.';

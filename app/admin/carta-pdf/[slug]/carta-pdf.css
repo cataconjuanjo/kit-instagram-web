@@ -16,7 +16,12 @@
   --cpdf-bg: #1a1a2e;
   --cpdf-fg: #f6f4f0;
   --cpdf-accent: #c9a96e;
-  --cpdf-font: 'Georgia', 'Garamond', serif;
+  /*
+   * Pila por defecto: cae a la variable de la fuente serif autoalojada por
+   * next/font (inyectada vía className en el componente). Si el componente
+   * decide otra pila (sans/mono), la sobreescribe en style inline.
+   */
+  --cpdf-font: var(--cpdf-font-serif, 'Georgia', 'Garamond', serif);
 
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -198,7 +203,13 @@
   columns: 2;
   column-gap: 10mm;
   column-fill: auto;
-  font-family: 'Courier New', 'DejaVu Sans Mono', monospace;
+  /*
+   * El body siempre usa la monoespaciada autoalojada (JetBrains Mono) —
+   * da el aspecto "carta de precios" del modelo La Higuera y mantiene los
+   * precios alineados en columna con `tabular-nums`. La var la inyecta
+   * next/font desde el shell.
+   */
+  font-family: var(--cpdf-font-mono, 'Courier New', 'DejaVu Sans Mono', monospace);
   font-size: 9.5pt;
   line-height: 1.35;
 }
@@ -262,7 +273,6 @@
   display: inline-block;
   text-align: right;
 }
-.cpdf-vino__precio--vacia { opacity: 0.35; }
 .cpdf-vino__linea2 {
   font-size: 8pt;
   opacity: 0.78;
@@ -285,20 +295,40 @@
 /* ─────────────────────────────────────────────────────────────────────
  * CABECERA REPETIDA EN PÁGINAS SIGUIENTES
  *
- * Usa Paged Media (soporte Chromium ≥ 120, Edge, Safari 18): un elemento
- * "running" se posiciona en el margen superior de cada página impresa.
- * En la primera página la cabecera "grande" (hero) se superpone con el
- * margin de @page; la cabecera pequeña aparece a partir de la 2ª página.
- * Si el navegador no soporta @top-center, la vista degrada: solo primera
- * página con hero.
+ * Patrón: tabla con <thead> que Chromium replica automáticamente en cada
+ * salto de página (display: table-header-group por defecto). Verificado
+ * empíricamente con scripts/verify-carta-pdf-header.mjs después de que
+ * `position: running()` + `@top-center` NO funcionara en Chrome actual.
+ *
+ * Consecuencias:
+ *   - El thead aparece también en la primera página — es deseable: la
+ *     identidad del restaurante entra arriba antes incluso del hero.
+ *   - El multicol vive dentro de un <td> del tbody; Chromium pagina
+ *     columns dentro de celda sin problemas en versiones recientes.
  * ───────────────────────────────────────────────────────────────────── */
 
+.cpdf-page-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+.cpdf-page-table > thead {
+  display: table-header-group; /* explícito: es la señal a Chromium */
+}
+.cpdf-page-table > thead > tr > td,
+.cpdf-page-table > tbody > tr > td {
+  padding: 0;
+  border: 0;
+  vertical-align: top;
+}
+
 .cpdf-sheet__pageheader {
-  position: running(cpdfpageheader);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 0 2mm;
+  gap: 8mm;
+  padding: 0 0 2mm 0;
+  margin: 0 0 6mm;
   border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 25%, transparent);
   font-size: 8pt;
   letter-spacing: 0.18em;

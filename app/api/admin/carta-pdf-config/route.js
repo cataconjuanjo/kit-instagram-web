@@ -124,7 +124,9 @@ export async function PATCH(req) {
     update.carta_descripcion = sanitizarTexto(body.carta_descripcion, 600) || null
   }
   if ('carta_mostrar_copa' in body) {
-    update.carta_mostrar_copa = body.carta_mostrar_copa !== false
+    // Semántica alineada con la migración (DEFAULT false): sólo true si
+    // el cliente lo pide explícitamente; cualquier otro valor → false.
+    update.carta_mostrar_copa = body.carta_mostrar_copa === true
   }
   if ('carta_pie_texto' in body) {
     update.carta_pie_texto = sanitizarTexto(body.carta_pie_texto, 400) || null

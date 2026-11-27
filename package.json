@@ -39,7 +39,8 @@
     "test:total-personal": "node --test scripts/totalPersonal.test.mjs",
     "test:total-fijos": "node --test scripts/totalFijos.test.mjs",
     "test:metadata-suffix": "node --test scripts/publicMetadataSuffix.test.mjs",
-    "test:carta-pdf": "node --test scripts/cartaPdfUtils.test.mjs"
+    "test:carta-pdf": "node --test scripts/cartaPdfUtils.test.mjs",
+    "verify:carta-pdf-header": "node scripts/verify-carta-pdf-header.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import { EB_Garamond, Inter, JetBrains_Mono } from 'next/font/google'
 import { supabase } from '../../../supabase'
 import {
   formatearPrecioPdf,
@@ -28,14 +29,50 @@ import {
 } from '../../../lib/cartaPdfUtils'
 import './carta-pdf.css'
 
+/*
+ * Fuentes autoalojadas por next/font. Next descarga los .woff2 en build y los
+ * sirve desde /_next/static/media/* sin ningún runtime fetch a Google. El
+ * navegador las embebe automáticamente cuando el usuario hace "Guardar como
+ * PDF" — verificable con pdfjs/pdffonts sobre el PDF resultante.
+ */
+const serifFont = EB_Garamond({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--cpdf-font-serif',
+  weight: ['400', '600', '700'],
+})
+const sansFont = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--cpdf-font-sans',
+  weight: ['400', '600', '700'],
+})
+const monoFont = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--cpdf-font-mono',
+  weight: ['400', '700'],
+})
+
 const TIPOGRAFIAS = [
-  { value: 'serif', label: 'Serif (Georgia)', stack: "'Georgia', 'Garamond', serif" },
-  { value: 'garamond', label: 'Garamond', stack: "'EB Garamond', 'Garamond', serif" },
-  { value: 'display', label: 'Display (Playfair)', stack: "'Playfair Display', 'Georgia', serif" },
-  { value: 'sans', label: 'Sans (Inter)', stack: "'Inter', system-ui, -apple-system, sans-serif" },
-  { value: 'condensed', label: 'Condensed', stack: "'Oswald', 'Impact', sans-serif" },
-  { value: 'mono', label: 'Monoespaciada', stack: "'Courier New', 'DejaVu Sans Mono', monospace" },
+  { value: 'serif', label: 'Serif (EB Garamond)', stack: "var(--cpdf-font-serif), 'Georgia', serif" },
+  { value: 'sans',  label: 'Sans (Inter)',        stack: "var(--cpdf-font-sans), system-ui, -apple-system, sans-serif" },
+  { value: 'mono',  label: 'Monoespaciada (JetBrains Mono)', stack: "var(--cpdf-font-mono), 'Courier New', monospace" },
 ]
+
+// Mapea valores antiguos de DB a los tres grupos autoalojados.
+function mapearTipografia(valor) {
+  const v = String(valor || '').toLowerCase()
+  if (v === 'sans' || v === 'condensed') return 'sans'
+  if (v === 'mono') return 'mono'
+  return 'serif' // serif | garamond | display | default
+}
+
+// Concatena las clases .variable de las 3 fuentes al shell para que las
+// CSS variables --cpdf-font-* queden disponibles en todo el árbol.
+function cpdfShellClassName() {
+  return `cpdf-shell ${serifFont.variable} ${sansFont.variable} ${monoFont.variable}`
+}
 
 const DEFAULTS = {
   color_fondo: '#1a1a2e',
@@ -44,7 +81,9 @@ const DEFAULTS = {
   logo_url: '',
   carta_descripcion: '',
   carta_pie_texto: 'IVA incluido. Consulte alérgenos en sala.',
-  carta_mostrar_copa: true,
+  // Default alineado con la migración `add_carta_pdf`: NO mostrar copa si
+  // el restaurante no lo activa explícitamente.
+  carta_mostrar_copa: false,
 }
 
 export default function CartaPdfPage() {
@@ -101,11 +140,13 @@ export default function CartaPdfPage() {
         setForm({
           color_fondo: rest.color_fondo || DEFAULTS.color_fondo,
           color_acento: rest.color_acento || DEFAULTS.color_acento,
-          tipografia: rest.tipografia || DEFAULTS.tipografia,
+          tipografia: mapearTipografia(rest.tipografia || DEFAULTS.tipografia),
           logo_url: rest.logo_url || '',
           carta_descripcion: rest.carta_descripcion ?? '',
           carta_pie_texto: rest.carta_pie_texto ?? DEFAULTS.carta_pie_texto,
-          carta_mostrar_copa: rest.carta_mostrar_copa !== false,
+          // "mostrar copa" ahora requiere activación explícita: null/undefined
+          // o false (default de la migración) → no se imprime.
+          carta_mostrar_copa: rest.carta_mostrar_copa === true,
         })
       } catch (err) {
         if (!cancelado) setError(err?.message || 'No se pudo cargar la carta.')
@@ -189,11 +230,11 @@ export default function CartaPdfPage() {
 
   // ── Render ──────────────────────────────────────────────────────────
   if (cargando) {
-    return <main className="cpdf-shell"><aside className="cpdf-shell__aside"><p>Cargando…</p></aside></main>
+    return <main className={cpdfShellClassName()}><aside className="cpdf-shell__aside"><p>Cargando…</p></aside></main>
   }
   if (error) {
     return (
-      <main className="cpdf-shell">
+      <main className={cpdfShellClassName()}>
         <aside className="cpdf-shell__aside">
           <h2>No se pudo cargar</h2>
           <p className="cpdf-sub">{error}</p>
@@ -212,7 +253,7 @@ export default function CartaPdfPage() {
   const mostrarCopa = form.carta_mostrar_copa
 
   return (
-    <main className="cpdf-shell" style={styleShell}>
+    <main className={cpdfShellClassName()} style={styleShell}>
       <aside className="cpdf-shell__aside no-print">
         <h2>Carta imprimible</h2>
         <p className="cpdf-sub">
@@ -295,27 +336,53 @@ export default function CartaPdfPage() {
 
       <div className="cpdf-shell__main">
         <article className="cpdf-sheet" aria-label="Previsualización de la carta imprimible">
-          <HeaderPagina restaurante={restaurante} form={form} />
+          {/*
+            Patrón table+thead para repetir cabecera en cada página.
+            Chromium `--print-to-pdf` repite <thead> de forma nativa en
+            cada page break, a diferencia de CSS `position: running()` que
+            no funciona en la versión actual (verificado empíricamente
+            con scripts/verify-carta-pdf-header.mjs).
+          */}
+          <table className="cpdf-page-table">
+            <thead>
+              <tr>
+                <td>
+                  <div className="cpdf-sheet__pageheader" aria-hidden="true">
+                    <span>{restaurante?.nombre || ''}</span>
+                    {form.logo_url ? (
+                      <img src={form.logo_url} alt="" />
+                    ) : <span aria-hidden="true" />}
+                    <span>Carta de vinos</span>
+                  </div>
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <section className="cpdf-sheet__hero">
+                    {form.logo_url ? (
+                      <img className="cpdf-sheet__logo" src={form.logo_url} alt="" />
+                    ) : null}
+                    <h1 className="cpdf-sheet__nombre">{restaurante?.nombre || ''}</h1>
+                    {form.carta_descripcion ? (
+                      <p className="cpdf-sheet__descripcion">{form.carta_descripcion}</p>
+                    ) : null}
+                  </section>
 
-          <section className="cpdf-sheet__hero">
-            {form.logo_url ? (
-              <img className="cpdf-sheet__logo" src={form.logo_url} alt="" />
-            ) : null}
-            <h1 className="cpdf-sheet__nombre">{restaurante?.nombre || ''}</h1>
-            {form.carta_descripcion ? (
-              <p className="cpdf-sheet__descripcion">{form.carta_descripcion}</p>
-            ) : null}
-          </section>
+                  <div className="cpdf-sheet__body">
+                    {secciones.map(sec => (
+                      <Seccion key={sec.tipo} seccion={sec} mostrarCopa={mostrarCopa} />
+                    ))}
+                  </div>
 
-          <div className="cpdf-sheet__body">
-            {secciones.map(sec => (
-              <Seccion key={sec.tipo} seccion={sec} mostrarCopa={mostrarCopa} />
-            ))}
-          </div>
-
-          {form.carta_pie_texto ? (
-            <footer className="cpdf-sheet__pie">{form.carta_pie_texto}</footer>
-          ) : null}
+                  {form.carta_pie_texto ? (
+                    <footer className="cpdf-sheet__pie">{form.carta_pie_texto}</footer>
+                  ) : null}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </article>
       </div>
 
@@ -325,16 +392,6 @@ export default function CartaPdfPage() {
         </div>
       )}
     </main>
-  )
-}
-
-function HeaderPagina({ restaurante, form }) {
-  return (
-    <div className="cpdf-sheet__pageheader" aria-hidden="true">
-      <span>{restaurante?.nombre || ''}</span>
-      {form.logo_url ? <img src={form.logo_url} alt="" /> : <span />}
-      <span>Carta de vinos</span>
-    </div>
   )
 }
 
@@ -369,8 +426,10 @@ function Vino({ vino, mostrarCopa }) {
         <span className="cpdf-vino__nombre">{nombre}</span>
         <span className="cpdf-vino__precios">
           {mostrarCopa && (
-            <span className={`cpdf-vino__precio${precioCopa ? '' : ' cpdf-vino__precio--vacia'}`}>
-              {precioCopa || '—'}
+            // Celda de copa: si no hay precio, dejamos la celda vacía (no "—")
+            // para preservar la alineación de la columna BOTELLA.
+            <span className="cpdf-vino__precio" aria-hidden={!precioCopa}>
+              {precioCopa || ''}
             </span>
           )}
           <span className="cpdf-vino__precio">{precioBotella}</span>
