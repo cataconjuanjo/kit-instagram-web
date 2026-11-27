@@ -36,11 +36,19 @@ async function esOwnerDelRestaurante(req, restauranteId) {
   }
 }
 
+// Campos nuevos de la migración `add_carta_pdf`. Se piden "opcionalmente":
+// si Postgres responde 42703 (columna inexistente) se reintenta sin ellos.
+// Así la ruta pública sigue funcionando antes de aplicar la migración.
+const CAMPOS_RESTAURANTE_CARTA_PDF = [
+  'carta_descripcion', 'carta_mostrar_copa', 'carta_incluir_bodega_anada',
+]
+
 const CAMPOS_RESTAURANTE = [
   'id', 'slug', 'nombre', 'ciudad',
   'color_acento', 'color_primario', 'color_fondo', 'tipografia',
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
   'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',
+  ...CAMPOS_RESTAURANTE_CARTA_PDF,
   'hub_activo', 'hub_titulo', 'hub_subtitulo', 'hub_fondo_url',
   'hub_fondo_zoom', 'hub_fondo_x', 'hub_fondo_y', 'hub_overlay',
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',
@@ -166,11 +174,24 @@ export async function GET(req, { params }) {
     const modoDemoPresentacion = demoPresentacionAutorizada(slug, searchParams)
     const solicitaPreviewBorrador = searchParams.get('preview') === '1'
 
-    const { data: restaurante, error } = await supabaseAdmin
-      .from('restaurantes')
-      .select(SELECT_RESTAURANTE_PUBLICO)
-      .eq('slug', slug)
-      .single()
+    // Fallback 42703: si la migración `add_carta_pdf` no está aplicada,
+    // reintenta sin las columnas nuevas. La ruta pública sigue sirviendo.
+    async function leerRestaurante(selectStr) {
+      return supabaseAdmin
+        .from('restaurantes')
+        .select(selectStr)
+        .eq('slug', slug)
+        .single()
+    }
+    let { data: restaurante, error } = await leerRestaurante(SELECT_RESTAURANTE_PUBLICO)
+    if (error && error.code === '42703') {
+      const camposSinCartaPdf = [...CAMPOS_RESTAURANTE, ...CAMPOS_RESTAURANTE_CONTROL]
+        .filter(c => !CAMPOS_RESTAURANTE_CARTA_PDF.includes(c))
+        .join(', ')
+      const retry = await leerRestaurante(camposSinCartaPdf)
+      restaurante = retry.data
+      error = retry.error
+    }
 
     if (error && error.code !== 'PGRST116') {
       console.error('[public-restaurante]', {

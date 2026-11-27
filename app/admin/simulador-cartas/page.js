@@ -923,6 +923,17 @@ export default function SimuladorCartas() {
           <button type="button" className="sim-btn sim-btn-ghost" onClick={() => window.print()} disabled={!simulacionEditada}>
             PDF
           </button>
+          {restaurante?.slug ? (
+            <a
+              className="sim-btn sim-btn-ghost"
+              href={`/admin/carta-pdf/${restaurante.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              title="Abre la carta de vinos en un formato A4 imprimible"
+            >
+              Carta imprimible
+            </a>
+          ) : null}
           <button type="button" className="sim-btn sim-btn-primary" onClick={guardarPropuestas} disabled={!simulacionEditada || guardando || !catalogoListo}>
             {guardando ? 'Guardando...' : (!catalogoListo ? 'Esperando catálogo…' : 'Guardar propuestas')}
           </button>

@@ -1,0 +1,147 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Carta PDF — SHELL ADMIN
+ *
+ * Este archivo contiene SÓLO el chrome de edición del panel admin
+ * (sidebar con controles, status toast). La hoja A4 en sí vive en
+ * app/components/cartaImprimible/carta-imprimible.css y la importa
+ * tanto esta página como la ruta pública /imprimir/carta-pdf/[slug].
+ *
+ * En impresión desde el admin no se usa (el botón "Descargar PDF" abre
+ * /imprimir en pestaña nueva, que está SIN este shell). Las reglas de
+ * @media print en carta-imprimible.css ya ocultan el shell por si acaso
+ * el usuario pulsa Ctrl+P sobre la propia página de admin.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.cpdf-shell {
+  --cpdf-bg: #1a1a2e;
+  --cpdf-fg: #f6f4f0;
+  --cpdf-accent: #c9a96e;
+  --cpdf-font: var(--cpdf-font-serif, 'Georgia', 'Garamond', serif);
+
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  min-height: 100vh;
+  padding: 20px;
+  background: #e9eaec;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #1a1a1a;
+}
+
+.cpdf-shell__aside {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.cpdf-shell__aside h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.cpdf-shell__aside p.cpdf-sub {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+.cpdf-sub-warn {
+  color: #6b4a00;
+  font-weight: 600;
+}
+
+.cpdf-field {
+  display: block;
+  margin-bottom: 14px;
+}
+.cpdf-field > label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cpdf-field input[type="text"],
+.cpdf-field input[type="url"],
+.cpdf-field textarea,
+.cpdf-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cfd1d5;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+  box-sizing: border-box;
+}
+.cpdf-field textarea { min-height: 70px; resize: vertical; }
+.cpdf-field input[type="color"] {
+  width: 44px; height: 32px; padding: 0;
+  border: 1px solid #cfd1d5; border-radius: 6px; background: #fff;
+  cursor: pointer;
+}
+.cpdf-field--row { display: flex; align-items: center; gap: 10px; }
+.cpdf-field--row > label { margin: 0; }
+.cpdf-field--check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; }
+
+.cpdf-contrast-warn {
+  margin: 10px 0 14px;
+  padding: 8px 10px;
+  background: #fff6e0;
+  border: 1px solid #e9c46a;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6b4a00;
+  line-height: 1.35;
+}
+
+.cpdf-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cpdf-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+.cpdf-btn--primary { background: #111; color: #fff; }
+.cpdf-btn--primary:hover { background: #333; }
+.cpdf-btn--primary:disabled { background: #999; cursor: not-allowed; }
+.cpdf-btn--ghost { background: #fff; color: #111; border-color: #cfd1d5; }
+.cpdf-btn--ghost:hover { background: #f4f4f4; }
+
+.cpdf-shell__main {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 40px;
+}
+
+.cpdf-status {
+  position: fixed;
+  top: 16px; right: 16px;
+  padding: 10px 14px;
+  background: #111;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 9999;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.cpdf-status--ok    { background: #0f5132; }
+.cpdf-status--error { background: #842029; }
