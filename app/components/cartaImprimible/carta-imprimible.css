@@ -15,9 +15,15 @@
 
 :root {
   --cpdf-side-pad: 14mm;       /* margen izquierda/derecha interior */
-  --cpdf-top-spacer: 10mm;     /* espacio superior repetido (thead) */
-  --cpdf-bottom-spacer: 10mm;  /* espacio inferior repetido (tfoot) */
-  --cpdf-hero-height: 40mm;    /* altura máx. hero compacto en pág 1 */
+  --cpdf-top-spacer: 7mm;      /* espacio superior repetido (thead) */
+  --cpdf-bottom-spacer: 2mm;   /* espacio inferior repetido (tfoot).
+                                  Mínimo: un tfoot grande arrastra una
+                                  página fantasma al final cuando el
+                                  tbody termina cerca del límite — el
+                                  motor empuja el tfoot a una página
+                                  nueva y lleva con él el thead. 2mm
+                                  = margen físico de impresora típico. */
+  --cpdf-hero-height: 32mm;    /* altura máx. hero compacto en pág 1 */
 }
 
 /* ── Hoja (preview en pantalla, A4 real al imprimir) ───────────────── */
@@ -46,19 +52,25 @@
   border-spacing: 0;
 }
 .cpdf-page-table > thead { display: table-header-group; }
-.cpdf-page-table > tfoot { display: table-footer-group; }
 .cpdf-page-table > thead > tr > td,
-.cpdf-page-table > tbody > tr > td,
-.cpdf-page-table > tfoot > tr > td {
+.cpdf-page-table > tbody > tr > td {
   padding: 0 var(--cpdf-side-pad);
   border: 0;
   vertical-align: top;
   background: var(--cpdf-bg);
 }
+/* Margen inferior físico en la última página (donde cabe el contenido);
+ * en páginas intermedias Chromium pagina sin reservar franja inferior,
+ * así evitamos la "página fantasma" que generaba el antiguo tfoot. */
+.cpdf-page-table > tbody > tr > td {
+  padding-bottom: var(--cpdf-bottom-spacer);
+}
 
-/* Spacers que reproducen el margen físico de @page { margin: 0 } */
+/* Spacer superior (va en el thead, se repite en cada página). */
 .cpdf-page-spacer { width: 100%; }
 .cpdf-page-spacer--top    { height: var(--cpdf-top-spacer); }
+/* --bottom se mantiene por compatibilidad (no se usa desde JSX;
+ * el margen inferior físico lo da padding-bottom del <td> del tbody). */
 .cpdf-page-spacer--bottom { height: var(--cpdf-bottom-spacer); }
 
 /* ── Pageheader (cabecera pequeña repetida por página) ─────────────── */
@@ -159,7 +171,7 @@
  */
 .cpdf-section {
   break-inside: auto;
-  margin: 0 0 5mm;
+  margin: 0 0 3.5mm;
 }
 .cpdf-sheet__body > .cpdf-section:first-child { margin-top: 0; }
 
@@ -249,6 +261,17 @@
   break-before: avoid-page;
   break-before: avoid;
   break-inside: avoid;
+  /* No hay más contenido después: evita página fantasma final. */
+  break-after: avoid-page;
+  break-after: avoid;
+}
+
+/* Última línea de defensa contra páginas fantasma generadas por Chromium
+ * cuando el tbody termina a muy pocos px del límite de página. */
+.cpdf-page-table {
+  break-after: avoid-page;
+  break-after: avoid;
+  page-break-after: avoid;
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -299,13 +322,18 @@
     padding: 0 !important;
     margin: 0 !important;
   }
-  /* En impresión: column-fill: auto para llenar columna 1 y pasar a la 2
-     por página, en lugar de balancear (que puede dejar huecos). */
+  /*
+   * En impresión usamos column-fill: balance. column-fill: auto
+   * provocaba que la col der de la última página casi vaciara y el
+   * motor generara una página fantasma extra con solo el thead
+   * repetido. Con balance, las columnas de la última página se
+   * reparten equitativamente y el multicol termina limpiamente.
+   */
   .cpdf-sheet__body {
-    column-fill: auto !important;
+    column-fill: balance !important;
+    break-after: avoid-page !important;
+    break-after: avoid !important;
   }
-  /* El tfoot (spacer) debe repetirse al final de cada página física */
-  .cpdf-page-table > tfoot { display: table-footer-group !important; }
 }
 
 /* Cero márgenes de @page: el fondo llega a los 4 bordes del papel y
