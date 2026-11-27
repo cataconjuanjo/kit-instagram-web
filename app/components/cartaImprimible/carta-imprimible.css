@@ -142,8 +142,23 @@
   line-height: 1.35;
 }
 
+/*
+ * Secciones PARTIBLES entre columnas y páginas: antes tenían
+ * `break-inside: avoid-column`, lo que empujaba la sección entera a
+ * la siguiente columna o página cuando no cabía — resultado: columna
+ * derecha de pág 1 ~25% vacía.
+ *
+ * Ahora `break-inside: auto` permite partir una sección entre
+ * columnas/páginas, manteniendo:
+ *   - Cada vino entero (break-inside: avoid por vino, ver abajo).
+ *   - La cabecera de sección NO queda huérfana: `break-after: avoid`
+ *     + los 2 primeros vinos tras la cabecera llevan `break-before:
+ *     avoid`, de modo que si el motor decide partir ahí, re-ubica
+ *     la cabecera + sus 2 primeros vinos al inicio de la siguiente
+ *     columna/página (equivalente a widows=2 para secciones).
+ */
 .cpdf-section {
-  break-inside: avoid-column;
+  break-inside: auto;
   margin: 0 0 5mm;
 }
 .cpdf-sheet__body > .cpdf-section:first-child { margin-top: 0; }
@@ -162,6 +177,15 @@
   font-size: 9pt;
   break-after: avoid-column;
   break-after: avoid;
+}
+
+/* Los dos primeros vinos tras la cabecera de sección no pueden
+   quedar separados de ella: evita cabecera huérfana al final de una
+   columna/página con 0 o 1 vinos debajo. */
+.cpdf-section__header + .cpdf-vino,
+.cpdf-section__header + .cpdf-vino + .cpdf-vino {
+  break-before: avoid-column;
+  break-before: avoid;
 }
 .cpdf-section__title { font-weight: 700; }
 .cpdf-section__labels {

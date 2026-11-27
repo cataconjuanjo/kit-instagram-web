@@ -84,11 +84,18 @@ export function CartaImprimible({ restaurante, secciones, config }) {
                     incluirBodegaAnada={!!config.carta_incluir_bodega_anada}
                   />
                 ))}
+                {/*
+                  Pie DENTRO del multicol como último ítem del flujo.
+                  Al ser ítem (y no bloque externo que necesite su propia
+                  caja de página), se sitúa al final de la última columna
+                  utilizada. Antes vivía fuera del multicol y provocaba
+                  una página extra solo con el pie cuando la última
+                  columna quedaba casi llena.
+                */}
+                {config.carta_pie_texto ? (
+                  <footer className="cpdf-sheet__pie">{config.carta_pie_texto}</footer>
+                ) : null}
               </div>
-
-              {config.carta_pie_texto ? (
-                <footer className="cpdf-sheet__pie">{config.carta_pie_texto}</footer>
-              ) : null}
             </td>
           </tr>
         </tbody>
