@@ -1,0 +1,263 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Carta imprimible — CSS neutro de la hoja A4 (compartido entre
+ * /admin/carta-pdf/[slug] y /imprimir/carta-pdf/[slug]).
+ *
+ * Variables CSS (inyectadas en style inline en .cpdf-sheet):
+ *   --cpdf-bg     Fondo a sangre
+ *   --cpdf-fg     Color de texto (calculado por contraste)
+ *   --cpdf-accent Cabeceras de sección
+ *   --cpdf-font   Pila tipográfica
+ *
+ * Las variables de fuentes (--cpdf-font-serif/sans/mono) las inyecta
+ * next/font desde el shell contenedor.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.cpdf-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--cpdf-bg);
+  color: var(--cpdf-fg);
+  font-family: var(--cpdf-font);
+  padding: 22mm 18mm 20mm;
+  box-sizing: border-box;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  position: relative;
+}
+
+.cpdf-sheet__hero {
+  text-align: center;
+  padding-bottom: 14mm;
+  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
+  margin-bottom: 10mm;
+}
+.cpdf-sheet__logo {
+  display: block;
+  margin: 0 auto 6mm;
+  max-height: 40mm;
+  max-width: 70mm;
+  object-fit: contain;
+}
+.cpdf-sheet__nombre {
+  font-size: 22pt;
+  letter-spacing: 0.24em;
+  font-weight: 400;
+  text-transform: uppercase;
+  margin: 0 0 4mm;
+}
+.cpdf-sheet__descripcion {
+  max-width: 130mm;
+  margin: 0 auto;
+  font-size: 10pt;
+  line-height: 1.55;
+  text-align: left;
+  color: color-mix(in srgb, var(--cpdf-fg) 88%, transparent);
+}
+
+.cpdf-sheet__body {
+  columns: 2;
+  column-gap: 10mm;
+  /*
+   * En pantalla: balance para que ambas columnas queden visualmente
+   * similares. En impresión: auto para que llene la columna 1 y pase
+   * a la 2 antes del salto de página — reglas dentro de @media print.
+   */
+  column-fill: balance;
+  font-family: var(--cpdf-font-mono, 'Courier New', 'DejaVu Sans Mono', monospace);
+  font-size: 9.5pt;
+  line-height: 1.35;
+}
+
+.cpdf-section {
+  break-inside: avoid-column;
+  margin: 0 0 6mm;
+}
+.cpdf-sheet__body > .cpdf-section:first-child { margin-top: 0; }
+
+.cpdf-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 1.6mm;
+  margin-bottom: 2.4mm;
+  border-bottom: 1px solid var(--cpdf-accent);
+  color: var(--cpdf-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 9pt;
+  break-after: avoid-column;
+  break-after: avoid;
+}
+.cpdf-section__title { font-weight: 700; }
+.cpdf-section__labels {
+  font-size: 7pt;
+  letter-spacing: 0.22em;
+  color: color-mix(in srgb, var(--cpdf-accent) 85%, transparent);
+  display: flex;
+  gap: 10mm;
+  text-align: right;
+}
+
+.cpdf-vino {
+  break-inside: avoid;
+  margin: 0 0 2.4mm;
+  padding: 0;
+}
+.cpdf-vino__linea1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cpdf-vino__nombre { flex: 1 1 auto; min-width: 0; }
+.cpdf-vino__precios {
+  display: flex;
+  gap: 8mm;
+  white-space: nowrap;
+  text-align: right;
+  font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+}
+.cpdf-vino__precio {
+  min-width: 14mm;
+  display: inline-block;
+  text-align: right;
+}
+.cpdf-vino__linea2 {
+  font-size: 8pt;
+  opacity: 0.78;
+  margin-top: 0.4mm;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.cpdf-vino__linea2::first-letter { text-transform: uppercase; }
+
+.cpdf-sheet__pie {
+  margin-top: 8mm;
+  padding-top: 4mm;
+  border-top: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
+  font-size: 8pt;
+  text-align: center;
+  opacity: 0.7;
+  column-span: all;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * CABECERA REPETIDA EN PÁGINAS SIGUIENTES
+ *
+ * Patrón: tabla con <thead> que Chromium replica automáticamente en cada
+ * salto de página (display: table-header-group por defecto). Verificado
+ * empíricamente con scripts/verify-carta-pdf-header.mjs.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.cpdf-page-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+.cpdf-page-table > thead {
+  display: table-header-group; /* explícito: señal a Chromium */
+}
+.cpdf-page-table > thead > tr > td,
+.cpdf-page-table > tbody > tr > td {
+  padding: 0;
+  border: 0;
+  vertical-align: top;
+}
+
+.cpdf-sheet__pageheader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8mm;
+  padding: 0 0 2mm 0;
+  margin: 0 0 6mm;
+  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 25%, transparent);
+  font-size: 8pt;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--cpdf-fg) 75%, transparent);
+  font-family: var(--cpdf-font);
+}
+.cpdf-sheet__pageheader img {
+  max-height: 8mm;
+  max-width: 24mm;
+  object-fit: contain;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * REGLAS DE IMPRESIÓN
+ *
+ * Neutralizan cualquier ancestro del layout admin (sidebar fixed,
+ * .main con min-height:100vh, .nav overflow-y:auto, etc.) que
+ * provocaba el bug "hoja en blanco" en Chrome "Guardar como PDF".
+ *
+ * Regla general: todo contenedor desde <html> hasta la hoja debe tener
+ * height: auto, overflow: visible y position: static. Los elementos
+ * fuera del árbol de la hoja se ocultan con [data-cpdf-hide-on-print].
+ * ───────────────────────────────────────────────────────────────────── */
+
+@media print {
+  html, body {
+    background: var(--cpdf-bg, #1a1a2e) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /*
+   * Neutraliza TODOS los ancestros potenciales de la hoja. No es un
+   * universal-reset: sólo aplica a elementos que CONTIENEN a .cpdf-sheet
+   * en su subárbol. `:has()` está soportado por Chrome 105+, Edge 105+,
+   * Safari 15.4+ y Firefox 121+. Para print de PDF usamos Chromium.
+   */
+  html:has(.cpdf-sheet),
+  body:has(.cpdf-sheet),
+  body:has(.cpdf-sheet) *:has(.cpdf-sheet) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: var(--cpdf-bg, #1a1a2e) !important;
+  }
+  /*
+   * Oculta explícitamente todo lo que no sea el árbol de la hoja.
+   * Los componentes que deben sobrevivir al print marcan
+   * `data-cpdf-print-root`; los que deben desaparecer marcan
+   * `data-cpdf-hide-on-print` (o reciben la clase `no-print`).
+   */
+  [data-cpdf-hide-on-print],
+  .no-print {
+    display: none !important;
+  }
+  .cpdf-sheet {
+    box-shadow: none !important;
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Impresión: columna 1 llena primero, columna 2 después (por página) */
+  .cpdf-sheet__body {
+    column-fill: auto !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm 10mm 10mm;
+}

@@ -106,21 +106,33 @@ export function agruparVinosPorSeccion(vinos) {
 }
 
 /**
- * Para la línea secundaria del vino: "uva · país, DO" sin vacíos ni dobles
- * separadores. Si no hay datos devuelve ''.
+ * Para la línea secundaria del vino: "uva(s) · país, DO" por defecto, con
+ * mayúscula inicial (el CSS aplica `::first-letter { text-transform:
+ * uppercase }` sobre el contenedor). Si no hay datos devuelve ''.
  *
  * Reglas:
  *   - uva(s) van primero (string, puede contener ", " para blends).
- *   - después "país, DO" o sólo DO si no se sabe país.
- *   - `region` del DB suele contener la DO ("D.O. Rioja", "Ribera del Duero"...).
+ *   - después `region` (DB suele guardar "D.O. Rioja", "Francia", etc.).
+ *   - bodega y añada se omiten por defecto (ruido en carta de cliente);
+ *     el sommelier puede activarlas en el panel (toggle, default off).
+ *
+ * @param {object} vino
+ * @param {object} [opts]
+ * @param {boolean} [opts.incluirBodega=false]
+ * @param {boolean} [opts.incluirAnada=false]
  */
-export function lineaOrigenVino(vino) {
+export function lineaOrigenVino(vino, opts = {}) {
   if (!vino) return ''
+  const { incluirBodega = false, incluirAnada = false } = opts
   const uva = String(vino.uva || '').trim()
   const region = String(vino.region || '').trim()
+  const bodega = String(vino.bodega || '').trim()
+  const anada = String(vino.anada || '').trim()
   const trozos = []
+  if (incluirBodega && bodega) trozos.push(bodega)
   if (uva) trozos.push(uva)
   if (region) trozos.push(region)
+  if (incluirAnada && anada) trozos.push(anada)
   return trozos.join(' · ')
 }
 

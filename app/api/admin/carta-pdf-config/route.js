@@ -27,7 +27,9 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { getAdminEmail } from '../../_lib/isConsultor'
 
 const TIPOGRAFIAS_VALIDAS = new Set(['serif', 'sans', 'condensed', 'display', 'garamond', 'mono'])
-const COLUMNAS_NUEVAS = new Set(['carta_descripcion', 'carta_mostrar_copa'])
+const COLUMNAS_NUEVAS = new Set([
+  'carta_descripcion', 'carta_mostrar_copa', 'carta_incluir_bodega_anada',
+])
 
 function sanitizarHex(valor) {
   if (typeof valor !== 'string') return null
@@ -127,6 +129,9 @@ export async function PATCH(req) {
     // Semántica alineada con la migración (DEFAULT false): sólo true si
     // el cliente lo pide explícitamente; cualquier otro valor → false.
     update.carta_mostrar_copa = body.carta_mostrar_copa === true
+  }
+  if ('carta_incluir_bodega_anada' in body) {
+    update.carta_incluir_bodega_anada = body.carta_incluir_bodega_anada === true
   }
   if ('carta_pie_texto' in body) {
     update.carta_pie_texto = sanitizarTexto(body.carta_pie_texto, 400) || null

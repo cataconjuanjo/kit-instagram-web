@@ -40,7 +40,8 @@
     "test:total-fijos": "node --test scripts/totalFijos.test.mjs",
     "test:metadata-suffix": "node --test scripts/publicMetadataSuffix.test.mjs",
     "test:carta-pdf": "node --test scripts/cartaPdfUtils.test.mjs",
-    "verify:carta-pdf-header": "node scripts/verify-carta-pdf-header.mjs"
+    "verify:carta-pdf-header": "node scripts/verify-carta-pdf-header.mjs",
+    "verify:carta-pdf-live": "node scripts/verify-carta-pdf-live.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
@@ -64,7 +65,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "eslint-plugin-jsx-a11y": "^6.10.2",
-    "playwright": "^1.61.1",
+    "playwright": "^1.65.1",
     "tailwindcss": "^4"
   }
 }

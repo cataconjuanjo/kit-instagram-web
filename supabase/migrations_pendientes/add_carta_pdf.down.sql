@@ -25,3 +25,6 @@ ALTER TABLE public.restaurantes
 
 ALTER TABLE public.restaurantes
   DROP COLUMN IF EXISTS carta_mostrar_copa;
+
+ALTER TABLE public.restaurantes
+  DROP COLUMN IF EXISTS carta_incluir_bodega_anada;

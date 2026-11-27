@@ -1,26 +1,21 @@
 /* ─────────────────────────────────────────────────────────────────────
- * Carta Viva — Carta imprimible A4.
+ * Carta PDF — SHELL ADMIN
  *
- * Se divide en dos capas:
- *   - UI de controles (lateral izquierdo, .cpdf-shell): solo pantalla.
- *   - Hoja imprimible (.cpdf-sheet): preview en pantalla + impresión real.
+ * Este archivo contiene SÓLO el chrome de edición del panel admin
+ * (sidebar con controles, status toast). La hoja A4 en sí vive en
+ * app/components/cartaImprimible/carta-imprimible.css y la importa
+ * tanto esta página como la ruta pública /imprimir/carta-pdf/[slug].
  *
- * Variables CSS que inyecta la página (por restaurante):
- *   --cpdf-bg       Fondo a sangre (p.ej. #1a1a2e)
- *   --cpdf-fg       Color de texto (calculado por contraste)
- *   --cpdf-accent   Cabeceras de sección (p.ej. #c9a96e)
- *   --cpdf-font     Pila tipográfica
+ * En impresión desde el admin no se usa (el botón "Descargar PDF" abre
+ * /imprimir en pestaña nueva, que está SIN este shell). Las reglas de
+ * @media print en carta-imprimible.css ya ocultan el shell por si acaso
+ * el usuario pulsa Ctrl+P sobre la propia página de admin.
  * ───────────────────────────────────────────────────────────────────── */
 
 .cpdf-shell {
   --cpdf-bg: #1a1a2e;
   --cpdf-fg: #f6f4f0;
   --cpdf-accent: #c9a96e;
-  /*
-   * Pila por defecto: cae a la variable de la fuente serif autoalojada por
-   * next/font (inyectada vía className en el componente). Si el componente
-   * decide otra pila (sans/mono), la sobreescribe en style inline.
-   */
   --cpdf-font: var(--cpdf-font-serif, 'Georgia', 'Garamond', serif);
 
   display: grid;
@@ -123,6 +118,7 @@
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  text-align: center;
 }
 .cpdf-btn--primary { background: #111; color: #fff; }
 .cpdf-btn--primary:hover { background: #333; }
@@ -149,241 +145,3 @@
 }
 .cpdf-status--ok    { background: #0f5132; }
 .cpdf-status--error { background: #842029; }
-
-/* ─────────────────────────────────────────────────────────────────────
- * HOJA IMPRIMIBLE
- * En pantalla se ve como una hoja A4 con sombra; al imprimir ocupa toda
- * la página con fondo a sangre (`print-color-adjust: exact`).
- * ───────────────────────────────────────────────────────────────────── */
-
-.cpdf-sheet {
-  width: 210mm;
-  min-height: 297mm;
-  background: var(--cpdf-bg);
-  color: var(--cpdf-fg);
-  font-family: var(--cpdf-font);
-  padding: 22mm 18mm 20mm;
-  box-sizing: border-box;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.25);
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-  position: relative;
-}
-
-.cpdf-sheet__hero {
-  text-align: center;
-  padding-bottom: 14mm;
-  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
-  margin-bottom: 10mm;
-}
-.cpdf-sheet__logo {
-  display: block;
-  margin: 0 auto 6mm;
-  max-height: 40mm;
-  max-width: 70mm;
-  object-fit: contain;
-}
-.cpdf-sheet__nombre {
-  font-size: 22pt;
-  letter-spacing: 0.24em;
-  font-weight: 400;
-  text-transform: uppercase;
-  margin: 0 0 4mm;
-}
-.cpdf-sheet__descripcion {
-  max-width: 130mm;
-  margin: 0 auto;
-  font-size: 10pt;
-  line-height: 1.55;
-  text-align: left;
-  color: color-mix(in srgb, var(--cpdf-fg) 88%, transparent);
-}
-
-.cpdf-sheet__body {
-  columns: 2;
-  column-gap: 10mm;
-  column-fill: auto;
-  /*
-   * El body siempre usa la monoespaciada autoalojada (JetBrains Mono) —
-   * da el aspecto "carta de precios" del modelo La Higuera y mantiene los
-   * precios alineados en columna con `tabular-nums`. La var la inyecta
-   * next/font desde el shell.
-   */
-  font-family: var(--cpdf-font-mono, 'Courier New', 'DejaVu Sans Mono', monospace);
-  font-size: 9.5pt;
-  line-height: 1.35;
-}
-
-.cpdf-section {
-  break-inside: avoid-column;
-  margin: 0 0 6mm;
-}
-/* Primera sección: pegada arriba de la columna sin separación extra */
-.cpdf-sheet__body > .cpdf-section:first-child { margin-top: 0; }
-
-.cpdf-section__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 1.6mm;
-  margin-bottom: 2.4mm;
-  border-bottom: 1px solid var(--cpdf-accent);
-  color: var(--cpdf-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 9pt;
-  break-after: avoid-column;
-  break-after: avoid;
-}
-.cpdf-section__title { font-weight: 700; }
-.cpdf-section__labels {
-  font-size: 7pt;
-  letter-spacing: 0.22em;
-  color: color-mix(in srgb, var(--cpdf-accent) 85%, transparent);
-  display: flex;
-  gap: 10mm;
-  text-align: right;
-}
-
-.cpdf-vino {
-  break-inside: avoid;
-  margin: 0 0 2.4mm;
-  padding: 0;
-}
-.cpdf-vino__linea1 {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.cpdf-vino__nombre { flex: 1 1 auto; min-width: 0; }
-.cpdf-vino__precios {
-  display: flex;
-  gap: 8mm;
-  white-space: nowrap;
-  text-align: right;
-  font-feature-settings: 'tnum';
-  font-variant-numeric: tabular-nums;
-}
-.cpdf-vino__precio {
-  min-width: 14mm;
-  display: inline-block;
-  text-align: right;
-}
-.cpdf-vino__linea2 {
-  font-size: 8pt;
-  opacity: 0.78;
-  margin-top: 0.4mm;
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-}
-.cpdf-vino__linea2::first-letter { text-transform: uppercase; }
-
-.cpdf-sheet__pie {
-  margin-top: 8mm;
-  padding-top: 4mm;
-  border-top: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
-  font-size: 8pt;
-  text-align: center;
-  opacity: 0.7;
-  column-span: all;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
- * CABECERA REPETIDA EN PÁGINAS SIGUIENTES
- *
- * Patrón: tabla con <thead> que Chromium replica automáticamente en cada
- * salto de página (display: table-header-group por defecto). Verificado
- * empíricamente con scripts/verify-carta-pdf-header.mjs después de que
- * `position: running()` + `@top-center` NO funcionara en Chrome actual.
- *
- * Consecuencias:
- *   - El thead aparece también en la primera página — es deseable: la
- *     identidad del restaurante entra arriba antes incluso del hero.
- *   - El multicol vive dentro de un <td> del tbody; Chromium pagina
- *     columns dentro de celda sin problemas en versiones recientes.
- * ───────────────────────────────────────────────────────────────────── */
-
-.cpdf-page-table {
-  width: 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-.cpdf-page-table > thead {
-  display: table-header-group; /* explícito: es la señal a Chromium */
-}
-.cpdf-page-table > thead > tr > td,
-.cpdf-page-table > tbody > tr > td {
-  padding: 0;
-  border: 0;
-  vertical-align: top;
-}
-
-.cpdf-sheet__pageheader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8mm;
-  padding: 0 0 2mm 0;
-  margin: 0 0 6mm;
-  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 25%, transparent);
-  font-size: 8pt;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--cpdf-fg) 75%, transparent);
-  font-family: var(--cpdf-font);
-}
-.cpdf-sheet__pageheader img {
-  max-height: 8mm;
-  max-width: 24mm;
-  object-fit: contain;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
- * REGLAS DE IMPRESIÓN
- * ───────────────────────────────────────────────────────────────────── */
-
-@media print {
-  html, body {
-    background: var(--cpdf-bg) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  .cpdf-shell {
-    display: block !important;
-    padding: 0 !important;
-    background: var(--cpdf-bg) !important;
-  }
-  .cpdf-shell__aside,
-  .cpdf-status,
-  .no-print {
-    display: none !important;
-  }
-  .cpdf-shell__main { padding: 0 !important; }
-  .cpdf-sheet {
-    box-shadow: none !important;
-    width: auto !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-}
-
-@page {
-  size: A4;
-  margin: 14mm 12mm 12mm;
-  background: var(--cpdf-bg);
-  @top-center {
-    content: element(cpdfpageheader);
-  }
-}
-
-/* En la primera página mantenemos el hero grande; ocultamos el pageheader
- * pequeño para que no se superponga. */
-@page :first {
-  @top-center { content: none; }
-  margin-top: 0;
-}

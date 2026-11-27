@@ -101,8 +101,17 @@ ALTER TABLE public.restaurantes
 ALTER TABLE public.restaurantes
   ALTER COLUMN carta_mostrar_copa SET DEFAULT false;
 
+-- Nueva columna añadida en el bloque "bug impresión + ajustes carta PDF":
+-- toggle para incluir bodega y añada en la línea secundaria de cada vino.
+-- Default FALSE: la línea por defecto es sólo "uva · región".
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS carta_incluir_bodega_anada boolean NOT NULL DEFAULT false;
+
 COMMENT ON COLUMN public.restaurantes.carta_descripcion IS
   'Texto opcional de presentación que aparece bajo el logo en la primera página de la carta PDF imprimible. Máx. recomendado 600 caracteres. NULL ≡ no se imprime.';
 
 COMMENT ON COLUMN public.restaurantes.carta_mostrar_copa IS
   'Si TRUE, la carta PDF imprimible muestra la columna COPA además de BOTELLA. Default FALSE: el comportamiento habitual es imprimir solo precio por botella; los restaurantes que vendan por copa pueden activarlo desde el panel.';
+
+COMMENT ON COLUMN public.restaurantes.carta_incluir_bodega_anada IS
+  'Si TRUE, la segunda línea de cada vino en la carta PDF incluye "bodega · uva · región · añada". Si FALSE (default), solo "uva · región". Toggle opcional del sommelier.';

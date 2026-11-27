@@ -104,9 +104,9 @@ describe('agruparVinosPorSeccion', () => {
 })
 
 describe('lineaOrigenVino', () => {
-  it('uva · región', () => {
+  it('uva · región (por defecto, sin bodega ni añada)', () => {
     assert.equal(
-      lineaOrigenVino({ uva: 'Tempranillo', region: 'D.O. Rioja' }),
+      lineaOrigenVino({ uva: 'Tempranillo', region: 'D.O. Rioja', bodega: 'Pago X', anada: '2019' }),
       'Tempranillo · D.O. Rioja'
     )
   })
@@ -119,6 +119,15 @@ describe('lineaOrigenVino', () => {
   it('vacío si no hay datos', () => {
     assert.equal(lineaOrigenVino({}), '')
     assert.equal(lineaOrigenVino(null), '')
+  })
+  it('con incluirBodega/incluirAnada añade ambos al final en su posición', () => {
+    assert.equal(
+      lineaOrigenVino(
+        { uva: 'Tempranillo', region: 'D.O. Rioja', bodega: 'Pago X', anada: '2019' },
+        { incluirBodega: true, incluirAnada: true }
+      ),
+      'Pago X · Tempranillo · D.O. Rioja · 2019'
+    )
   })
 })
 
