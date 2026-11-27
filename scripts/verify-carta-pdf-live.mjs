@@ -33,6 +33,8 @@ const OUT_DIR = path.join(repoRoot, '.tmp-carta-pdf-verify')
 
 const MAX_PAGINAS = 3
 const UMBRAL_TEXTO_PAG_NO_FINAL = 0.40 // 40% del texto de la pág más llena
+const UMBRAL_TEXTO_PAG_FINAL = 0.10    // última pág debe tener >10% o el verify avisa
+                                        //  (una pág final con solo cabecera repetida ≈ 2-3%)
 const TOLERANCIA_COLOR = 24 // distancia euclídea RGB por canal (0..255)
 
 async function esperarUrl(url, timeoutMs = 120_000) {
@@ -252,6 +254,10 @@ async function main() {
     const r3 = info.slice(0, -1).every(i => i.ratioTexto >= UMBRAL_TEXTO_PAG_NO_FINAL)
     const r4 = info.every(i => i.bordesOK)
     const r5 = info.every(i => !i.marcadorChrome)
+    // La última página NO puede ser una página fantasma con solo
+    // cabecera repetida (ratio texto por debajo de UMBRAL_TEXTO_PAG_FINAL).
+    const ultima = info[info.length - 1]
+    const r7 = !ultima || ultima.ratioTexto >= UMBRAL_TEXTO_PAG_FINAL
     // Primera página debe tener vinos (no solo hero): heurística — presencia
     // de al menos un "€" en pág 1 o chars > 200.
     const pag1 = info.find(i => i.pag === 1)
@@ -270,10 +276,12 @@ async function main() {
                   : '❌ Chrome está imprimiendo su cabecera/pie (@page margin:0 no efectivo)')
     console.log(r6 ? '✅ Página 1 incluye vinos (no solo hero)'
                   : '❌ Página 1 sin vinos (solo hero)')
+    console.log(r7 ? `✅ Página final con contenido real (ratio ${ultima?.ratioTexto ?? '—'})`
+                  : `❌ Página final fantasma: solo ${Math.round((ultima?.ratioTexto||0)*100)}% texto (probable: thead+tfoot vacíos)`)
     console.log(`   PDF: ${pdfPath}`)
     console.log(`   PNGs: ${paginas.map(p => p.rasterPath).join(', ')}`)
 
-    const ok = r1 && r2 && r3 && r4 && r5 && r6
+    const ok = r1 && r2 && r3 && r4 && r5 && r6 && r7
     process.exit(ok ? 0 : 3)
   } catch (err) {
     console.error('[verify-live] Error:', err)

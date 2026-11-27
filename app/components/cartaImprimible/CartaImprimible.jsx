@@ -84,22 +84,29 @@ export function CartaImprimible({ restaurante, secciones, config }) {
                     incluirBodegaAnada={!!config.carta_incluir_bodega_anada}
                   />
                 ))}
+                {/*
+                  Pie DENTRO del multicol como último ítem del flujo.
+                  Al ser ítem (y no bloque externo que necesite su propia
+                  caja de página), se sitúa al final de la última columna
+                  utilizada. Antes vivía fuera del multicol y provocaba
+                  una página extra solo con el pie cuando la última
+                  columna quedaba casi llena.
+                */}
+                {config.carta_pie_texto ? (
+                  <footer className="cpdf-sheet__pie">{config.carta_pie_texto}</footer>
+                ) : null}
               </div>
-
-              {config.carta_pie_texto ? (
-                <footer className="cpdf-sheet__pie">{config.carta_pie_texto}</footer>
-              ) : null}
             </td>
           </tr>
         </tbody>
-        <tfoot>
-          <tr>
-            <td>
-              {/* Spacer del borde inferior (se repite en cada página) */}
-              <div className="cpdf-page-spacer cpdf-page-spacer--bottom" aria-hidden="true" />
-            </td>
-          </tr>
-        </tfoot>
+        {/*
+          Antes había un <tfoot> con spacer bottom repetido en cada página.
+          Chromium lo empujaba a una página fantasma cuando el tbody
+          terminaba cerca del límite. El margen inferior físico lo da
+          ahora el padding-bottom del <td> del tbody (se aplica solo a la
+          última página con contenido, en el resto Chromium pagina sin
+          dejar franja inferior adicional).
+        */}
       </table>
     </article>
   )
