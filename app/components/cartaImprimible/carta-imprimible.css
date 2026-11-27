@@ -1,24 +1,32 @@
 /* ─────────────────────────────────────────────────────────────────────
- * Carta imprimible — CSS neutro de la hoja A4 (compartido entre
- * /admin/carta-pdf/[slug] y /imprimir/carta-pdf/[slug]).
+ * Carta imprimible — CSS compartido (admin preview + /imprimir).
  *
- * Variables CSS (inyectadas en style inline en .cpdf-sheet):
- *   --cpdf-bg     Fondo a sangre
- *   --cpdf-fg     Color de texto (calculado por contraste)
- *   --cpdf-accent Cabeceras de sección
- *   --cpdf-font   Pila tipográfica
+ * Variables CSS (inyectadas por el componente):
+ *   --cpdf-bg       Fondo a sangre
+ *   --cpdf-fg       Color de texto
+ *   --cpdf-accent   Cabeceras de sección
+ *   --cpdf-font     Pila tipográfica
  *
- * Las variables de fuentes (--cpdf-font-serif/sans/mono) las inyecta
- * next/font desde el shell contenedor.
+ * Variables de fuentes autoalojadas (next/font) las inyecta el shell
+ * contenedor: --cpdf-font-serif / --cpdf-font-sans / --cpdf-font-mono.
  * ───────────────────────────────────────────────────────────────────── */
+
+/* ── Márgenes y padding interno ───────────────────────────────────── */
+
+:root {
+  --cpdf-side-pad: 14mm;       /* margen izquierda/derecha interior */
+  --cpdf-top-spacer: 10mm;     /* espacio superior repetido (thead) */
+  --cpdf-bottom-spacer: 10mm;  /* espacio inferior repetido (tfoot) */
+  --cpdf-hero-height: 40mm;    /* altura máx. hero compacto en pág 1 */
+}
+
+/* ── Hoja (preview en pantalla, A4 real al imprimir) ───────────────── */
 
 .cpdf-sheet {
   width: 210mm;
-  min-height: 297mm;
   background: var(--cpdf-bg);
   color: var(--cpdf-fg);
   font-family: var(--cpdf-font);
-  padding: 22mm 18mm 20mm;
   box-sizing: border-box;
   box-shadow: 0 8px 40px rgba(0,0,0,0.25);
   -webkit-print-color-adjust: exact;
@@ -26,44 +34,109 @@
   position: relative;
 }
 
-.cpdf-sheet__hero {
-  text-align: center;
-  padding-bottom: 14mm;
-  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
-  margin-bottom: 10mm;
+/* En pantalla damos altura A4 para que el preview se vea como hoja.
+   En print lo neutralizamos para que no fuerce una página mínima. */
+.cpdf-sheet:not(.cpdf-sheet--print) { min-height: 297mm; }
+
+/* ── Table / thead / tbody / tfoot ────────────────────────────────── */
+
+.cpdf-page-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
 }
-.cpdf-sheet__logo {
-  display: block;
-  margin: 0 auto 6mm;
-  max-height: 40mm;
-  max-width: 70mm;
+.cpdf-page-table > thead { display: table-header-group; }
+.cpdf-page-table > tfoot { display: table-footer-group; }
+.cpdf-page-table > thead > tr > td,
+.cpdf-page-table > tbody > tr > td,
+.cpdf-page-table > tfoot > tr > td {
+  padding: 0 var(--cpdf-side-pad);
+  border: 0;
+  vertical-align: top;
+  background: var(--cpdf-bg);
+}
+
+/* Spacers que reproducen el margen físico de @page { margin: 0 } */
+.cpdf-page-spacer { width: 100%; }
+.cpdf-page-spacer--top    { height: var(--cpdf-top-spacer); }
+.cpdf-page-spacer--bottom { height: var(--cpdf-bottom-spacer); }
+
+/* ── Pageheader (cabecera pequeña repetida por página) ─────────────── */
+
+.cpdf-sheet__pageheader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8mm;
+  padding: 0 0 2mm 0;
+  margin: 0 0 5mm;
+  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 25%, transparent);
+  font-size: 8pt;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--cpdf-fg) 75%, transparent);
+  font-family: var(--cpdf-font);
+}
+.cpdf-sheet__pageheader img {
+  max-height: 7mm;
+  max-width: 20mm;
   object-fit: contain;
 }
+
+/* ── Hero COMPACTO (una fila: logo | nombre + descripción) ─────────── */
+
+.cpdf-sheet__hero {
+  display: flex;
+  align-items: center;
+  gap: 8mm;
+  max-height: var(--cpdf-hero-height);
+  padding-bottom: 6mm;
+  margin-bottom: 6mm;
+  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
+  break-after: avoid; /* intenta no separar hero del inicio de columnas */
+}
+.cpdf-sheet__logo {
+  flex: 0 0 auto;
+  max-height: var(--cpdf-hero-height);
+  max-width: 45mm;
+  object-fit: contain;
+}
+.cpdf-sheet__logo--placeholder {
+  max-height: 0;
+  max-width: 0;
+  display: none;
+}
+.cpdf-sheet__hero-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .cpdf-sheet__nombre {
-  font-size: 22pt;
-  letter-spacing: 0.24em;
+  font-size: 18pt;
+  letter-spacing: 0.22em;
   font-weight: 400;
   text-transform: uppercase;
-  margin: 0 0 4mm;
+  margin: 0 0 2mm;
+  line-height: 1.1;
 }
 .cpdf-sheet__descripcion {
-  max-width: 130mm;
-  margin: 0 auto;
-  font-size: 10pt;
-  line-height: 1.55;
+  margin: 0;
+  font-size: 9pt;
+  line-height: 1.45;
   text-align: left;
   color: color-mix(in srgb, var(--cpdf-fg) 88%, transparent);
+  /* Máximo 3 líneas para que el hero quede compacto */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
+
+/* ── Cuerpo multicolumn ────────────────────────────────────────────── */
 
 .cpdf-sheet__body {
   columns: 2;
   column-gap: 10mm;
-  /*
-   * En pantalla: balance para que ambas columnas queden visualmente
-   * similares. En impresión: auto para que llene la columna 1 y pase
-   * a la 2 antes del salto de página — reglas dentro de @media print.
-   */
-  column-fill: balance;
+  column-fill: balance; /* preview; en print → auto (más abajo) */
   font-family: var(--cpdf-font-mono, 'Courier New', 'DejaVu Sans Mono', monospace);
   font-size: 9.5pt;
   line-height: 1.35;
@@ -71,7 +144,7 @@
 
 .cpdf-section {
   break-inside: avoid-column;
-  margin: 0 0 6mm;
+  margin: 0 0 5mm;
 }
 .cpdf-sheet__body > .cpdf-section:first-child { margin-top: 0; }
 
@@ -80,8 +153,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 1.6mm;
-  margin-bottom: 2.4mm;
+  padding-bottom: 1.4mm;
+  margin-bottom: 2mm;
   border-bottom: 1px solid var(--cpdf-accent);
   color: var(--cpdf-accent);
   text-transform: uppercase;
@@ -102,7 +175,7 @@
 
 .cpdf-vino {
   break-inside: avoid;
-  margin: 0 0 2.4mm;
+  margin: 0 0 2.2mm;
   padding: 0;
 }
 .cpdf-vino__linea1 {
@@ -136,69 +209,31 @@
 }
 .cpdf-vino__linea2::first-letter { text-transform: uppercase; }
 
+/* ── Pie: bloque al final del flow, SIN column-span ─────────────────
+   column-span: all forzaba al pie a salir del multicol como bloque
+   de ancho completo; cuando el multicol terminaba cerca del final de
+   la página, el pie saltaba a una página nueva vacía (causa raíz de
+   la "página 4 sobrante"). Ahora es bloque normal in-flow DENTRO del
+   multicol, con break-before: avoid para evitar saltos innecesarios. */
 .cpdf-sheet__pie {
-  margin-top: 8mm;
-  padding-top: 4mm;
+  margin-top: 6mm;
+  padding-top: 3mm;
   border-top: 1px solid color-mix(in srgb, var(--cpdf-fg) 20%, transparent);
   font-size: 8pt;
   text-align: center;
   opacity: 0.7;
-  column-span: all;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
- * CABECERA REPETIDA EN PÁGINAS SIGUIENTES
- *
- * Patrón: tabla con <thead> que Chromium replica automáticamente en cada
- * salto de página (display: table-header-group por defecto). Verificado
- * empíricamente con scripts/verify-carta-pdf-header.mjs.
- * ───────────────────────────────────────────────────────────────────── */
-
-.cpdf-page-table {
-  width: 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-.cpdf-page-table > thead {
-  display: table-header-group; /* explícito: señal a Chromium */
-}
-.cpdf-page-table > thead > tr > td,
-.cpdf-page-table > tbody > tr > td {
-  padding: 0;
-  border: 0;
-  vertical-align: top;
-}
-
-.cpdf-sheet__pageheader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8mm;
-  padding: 0 0 2mm 0;
-  margin: 0 0 6mm;
-  border-bottom: 1px solid color-mix(in srgb, var(--cpdf-fg) 25%, transparent);
-  font-size: 8pt;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--cpdf-fg) 75%, transparent);
-  font-family: var(--cpdf-font);
-}
-.cpdf-sheet__pageheader img {
-  max-height: 8mm;
-  max-width: 24mm;
-  object-fit: contain;
+  break-before: avoid-page;
+  break-before: avoid;
+  break-inside: avoid;
 }
 
 /* ─────────────────────────────────────────────────────────────────────
  * REGLAS DE IMPRESIÓN
  *
- * Neutralizan cualquier ancestro del layout admin (sidebar fixed,
- * .main con min-height:100vh, .nav overflow-y:auto, etc.) que
- * provocaba el bug "hoja en blanco" en Chrome "Guardar como PDF".
- *
- * Regla general: todo contenedor desde <html> hasta la hoja debe tener
- * height: auto, overflow: visible y position: static. Los elementos
- * fuera del árbol de la hoja se ocultan con [data-cpdf-hide-on-print].
+ * @page margin: 0 → el fondo a sangre llega al borde y Chrome NO
+ * imprime su propia cabecera (URL/fecha) ni pie (nº de página). El
+ * margen visual lo reproducen los spacers en thead/tfoot y el padding
+ * lateral del <td>.
  * ───────────────────────────────────────────────────────────────────── */
 
 @media print {
@@ -213,12 +248,7 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  /*
-   * Neutraliza TODOS los ancestros potenciales de la hoja. No es un
-   * universal-reset: sólo aplica a elementos que CONTIENEN a .cpdf-sheet
-   * en su subárbol. `:has()` está soportado por Chrome 105+, Edge 105+,
-   * Safari 15.4+ y Firefox 121+. Para print de PDF usamos Chromium.
-   */
+  /* Neutraliza ancestros (shell admin) que limitan la hoja. */
   html:has(.cpdf-sheet),
   body:has(.cpdf-sheet),
   body:has(.cpdf-sheet) *:has(.cpdf-sheet) {
@@ -234,12 +264,6 @@
     box-shadow: none !important;
     background: var(--cpdf-bg, #1a1a2e) !important;
   }
-  /*
-   * Oculta explícitamente todo lo que no sea el árbol de la hoja.
-   * Los componentes que deben sobrevivir al print marcan
-   * `data-cpdf-print-root`; los que deben desaparecer marcan
-   * `data-cpdf-hide-on-print` (o reciben la clase `no-print`).
-   */
   [data-cpdf-hide-on-print],
   .no-print {
     display: none !important;
@@ -251,13 +275,18 @@
     padding: 0 !important;
     margin: 0 !important;
   }
-  /* Impresión: columna 1 llena primero, columna 2 después (por página) */
+  /* En impresión: column-fill: auto para llenar columna 1 y pasar a la 2
+     por página, en lugar de balancear (que puede dejar huecos). */
   .cpdf-sheet__body {
     column-fill: auto !important;
   }
+  /* El tfoot (spacer) debe repetirse al final de cada página física */
+  .cpdf-page-table > tfoot { display: table-footer-group !important; }
 }
 
+/* Cero márgenes de @page: el fondo llega a los 4 bordes del papel y
+ * Chrome no inyecta su propia cabecera/pie con URL/fecha/nº página. */
 @page {
   size: A4;
-  margin: 12mm 10mm 10mm;
+  margin: 0;
 }

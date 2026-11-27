@@ -1,22 +1,26 @@
 /**
  * CartaImprimible
  *
- * Componente puro de la hoja A4 (sin shell admin, sin controles). Se usa en:
- *   - /admin/carta-pdf/[slug]        → preview dentro del panel admin
- *   - /imprimir/carta-pdf/[slug]     → ruta de impresión standalone
+ * Plantilla A4 compartida por:
+ *   - /admin/carta-pdf/[slug]       → preview dentro del panel admin
+ *   - /imprimir/carta-pdf/[slug]    → ruta pública standalone (impresión real)
  *
- * La ruta de impresión NO vive bajo /admin/ para no heredar el layout
- * admin (sidebar fixed, main con min-height: 100vh, overflow hidden en
- * varios ancestros). El bug "hoja en blanco al imprimir" se reproducía
- * precisamente porque esos ancestros limitaban la altura efectiva del
- * contenido impreso.
+ * MAQUETACIÓN
+ *   Patrón de tabla con thead + tbody + tfoot:
+ *     thead → spacer superior (10mm) + cabecera pequeña. Chromium
+ *             repite el thead en cada página (table-header-group).
+ *     tbody → hero compacto (logo izquierda, nombre+descripción
+ *             derecha, altura máx ~45mm) seguido del cuerpo multicol
+ *             y el pie. El hero compacto permite que los vinos
+ *             empiecen en la página 1 inmediatamente debajo.
+ *     tfoot → spacer inferior (10mm). Chromium repite el tfoot en
+ *             cada página (table-footer-group), reproduciendo un
+ *             margen inferior que se mantiene en TODAS las páginas.
  *
- * Props:
- *   - restaurante { nombre, logo_url? }
- *   - secciones   Array<{ tipo, label, vinos }>  (ya agrupadas y ordenadas)
- *   - config      { color_fondo, color_acento, color_texto, font_stack,
- *                    carta_descripcion, carta_pie_texto, carta_mostrar_copa,
- *                    carta_incluir_bodega_anada }
+ *   El cuerpo @page { margin: 0 } (ver carta-imprimible.css) hace
+ *   que el fondo a sangre llegue a los bordes del papel y que Chrome
+ *   NO imprima su cabecera/pie (URL, fecha, nº de página). El margen
+ *   visual lo reproducimos con los spacers y el padding lateral.
  */
 
 import { formatearPrecioPdf, lineaOrigenVino } from '../../lib/cartaPdfUtils'
@@ -29,23 +33,21 @@ export function CartaImprimible({ restaurante, secciones, config }) {
     '--cpdf-font': config.font_stack,
   }
 
+  const logoUrl = restaurante?.logo_url || ''
+  const nombre = restaurante?.nombre || ''
+
   return (
     <article className="cpdf-sheet" style={styleSheet} aria-label="Carta de vinos imprimible">
-      {/*
-        Patrón table+thead para repetir cabecera en cada página.
-        Chromium `--print-to-pdf` repite <thead> de forma nativa en
-        cada page break, a diferencia de CSS `position: running()` que
-        no funciona en la versión actual (verificado empíricamente con
-        scripts/verify-carta-pdf-header.mjs).
-      */}
       <table className="cpdf-page-table">
         <thead>
           <tr>
             <td>
+              {/* Spacer del borde superior (se repite en cada página) */}
+              <div className="cpdf-page-spacer cpdf-page-spacer--top" aria-hidden="true" />
               <div className="cpdf-sheet__pageheader" aria-hidden="true">
-                <span>{restaurante?.nombre || ''}</span>
-                {restaurante?.logo_url
-                  ? <img src={restaurante.logo_url} alt="" />
+                <span>{nombre}</span>
+                {logoUrl
+                  ? <img src={logoUrl} alt="" />
                   : <span aria-hidden="true" />}
                 <span>Carta de vinos</span>
               </div>
@@ -55,14 +57,22 @@ export function CartaImprimible({ restaurante, secciones, config }) {
         <tbody>
           <tr>
             <td>
+              {/*
+                Hero COMPACTO en una sola fila: logo a la izquierda,
+                nombre + descripción a la derecha. Máx. altura
+                controlada por CSS (~45mm) para que los vinos quepan
+                en la primera página inmediatamente debajo.
+              */}
               <section className="cpdf-sheet__hero">
-                {restaurante?.logo_url ? (
-                  <img className="cpdf-sheet__logo" src={restaurante.logo_url} alt="" />
-                ) : null}
-                <h1 className="cpdf-sheet__nombre">{restaurante?.nombre || ''}</h1>
-                {config.carta_descripcion ? (
-                  <p className="cpdf-sheet__descripcion">{config.carta_descripcion}</p>
-                ) : null}
+                {logoUrl ? (
+                  <img className="cpdf-sheet__logo" src={logoUrl} alt="" />
+                ) : <div className="cpdf-sheet__logo cpdf-sheet__logo--placeholder" aria-hidden="true" />}
+                <div className="cpdf-sheet__hero-text">
+                  <h1 className="cpdf-sheet__nombre">{nombre}</h1>
+                  {config.carta_descripcion ? (
+                    <p className="cpdf-sheet__descripcion">{config.carta_descripcion}</p>
+                  ) : null}
+                </div>
               </section>
 
               <div className="cpdf-sheet__body">
@@ -82,6 +92,14 @@ export function CartaImprimible({ restaurante, secciones, config }) {
             </td>
           </tr>
         </tbody>
+        <tfoot>
+          <tr>
+            <td>
+              {/* Spacer del borde inferior (se repite en cada página) */}
+              <div className="cpdf-page-spacer cpdf-page-spacer--bottom" aria-hidden="true" />
+            </td>
+          </tr>
+        </tfoot>
       </table>
     </article>
   )
@@ -121,7 +139,6 @@ function Vino({ vino, mostrarCopa, incluirBodegaAnada }) {
         <span className="cpdf-vino__nombre">{nombre}</span>
         <span className="cpdf-vino__precios">
           {mostrarCopa && (
-            // Celda vacía (sin "—") para preservar alineación de la columna BOTELLA.
             <span className="cpdf-vino__precio" aria-hidden={!precioCopa}>
               {precioCopa || ''}
             </span>
