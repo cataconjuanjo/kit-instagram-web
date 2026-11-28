@@ -59,9 +59,15 @@ export default function ImprimirCartaPdfPage() {
       setCargando(true)
       setError('')
       try {
-        const resp = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?carta=1`, {
-          cache: 'no-store',
-        })
+        // `_=<timestamp>` rompe cualquier capa intermedia (CDN, proxy, SW)
+        // que pudiera servir una copia cacheada. Combinado con
+        // `cache: 'no-store'` y `Cache-Control: no-store` en la API, garantiza
+        // que el PDF siempre refleje la última configuración guardada.
+        const bust = `_=${Date.now()}`
+        const resp = await fetch(
+          `/api/public/restaurante/${encodeURIComponent(slug)}?carta=1&${bust}`,
+          { cache: 'no-store' }
+        )
         if (!resp.ok) {
           if (resp.status === 404) throw new Error('Carta no publicada o restaurante no encontrado.')
           throw new Error('No se pudo cargar la carta.')

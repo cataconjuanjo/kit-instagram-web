@@ -387,11 +387,15 @@ export async function GET(req, { params }) {
       respuesta.links = (links || []).map(normalizarLinkHub).filter(Boolean)
     }
 
-    return Response.json(respuesta, {
-      headers: tokenPrueba
-        ? noStoreHeaders()
-        : publicCdnCacheHeaders({ cdnMaxAge: 60, staleWhileRevalidate: 300 }),
-    })
+    // Cuando se solicita la carta (carta=1) servimos sin caché. El endpoint
+    // alimenta /imprimir/carta-pdf/[slug] y la vista previa del admin: tras
+    // guardar opciones (copa_modo, logos, QR, crédito…) el PDF debe reflejar
+    // el cambio inmediatamente, sin esperar a que caduque el CDN. El resto
+    // de llamadas públicas (sin carta=1) siguen cacheándose en el CDN.
+    const headersRespuesta = (tokenPrueba || incluirCarta)
+      ? noStoreHeaders()
+      : publicCdnCacheHeaders({ cdnMaxAge: 60, staleWhileRevalidate: 300 })
+    return Response.json(respuesta, { headers: headersRespuesta })
   } catch (error) {
     console.error('[public-restaurante]', error)
     return Response.json({ error: 'No se pudo cargar el restaurante.' }, { status: 500 })

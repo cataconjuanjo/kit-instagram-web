@@ -658,12 +658,37 @@ async function ejecutarPase(browser, paleta) {
   return { paleta: paleta.nombre, ok: fallos.length === 0, fallos, rasters: resultados.map(r => r.rasterPath), pdf: pdfPath }
 }
 
+// Comprobación corta: la API con carta=1 responde SIN caché. Así, tras
+// guardar cambios en /admin, /imprimir/carta-pdf los ve inmediatamente
+// (sin esperar a que caduque x-vercel-cache / CDN).
+async function verificarNoCacheCarta() {
+  const url = `${BASE}/api/public/restaurante/casa-marisma?carta=1&_=${Date.now()}`
+  const r = await fetch(url, { cache: 'no-store' })
+  const cc = (r.headers.get('cache-control') || '').toLowerCase()
+  const ccCdn = (r.headers.get('vercel-cdn-cache-control') || r.headers.get('cdn-cache-control') || '').toLowerCase()
+  const okBrowser = cc.includes('no-store')
+  const okCdn = ccCdn.includes('no-store')
+  if (!okBrowser || !okCdn) {
+    return { ok: false, detalle: `cache-control="${cc}" cdn="${ccCdn}"` }
+  }
+  // Dos peticiones seguidas devuelven cuerpos con timestamps diferentes
+  // en el campo carta_pdf_opciones? No es determinable sin cambios reales.
+  // Nos basta con verificar que el header impide el cacheo intermedio.
+  return { ok: true, detalle: `cache-control="${cc}" cdn="${ccCdn}"` }
+}
+
 async function main() {
   await rm(OUT_DIR, { recursive: true, force: true })
   await mkdir(OUT_DIR, { recursive: true })
   const dev = await arrancarDev()
   let exitCode = 0
   try {
+    // Precheck: cabeceras sin caché en la ruta pública con carta=1.
+    const noCache = await verificarNoCacheCarta()
+    console.log(noCache.ok
+      ? `✅ API sin caché cuando carta=1 — ${noCache.detalle}`
+      : `❌ API con caché (debería ser no-store) — ${noCache.detalle}`)
+    if (!noCache.ok) exitCode = 3
     const { chromium } = await import('playwright')
     const browser = await chromium.launch({ headless: true })
     const resumenes = []
