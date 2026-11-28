@@ -458,6 +458,13 @@ export default function CartaPdfPage() {
               {POSICIONES_QR.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
+          {String(opciones.qr.posicion || '').startsWith('pie-') && (
+            <div className="cpdf-contrast-warn">
+              El QR en el pie puede añadir una página en cartas largas.
+              Por defecto se recomienda <strong>cabecera-der</strong>,
+              que vive en el hero y no consume altura del cuerpo.
+            </div>
+          )}
           <div className="cpdf-field">
             <label>Tamaño: {opciones.qr.tamano_mm} mm</label>
             <input type="range" min={10} max={40} step={1} value={opciones.qr.tamano_mm}

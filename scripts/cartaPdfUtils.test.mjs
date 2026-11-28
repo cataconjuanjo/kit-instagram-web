@@ -174,8 +174,10 @@ describe('normalizarOpcionesCartaPdf (defaults)', () => {
     assert.equal(defaults.fuente_cuerpo, 'actual')
     assert.deepEqual(defaults.logos, [])
     assert.equal(defaults.qr.activo, true)
-    assert.equal(defaults.qr.posicion, 'pie-der')
-    assert.equal(defaults.qr.tamano_mm, 18)
+    // Default v2 cambiado: QR en cabecera-der para no consumir altura
+    // del multicol y preservar 2 páginas con Casa Marisma (REGLA DE ORO).
+    assert.equal(defaults.qr.posicion, 'cabecera-der')
+    assert.equal(defaults.qr.tamano_mm, 16)
     assert.equal(defaults.credito, true)
     assert.equal(defaults.copa_modo, 'no')
     assert.equal(defaults.orden_vinos, 'alfabetico')

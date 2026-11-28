@@ -530,7 +530,24 @@
   max-width: 30mm;
 }
 
-/* Crédito discreto — default ON, no reemplaza al pie textual. */
+/* Variante hero del QR: texto a 6pt, el max-width lo fija el JSX
+ * para que envuelva sin forzar altura > hero. */
+.cpdf-qr--hero { align-items: flex-end; }
+.cpdf-qr--hero .cpdf-qr__texto {
+  font-size: 6pt;
+  text-align: right;
+  line-height: 1.15;
+}
+
+/* Hero flex: logo (si hay) | texto (flex 1) | QR (si hay). El QR no
+ * agranda la altura del hero porque tamano_mm ≤ --cpdf-hero-height. */
+.cpdf-sheet__hero > .cpdf-qr { flex: 0 0 auto; margin-left: auto; }
+
+/* Crédito discreto — default ON.
+ * Variante `--thead`: vive dentro del .cpdf-sheet__pageheader y se
+ * repite en cada página sin consumir altura del multicol (fix regla
+ * de oro). No tiene margin-top porque ya hereda el padding del
+ * pageheader. */
 .cpdf-credito {
   margin-top: 2mm;
   text-align: right;
@@ -539,8 +556,25 @@
   letter-spacing: 0.08em;
   color: var(--cpdf-fg);
   opacity: 0.4;
-  /* Sin column-span: cabe al final de la última columna */
 }
+.cpdf-credito--thead {
+  /*
+   * Pintura en el borde inferior del pageheader SIN añadir altura
+   * al bloque. `position: absolute` lo saca del flujo (el pageheader
+   * es `position: relative`); se alinea a la base del borde inferior
+   * y queda "flotando" sobre esa línea. Como no participa del box
+   * model, no gana milímetros × página.
+   */
+  position: absolute;
+  right: 0;
+  bottom: 0.4mm; /* un pelín por encima del borde para no tocarlo */
+  margin: 0;
+  padding: 0;
+  display: block;
+  line-height: 1;
+  pointer-events: none;
+}
+.cpdf-sheet__pageheader { position: relative; }
 
 /* ─────────────────────────────────────────────────────────────────────
  * REGLAS DE IMPRESIÓN

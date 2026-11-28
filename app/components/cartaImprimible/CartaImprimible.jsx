@@ -124,6 +124,15 @@ export function CartaImprimible({ restaurante, secciones, config }) {
   const sinEuro = opciones.precio_formato === 'sin_euro'
   const copaModo = opciones.copa_modo || 'no'
 
+  // ¿QR en hero (cabecera-*)? Debe estar activo + carta pública + slug
+  // + posición de cabecera. Si la posición es "pie-*", vive en el Pie.
+  const qrOpc = opciones.qr || {}
+  const qrCabeceraActivo = qrOpc.activo !== false
+    && restaurante?.carta_publica_activa !== false
+    && restaurante?.slug
+    && String(qrOpc.posicion || 'cabecera-der').startsWith('cabecera-')
+  const qrActivoHero = qrCabeceraActivo
+
   // Pie: combina carta_pie_texto (si el precio es sin € y nota_euros ON,
   // concatena la nota), y si corresponde añade el crédito discreto.
   const pieBase = config.carta_pie_texto || opciones.carta_pie_texto || ''
@@ -164,6 +173,18 @@ export function CartaImprimible({ restaurante, secciones, config }) {
                 </span>
                 <LogoFila logos={logosPorPos['cabecera-der']} alignEnd />
               </div>
+              {/*
+                Crédito en el thead → se repite en cada página junto
+                a la cabecera, SIN consumir altura del multicol. Antes
+                vivía al final del flujo y empujaba una pág 3 con
+                defaults. Se mantiene el requisito del brief: "sácalo
+                del flujo del multicol".
+              */}
+              {opciones.credito !== false && (
+                <div className="cpdf-credito cpdf-credito--thead" aria-label="Marca comercial">
+                  {CREDITO_TEXTO}
+                </div>
+              )}
             </td>
           </tr>
         </thead>
@@ -171,13 +192,22 @@ export function CartaImprimible({ restaurante, secciones, config }) {
           <tr>
             <td>
               <section className="cpdf-sheet__hero">
-                {logos.length === 0 ? null : null /* el logo principal ya va en el pageheader */}
                 <div className="cpdf-sheet__hero-text">
                   <h1 className="cpdf-sheet__nombre">{nombre}</h1>
                   {config.carta_descripcion ? (
                     <p className="cpdf-sheet__descripcion">{config.carta_descripcion}</p>
                   ) : null}
                 </div>
+                {/*
+                  QR en el hero cuando qr.posicion='cabecera-*'. El hero
+                  es flex row y el QR ocupa un slot fijo a la derecha
+                  sin agrandar la altura (tamaño ≤ hero height).
+                */}
+                {qrActivoHero && (
+                  <QrBlock qr={opciones.qr} slug={restaurante?.slug}
+                    bgHex={config.color_fondo} fgHex={config.color_texto}
+                    ubicacion="hero" />
+                )}
               </section>
 
               <div className="cpdf-sheet__body">
@@ -196,7 +226,6 @@ export function CartaImprimible({ restaurante, secciones, config }) {
                 <PieYQrYCredito
                   piePartes={piePartes}
                   qr={opciones.qr}
-                  credito={opciones.credito !== false}
                   logosPie={{
                     izq: logosPorPos['pie-izq'],
                     centro: logosPorPos['pie-centro'],
@@ -331,16 +360,16 @@ function MarcaAgua({ logos }) {
   )
 }
 
-function PieYQrYCredito({ piePartes, qr, credito, logosPie, cartaPublicaActiva, slug, bgHex, fgHex }) {
+function PieYQrYCredito({ piePartes, qr, logosPie, cartaPublicaActiva, slug, bgHex, fgHex }) {
   const qrActivo = qr && qr.activo !== false && cartaPublicaActiva && slug
-  const qrEnPie = qrActivo && String(qr.posicion || 'pie-der').startsWith('pie-')
+  // Solo interesa el QR si está en una posición de pie. Las posiciones
+  // 'cabecera-*' las renderiza el hero (QR arriba, sin consumir body).
+  const qrEnPie = qrActivo && String(qr.posicion || 'cabecera-der').startsWith('pie-')
   const hayLogosPie = logosPie.izq.length > 0 || logosPie.centro.length > 0 || logosPie.der.length > 0
-  const hayContenidoPie = piePartes.length > 0 || credito || qrEnPie || hayLogosPie
+  const hayContenidoPie = piePartes.length > 0 || qrEnPie || hayLogosPie
   if (!hayContenidoPie) return null
 
-  // Pie "simple" sin grid: cuando sólo tenemos texto + crédito + QR
-  // (sin logos en pie). Evita el column-span: all que empujaba una
-  // página extra solo-pie.
+  // Pie "simple" sin grid cuando sólo texto + QR (sin logos en pie).
   const necesitaGrid = hayLogosPie
   if (!necesitaGrid) {
     return (
@@ -348,8 +377,7 @@ function PieYQrYCredito({ piePartes, qr, credito, logosPie, cartaPublicaActiva, 
         {piePartes.length > 0 && (
           <div className="cpdf-pie-texto">{piePartes.map((p, i) => <div key={i}>{p}</div>)}</div>
         )}
-        {qrEnPie && <QrBlock qr={qr} slug={slug} bgHex={bgHex} fgHex={fgHex} alineacion={qr.posicion} />}
-        {credito && <div className="cpdf-credito" aria-label="Marca comercial">{CREDITO_TEXTO}</div>}
+        {qrEnPie && <QrBlock qr={qr} slug={slug} bgHex={bgHex} fgHex={fgHex} />}
       </footer>
     )
   }
@@ -379,12 +407,11 @@ function PieYQrYCredito({ piePartes, qr, credito, logosPie, cartaPublicaActiva, 
             : <LogoFila logos={logosPie.der} alignEnd />}
         </div>
       </div>
-      {credito && <div className="cpdf-credito" aria-label="Marca comercial">{CREDITO_TEXTO}</div>}
     </footer>
   )
 }
 
-function QrBlock({ qr, slug, bgHex, fgHex }) {
+function QrBlock({ qr, slug, bgHex, fgHex, ubicacion = 'pie' }) {
   const url = useMemo(() => {
     const base = typeof window !== 'undefined' ? window.location.origin : 'https://cataconjuanjo.com'
     const u = new URL(`/carta/${slug}`, base)
@@ -393,18 +420,29 @@ function QrBlock({ qr, slug, bgHex, fgHex }) {
     return u.toString()
   }, [slug])
 
+  const tamanoMm = qr?.tamano_mm || 16
   const svg = useQrSvg(url, {
     bg: qr?.color_auto === false ? bgHex : '#ffffff',
     fg: qr?.color_auto === false ? fgHex : '#111111',
-    tamanoMm: qr?.tamano_mm || 18,
+    tamanoMm,
   })
 
+  // En el hero el texto va DEBAJO del QR (6pt, envuelve). En el pie
+  // mantiene el estilo original (6.5pt debajo). La variante hero fija
+  // max-width al doble del QR para que el texto envuelva sin forzar
+  // altura por encima del hero compacto.
+  const esHero = ubicacion === 'hero'
+  const clase = `cpdf-qr${esHero ? ' cpdf-qr--hero' : ''}`
   return (
-    <div className="cpdf-qr" style={{ width: `${qr.tamano_mm || 18}mm` }}>
+    <div className={clase} style={{ width: `${tamanoMm}mm` }}>
       {svg
         ? <span className="cpdf-qr__svg" dangerouslySetInnerHTML={{ __html: svg }} />
         : <span className="cpdf-qr__placeholder" />}
-      {qr.texto ? <div className="cpdf-qr__texto">{qr.texto}</div> : null}
+      {qr.texto
+        ? <div className="cpdf-qr__texto" style={esHero ? { maxWidth: `${tamanoMm * 2}mm` } : undefined}>
+            {qr.texto}
+          </div>
+        : null}
     </div>
   )
 }

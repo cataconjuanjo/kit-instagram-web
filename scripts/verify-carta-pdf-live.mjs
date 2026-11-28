@@ -78,8 +78,11 @@ const OPCIONES_CONFIG_COMPLETA = {
 
 const PALETAS = [
   // Pase 1 — DEFAULTS. Paleta real de casa-marisma, opciones v2 = {}.
-  // Confirma REGLA DE ORO (equivalencia al v1).
-  { nombre: 'defaults', slug: 'casa-marisma', opciones: null },
+  // Interceptamos la API para forzar carta_pdf_opciones = {} (la DB real
+  // puede tener config de pruebas anteriores guardada: logos a 14mm,
+  // qr en pie, etc.). Esto simula fielmente un restaurante que NUNCA
+  // ha abierto el panel v2 → REGLA DE ORO: 2 páginas.
+  { nombre: 'defaults', slug: 'casa-marisma', opciones: null, forzarOpcionesVacias: true },
   // Pase 2 — config completa + 80 vinos CLONADOS sobre casa-marisma.
   // Mantenido por regresión con la verificación v2 original.
   {
@@ -230,7 +233,7 @@ async function ejecutarPase(browser, paleta) {
   //   (b) clonar los vinos hasta `clonarVinosHasta` (simula una carta
   //       grande tipo Lo de Carmen sin cargar 80 vinos reales).
   // El componente recibe la respuesta modificada y renderiza normal.
-  if (paleta.color_fondo || paleta.clonarVinosHasta || paleta.opciones) {
+  if (paleta.color_fondo || paleta.clonarVinosHasta || paleta.opciones || paleta.forzarOpcionesVacias) {
     await page.route('**/api/public/restaurante/**', async route => {
       const response = await route.fetch()
       let body
@@ -240,7 +243,11 @@ async function ejecutarPase(browser, paleta) {
         if (paleta.color_acento) body.restaurante.color_acento = paleta.color_acento
         if (paleta.opciones) {
           body.restaurante.carta_pdf_opciones = paleta.opciones
-          // Para que el QR tenga carta pública activa en el mock
+          body.restaurante.carta_publica_activa = true
+        } else if (paleta.forzarOpcionesVacias) {
+          // Simula "restaurante recién llegado al v2": sin config
+          // guardada aunque la DB real sí la tenga.
+          body.restaurante.carta_pdf_opciones = {}
           body.restaurante.carta_publica_activa = true
         }
       }
@@ -324,20 +331,46 @@ async function ejecutarPase(browser, paleta) {
   })
   console.log('[pase] Nombre restaurante:', JSON.stringify(nombreRestaurante))
 
+  // Alturas de los bloques superiores — diagnóstico de empuje de páginas.
+  const alturas = await page.evaluate(() => {
+    const px2mm = px => Math.round(px / 3.7795 * 10) / 10
+    function info(sel) {
+      const el = document.querySelector(sel)
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { h: px2mm(r.height), w: px2mm(r.width) }
+    }
+    const pageheaderHijos = Array.from(document.querySelectorAll('.cpdf-sheet__pageheader > *')).map(el => ({
+      tag: el.tagName.toLowerCase(),
+      className: el.className,
+      h: px2mm(el.getBoundingClientRect().height),
+      w: px2mm(el.getBoundingClientRect().width),
+    }))
+    return {
+      pageheader: info('.cpdf-sheet__pageheader'),
+      hero: info('.cpdf-sheet__hero'),
+      heroText: info('.cpdf-sheet__hero-text'),
+      heroQr: info('.cpdf-sheet__hero > .cpdf-qr'),
+      descripcion: info('.cpdf-sheet__descripcion'),
+      pageheaderHijos,
+    }
+  })
+  console.log('[pase] Alturas (mm):', JSON.stringify(alturas, null, 2))
+
   // Mide todos los logos del DOM (fix bug "logos 0×0").
   const logosDom = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.cpdf-logos-fila img'))
+    const items = Array.from(document.querySelectorAll('img'))
     return items.map(img => ({
-      src: img.getAttribute('src'),
-      // El bounding rect refleja el tamaño renderizado real, incluidos
-      // SVG sin width/height intrínsecos (que antes salían a 0×0).
+      src: (img.getAttribute('src') || '').slice(-60),
+      className: img.className,
       w: Math.round(img.getBoundingClientRect().width),
       h: Math.round(img.getBoundingClientRect().height),
-      parentInPageheader: !!img.closest('.cpdf-sheet__pageheader'),
-      parentInPie: !!img.closest('.cpdf-sheet__pie'),
+      style: img.getAttribute('style'),
+      parentClass: img.parentElement?.className || '',
+      parentParentClass: img.parentElement?.parentElement?.className || '',
     }))
   })
-  console.log('[pase] Logos medidos:', logosDom)
+  console.log('[pase] Todos los IMG:', JSON.stringify(logosDom, null, 2))
   const logosOK = logosDom.length === 0 || logosDom.every(l => l.w > 0 && l.h > 0)
   if (!logosOK) {
     console.log('[pase] ❌ Hay logos con dimensión 0×0')
@@ -448,6 +481,11 @@ async function ejecutarPase(browser, paleta) {
   const textoTotal = resultados.map(r => r.texto).join(' ')
   const ocurrenciasNotaIva = (textoTotal.match(/Precios\s+en\s+euros,?\s+IVA\s+incluido/gi) || []).length
   const r11 = ocurrenciasNotaIva <= 1
+  // r12: con crédito ON por defecto, el texto "Carta Viva" debe aparecer
+  // al menos una vez en el PDF (está en el thead, se repite cada página).
+  const creditoActivo = (paleta.opciones?.credito !== false)
+  const ocurrenciasCredito = (textoTotal.match(/Carta\s+Viva/gi) || []).length
+  const r12 = !creditoActivo || ocurrenciasCredito >= 1
   // Si la paleta marca flexible (p.ej. carmen-real con 80+ vinos reales),
   // relajamos r1 (máx. 4 páginas en lugar de MAX_PAGINAS=3).
   const r1Efectivo = paleta.flexible ? nPag <= 4 : r1
@@ -476,6 +514,11 @@ async function ejecutarPase(browser, paleta) {
   console.log(r11
     ? `✅ Nota IVA no duplicada (ocurrencias: ${ocurrenciasNotaIva})`
     : `❌ Nota IVA duplicada (${ocurrenciasNotaIva} veces)`)
+  console.log(r12
+    ? (creditoActivo
+        ? `✅ Crédito "Carta Viva" presente (${ocurrenciasCredito} ocurr.)`
+        : '· Crédito desactivado (regla no aplica)')
+    : '❌ Crédito activo pero no aparece en el PDF')
   console.log(`· Fuentes embebidas: ${fuentesEmbebidas.length}`)
 
   const fallos = []
@@ -490,6 +533,7 @@ async function ejecutarPase(browser, paleta) {
   if (!r9) fallos.push('r9-qr-no-descodifica')
   if (!r10) fallos.push('r10-logo-0x0')
   if (!r11) fallos.push('r11-nota-iva-duplicada')
+  if (!r12) fallos.push('r12-credito-ausente')
 
   if (!r4) {
     const paginasConFallo = resultados.filter(r => !r.bordes.ok)

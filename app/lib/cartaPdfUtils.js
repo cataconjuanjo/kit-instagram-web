@@ -346,8 +346,13 @@ export function normalizarOpcionesCartaPdf(raw) {
   const qrRaw = (r.qr && typeof r.qr === 'object') ? r.qr : {}
   const qr = {
     activo: boolDefault(qrRaw.activo, true),
-    posicion: enumConDefault(qrRaw.posicion, CATALOGO_POSICIONES_QR, 'pie-der'),
-    tamano_mm: numEntre(qrRaw.tamano_mm, 10, 40, 18),
+    // Default 'cabecera-der' + 16mm: el QR vive en el hero (fuera del
+    // multicol) por lo que NO consume altura del cuerpo. Con defaults
+    // + Casa Marisma 50 vinos el PDF sigue en 2 páginas (REGLA DE ORO).
+    // Las posiciones de pie siguen disponibles; el admin avisa de que
+    // en el pie pueden añadir una página en cartas largas.
+    posicion: enumConDefault(qrRaw.posicion, CATALOGO_POSICIONES_QR, 'cabecera-der'),
+    tamano_mm: numEntre(qrRaw.tamano_mm, 10, 40, 16),
     texto: typeof qrRaw.texto === 'string'
       ? qrRaw.texto.trim().slice(0, 140)
       : 'Maridajes y fichas de cada vino · escanea',
