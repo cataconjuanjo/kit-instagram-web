@@ -67,6 +67,10 @@ export default function CartaPdfPage() {
   const [vinos, setVinos] = useState([])
   const [form, setForm] = useState(DEFAULTS)
   const [opciones, setOpciones] = useState(() => normalizarOpcionesCartaPdf({}))
+  // Snapshot de lo que está guardado en la base. Sirve para detectar cambios
+  // sin guardar y bloquear "Descargar PDF" con aviso, evitando que el PDF
+  // salga con la configuración anterior.
+  const [guardado, setGuardado] = useState({ form: DEFAULTS, opciones: normalizarOpcionesCartaPdf({}) })
 
   // ── Carga inicial ────────────────────────────────────────────────────
   useEffect(() => {
@@ -115,14 +119,15 @@ export default function CartaPdfPage() {
         if (cancelado) return
         setRestaurante(rest)
         setVinos(vinosData || [])
-        setForm({
+        const formInicial = {
           color_fondo: rest.color_fondo || DEFAULTS.color_fondo,
           color_acento: rest.color_acento || DEFAULTS.color_acento,
           logo_url: rest.logo_url || '',
           carta_descripcion: rest.carta_descripcion ?? '',
           carta_pie_texto: rest.carta_pie_texto ?? DEFAULTS.carta_pie_texto,
           carta_incluir_bodega_anada: rest.carta_incluir_bodega_anada === true,
-        })
+        }
+        setForm(formInicial)
         // Normaliza opciones v2. Compat: si en v1 estaba carta_mostrar_copa=true
         // y en v2 no se ha tocado copa_modo (sigue en 'no'), deducimos 'junto'.
         const op = normalizarOpcionesCartaPdf(rest.carta_pdf_opciones)
@@ -130,6 +135,7 @@ export default function CartaPdfPage() {
           op.copa_modo = 'junto'
         }
         setOpciones(op)
+        setGuardado({ form: formInicial, opciones: op })
       } catch (err) {
         if (!cancelado) setError(err?.message || 'No se pudo cargar la carta.')
       } finally {
@@ -151,6 +157,12 @@ export default function CartaPdfPage() {
     () => (vinos || []).filter(v => Number(v.precio_copa) > 0).length,
     [vinos]
   )
+  // Hay cambios sin guardar si form u opciones difieren del snapshot cargado
+  // de la base. Comparación por JSON profunda: es un objeto pequeño (~1 kB).
+  const hayCambios = useMemo(() => {
+    return JSON.stringify(form) !== JSON.stringify(guardado.form)
+      || JSON.stringify(opciones) !== JSON.stringify(guardado.opciones)
+  }, [form, opciones, guardado])
   const colorTexto = useMemo(() => colorTextoSegunFondo(form.color_fondo), [form.color_fondo])
   const contrasteOk = useMemo(() => {
     const r = ratioContraste(form.color_fondo, colorTexto)
@@ -233,6 +245,8 @@ export default function CartaPdfPage() {
       const json = await resp.json().catch(() => ({}))
       if (!resp.ok) throw new Error(json?.error || 'No se pudo guardar.')
       setStatus({ kind: 'ok', text: json?.aviso || 'Cambios guardados.' })
+      // Snapshot actualizado tras guardar: desbloquea "Descargar PDF".
+      setGuardado({ form, opciones })
     } catch (err) {
       setStatus({ kind: 'error', text: err?.message || 'Error al guardar.' })
     } finally {
@@ -242,7 +256,14 @@ export default function CartaPdfPage() {
   }
 
   function abrirImpresion() {
-    const url = `/imprimir/carta-pdf/${encodeURIComponent(slug)}?print=1`
+    if (hayCambios) {
+      setStatus({ kind: 'error', text: 'Guarda los cambios primero.' })
+      setTimeout(() => setStatus({ kind: '', text: '' }), 4000)
+      return
+    }
+    // `_=<timestamp>` evita que cualquier proxy o la memoria del navegador
+    // sirva una versión cacheada al abrir /imprimir en pestaña nueva.
+    const url = `/imprimir/carta-pdf/${encodeURIComponent(slug)}?print=1&_=${Date.now()}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
@@ -526,7 +547,9 @@ export default function CartaPdfPage() {
             {guardando ? 'Guardando…' : 'Guardar cambios'}
           </button>
           <button type="button" className="cpdf-btn cpdf-btn--primary"
-            onClick={abrirImpresion}>
+            onClick={abrirImpresion}
+            disabled={hayCambios || guardando}
+            title={hayCambios ? 'Guarda los cambios primero' : 'Abre el PDF en una pestaña nueva'}>
             Descargar PDF
           </button>
         </div>
