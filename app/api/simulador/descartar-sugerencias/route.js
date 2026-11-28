@@ -1,6 +1,5 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 
 // POST /api/simulador/descartar-sugerencias
 // Body: { restaurante_id }
@@ -13,22 +12,8 @@ export async function POST(req) {
     const body = await req.json()
     const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-
-    const { data: restaurante, error: restError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-
-    if (restError || !restaurante) {
-      return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    }
-
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
-    }
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     // Buscar todas las líneas 'nuevo' con origen automático
     const { data: sugeridas, error: fetchError } = await supabaseAdmin

@@ -40,6 +40,11 @@
     "test:total-fijos": "node --test scripts/totalFijos.test.mjs",
     "test:metadata-suffix": "node --test scripts/publicMetadataSuffix.test.mjs",
     "test:carta-pdf": "node --test scripts/cartaPdfUtils.test.mjs",
+    "test:editor-carta": "node --test scripts/planAccessEditorCarta.test.mjs",
+    "test:borrador-token": "node --test scripts/cartaBorradorToken.test.mjs",
+    "test:simulador-payload": "node --test scripts/simuladorPayload.test.mjs",
+    "test:catalogo-gate": "node --test scripts/catalogoGateMatrix.test.mjs",
+    "test:catalogo-helper": "node --test scripts/requireCatalogoConsultor.test.mjs",
     "verify:carta-pdf-header": "node scripts/verify-carta-pdf-header.mjs",
     "verify:carta-pdf-live": "node scripts/verify-carta-pdf-live.mjs"
   },

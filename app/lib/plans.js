@@ -29,13 +29,13 @@ export const PLANES = {
     nombre: 'Sala',
     precioOrientativo: '99 €/mes',
     limiteVinos: 200,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'vista_etiquetas_publica'],
+    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'vista_etiquetas_publica', 'editor_carta'],
   },
   bodega: {
     nombre: 'Bodega',
     precioOrientativo: '149 €/mes',
     limiteVinos: 1000,
-    features: ['estadisticas', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores'],
+    features: ['estadisticas', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'editor_carta'],
   },
   sumiller: {
     nombre: 'Carta Viva Somm',
@@ -44,7 +44,7 @@ export const PLANES = {
     features: [
       // Todo lo del plan Bodega
       'estadisticas', 'tpv_import', 'bodega', 'precios_margenes', 'inventario',
-      'importador_pdf', 'informes', 'proveedores',
+      'importador_pdf', 'informes', 'proveedores', 'editor_carta',
       // Features exclusivas SUMILLER
       'somm_explotacion',
       'somm_desviaciones',
@@ -87,7 +87,7 @@ export const PLANES = {
       'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import',
       'bodega', 'precios_margenes', 'inventario', 'importador_pdf',
       'informes', 'proveedores', 'consultoria', 'vista_etiquetas_publica',
-      'catalogo_consultor',
+      'catalogo_consultor', 'editor_carta',
       // Acceso económico del dueño (vista completa):
       'somm_simulador_mult', 'somm_explotacion', 'somm_historico',
       'somm_libro_compras', 'somm_simulador_margen_bodega',
@@ -106,6 +106,13 @@ export function estadoSuscripcionActivo(restaurante) {
 export function puedeUsar(restaurante, feature) {
   const plan = PLANES[planRestaurante(restaurante)]
   return estadoSuscripcionActivo(restaurante) && plan.features.includes(feature)
+}
+
+// Helper único que gobierna el acceso al simulador + carta imprimible para
+// clientes. Importar desde servidor y cliente. Mantiene la puerta cerrada
+// para basic y respeta subscription_status.
+export function puedeUsarEditorCarta(restaurante) {
+  return puedeUsar(restaurante, 'editor_carta')
 }
 
 export function nombrePlan(restaurante) {

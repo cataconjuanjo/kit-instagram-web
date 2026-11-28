@@ -15,6 +15,7 @@
  */
 
 import { ordenTiposVino, etiquetasTipoVino } from './winePresentation.js'
+import { t } from '../components/cartaImprimible/i18n/index.js'
 
 const PLURALES = etiquetasTipoVino().plural
 
@@ -251,7 +252,7 @@ export function notaIvaParaPie({ precio_formato, nota_euros, carta_pie_texto }) 
   // Normalizamos puntos → letra para que `\b` reconozca la palabra.
   const normalizado = pie.replace(/i\.?v\.?a\.?/gi, 'iva')
   if (/\biva\b/i.test(normalizado)) return null
-  return 'Precios en euros, IVA incluido'
+  return t('pdf.nota.iva')
 }
 
 export const COPA_MODOS = new Set(['no', 'junto', 'seccion', 'ambos'])
@@ -359,7 +360,7 @@ export function normalizarOpcionesCartaPdf(raw) {
     // max-width y line-clamp.
     texto: typeof qrRaw.texto === 'string'
       ? qrRaw.texto.trim().slice(0, 140)
-      : 'Maridajes y fichas · escanea',
+      : t('pdf.qr.cta_default'),
     color_auto: boolDefault(qrRaw.color_auto, true),
   }
 
@@ -506,7 +507,7 @@ export function extraerSeccionCopa(vinos, copaModo) {
   const ordenados = [...conCopa].sort((a, b) => {
     return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es-ES')
   })
-  const seccionCopa = { tipo: 'copa', label: 'Por copa', vinos: ordenados }
+  const seccionCopa = { tipo: 'copa', label: t('pdf.seccion.copa'), vinos: ordenados }
   const idsExcluir = copaModo === 'seccion' ? new Set(ordenados.map(v => v.id)) : new Set()
   return { seccionCopa, idsExcluir }
 }

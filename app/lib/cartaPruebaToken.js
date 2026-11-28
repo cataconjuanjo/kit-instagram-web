@@ -32,6 +32,23 @@ export function crearTokenPruebaCarta(restauranteId, opciones = {}) {
   return `${payload}.${firma(payload)}`
 }
 
+// Token firmado para visualizar el borrador del simulador en /imprimir.
+// Reutiliza la misma firma HMAC que los tokens de prueba de carta pero con
+// tipo='carta_borrador' para que validarTokenBorradorCarta solo acepte los
+// generados aquí (no un token de prueba cualquiera).
+export function crearTokenBorradorCarta(restauranteId, opciones = {}) {
+  return crearTokenPruebaCarta(restauranteId, { ...opciones, tipo: 'carta_borrador' })
+}
+
+export function validarTokenBorradorCarta(token, restauranteId) {
+  const data = leerTokenPruebaCarta(token)
+  return Boolean(
+    data
+    && String(data.restaurante_id) === String(restauranteId)
+    && data.tipo === 'carta_borrador'
+  )
+}
+
 export function validarTokenPruebaCarta(token, restauranteId) {
   const data = leerTokenPruebaCarta(token)
   return Boolean(data && String(data.restaurante_id) === String(restauranteId))

@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
-import { puedeUsar } from '../../lib/plans'
+import { puedeUsar, puedeUsarEditorCarta } from '../../lib/plans'
+import { avisosCalidadCarta } from '../../lib/publicationReadiness'
 import { normWine } from '../../lib/textNormalize'
 import { margenCopaPct } from '../../lib/pricingUtils'
 import { margenBrutoPct } from '../../lib/wineEconomics'
@@ -165,6 +166,7 @@ export default function SimuladorCarta() {
   const [inlineEdit, setInlineEdit] = useState(null) // { id, campo, valor }
   const [confirmPublicar, setConfirmPublicar] = useState(false)
   const [publicando, setPublicando] = useState(false)
+  const [generandoBorradorPdf, setGenerandoBorradorPdf] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
   const [celebracion, setCelebracion] = useState(null)   // { nuevos, retirados, deltaMargen }
   const [sustituyendoId, setSustituyendoId] = useState(null)
@@ -252,11 +254,17 @@ export default function SimuladorCarta() {
       if (!rest) { setLoading(false); return }
       setRestaurante(rest)
 
-      if (puedeUsar(rest, 'catalogo_consultor')) {
+      // El simulador se abre a planes con editor_carta (pro+). El catálogo
+      // privado solo se solicita si el plan tiene catalogo_consultor
+      // (premium). Para pro/bodega/sumiller: cargamos lineas + revisión sin
+      // tocar /api/catalogo-consultor (que devolvería 403) y la pestaña
+      // "Añadir del catálogo" quedará oculta más abajo.
+      if (puedeUsarEditorCarta(rest)) {
         const { data: { session } } = await supabase.auth.getSession()
         const t = session?.access_token
         setToken(t)
-        const [resLineas, resRevision, resCatalogo] = await Promise.all([
+        const puedeCatalogo = puedeUsar(rest, 'catalogo_consultor')
+        const promesas = [
           fetch(
             `/api/simulador?${new URLSearchParams({ restaurante_id: rest.id })}`,
             { headers: { Authorization: `Bearer ${t}` } }
@@ -265,11 +273,14 @@ export default function SimuladorCarta() {
             `/api/simulador/revision?${new URLSearchParams({ restaurante_id: rest.id })}`,
             { headers: { Authorization: `Bearer ${t}` } }
           ).catch(() => null),
-          fetch(
+        ]
+        if (puedeCatalogo) {
+          promesas.push(fetch(
             `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: rest.id })}`,
             { headers: { Authorization: `Bearer ${t}` } }
-          ).catch(() => null),
-        ])
+          ).catch(() => null))
+        }
+        const [resLineas, resRevision, resCatalogo] = await Promise.all(promesas)
         if (resLineas?.ok) {
           const json = await resLineas.json()
           setLineas(json.lineas || [])
@@ -280,10 +291,17 @@ export default function SimuladorCarta() {
         } else {
           setRevision(null)
         }
-        if (resCatalogo?.ok) {
-          const catalogoJson = await resCatalogo.json()
-          setCatalogoSustituir(catalogoJson.vinos || [])
+        if (puedeCatalogo) {
+          if (resCatalogo?.ok) {
+            const catalogoJson = await resCatalogo.json()
+            setCatalogoSustituir(catalogoJson.vinos || [])
+          } else {
+            setCatalogoSustituir([])
+          }
         } else {
+          // Plan sin catálogo privado: inicializa como lista vacía para
+          // que las comprobaciones `catalogoSustituir !== null` no
+          // bloqueen; la UI de catálogo se oculta igualmente.
           setCatalogoSustituir([])
         }
       } else {
@@ -313,6 +331,22 @@ export default function SimuladorCarta() {
       margenMedio,
     }
   }, [lineas])
+
+  // Flag derivado: el catálogo privado del consultor solo está disponible
+  // en premium. Pro/bodega/sumiller tienen `editor_carta` pero no este.
+  const tieneCatalogoConsultor = useMemo(
+    () => puedeUsar(restaurante, 'catalogo_consultor'),
+    [restaurante]
+  )
+
+  // ── Avisos de calidad (uva/DO/añada/margen/QR) ───────────────────
+  // No bloquean la publicación; se muestran en el diálogo de confirmación.
+  const avisosCalidad = useMemo(() => {
+    const activas = lineas.filter(l => l.estado !== 'fuera')
+    const opciones = restaurante?.carta_pdf_opciones || null
+    // Margen objetivo: 65% sobre PVP (línea de referencia; es un aviso suave).
+    return avisosCalidadCarta(activas, opciones, 0.65)
+  }, [lineas, restaurante])
 
   // ── Comparación borrador vs carta oficial ─────────────────────────
   const comparacion = useMemo(() => {
@@ -530,6 +564,33 @@ export default function SimuladorCarta() {
     if (res?.ok) {
       const json = await res.json()
       setLineas(json.lineas || [])
+    }
+  }
+
+  // "Carta imprimible" en modo borrador: pide a la API un token firmado
+  // ligado al restaurante y abre /imprimir/carta-pdf en una pestaña nueva.
+  // El endpoint /borrador valida el token y devuelve la propuesta del
+  // simulador (estado actual+nuevo) sin exigir carta_publica_activa.
+  async function abrirCartaImprimibleBorrador() {
+    if (!restaurante?.id || generandoBorradorPdf) return
+    setGenerandoBorradorPdf(true)
+    try {
+      const t = await getToken()
+      const res = await fetch('/api/simulador/imprimir-borrador', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErrorMsg(json?.error || 'No se pudo generar la carta imprimible.')
+        return
+      }
+      window.open(json.url, '_blank', 'noopener,noreferrer')
+    } catch {
+      setErrorMsg('No se pudo generar la carta imprimible.')
+    } finally {
+      setGenerandoBorradorPdf(false)
     }
   }
 
@@ -1043,7 +1104,7 @@ export default function SimuladorCarta() {
                       Vista previa para sala
                     </button>
                   )}
-                  {lineas.some(l => l.origen?.startsWith('sugerido')) && (
+                  {tieneCatalogoConsultor && lineas.some(l => l.origen?.startsWith('sugerido')) && (
                     <button
                       type="button"
                       role="menuitem"
@@ -1054,23 +1115,27 @@ export default function SimuladorCarta() {
                       {descartandoSugerencias ? 'Descartando…' : 'Descartar sugerencias'}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={simStyles.masAccionesItem}
-                    onClick={() => { abrirAnadirCatalogo(); setMasAccionesOpen(false) }}
-                  >
-                    Añadir del catálogo
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={simStyles.masAccionesItem}
-                    disabled={mostrarSugeridor && sugerencias === null}
-                    onClick={() => { abrirSugerencias(); setMasAccionesOpen(false) }}
-                  >
-                    {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
-                  </button>
+                  {tieneCatalogoConsultor && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      onClick={() => { abrirAnadirCatalogo(); setMasAccionesOpen(false) }}
+                    >
+                      Añadir del catálogo
+                    </button>
+                  )}
+                  {tieneCatalogoConsultor && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      disabled={mostrarSugeridor && sugerencias === null}
+                      onClick={() => { abrirSugerencias(); setMasAccionesOpen(false) }}
+                    >
+                      {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
+                    </button>
+                  )}
                   {lineas.some(l => l.estado === 'nuevo') && (
                     <button
                       type="button"
@@ -1104,6 +1169,16 @@ export default function SimuladorCarta() {
               onClick={() => window.open(`/carta/${restaurante.slug}?preview=1`, '_blank')}
             >
               Vista previa
+            </button>
+
+            <button
+              type="button"
+              className={simStyles.accionBtn}
+              disabled={!restaurante?.id || generandoBorradorPdf}
+              title="Genera el PDF A4 del borrador — el QR/costes nunca viajan sin plan premium"
+              onClick={abrirCartaImprimibleBorrador}
+            >
+              {generandoBorradorPdf ? 'Preparando…' : 'Carta imprimible'}
             </button>
 
             <button
@@ -1648,14 +1723,16 @@ export default function SimuladorCarta() {
                             >
                               Quitar
                             </button>
-                            <button
-                              type="button"
-                              className={simStyles.accionBtn}
-                              disabled={busy || isBlocked}
-                              onClick={() => abrirSustituir(linea)}
-                            >
-                              Sustituir
-                            </button>
+                            {tieneCatalogoConsultor && (
+                              <button
+                                type="button"
+                                className={simStyles.accionBtn}
+                                disabled={busy || isBlocked}
+                                onClick={() => abrirSustituir(linea)}
+                              >
+                                Sustituir
+                              </button>
+                            )}
                             <button
                               type="button"
                               className={simStyles.accionLink}
@@ -2240,8 +2317,9 @@ export default function SimuladorCarta() {
             type="button"
             className={simStyles.briefingPrintBtn}
             onClick={() => window.print()}
+            title="Documento interno con decisiones por línea"
           >
-            Imprimir / guardar PDF
+            Imprimir briefing
           </button>
         </ResponsiveOverlay>
 
@@ -2376,6 +2454,20 @@ export default function SimuladorCarta() {
           confirmLabel="Publicar carta"
           busy={publicando}
         >
+          {avisosCalidad.length > 0 && (
+            <div className={simStyles.publicarLista}>
+              <p className={simStyles.publicarListaLabel}>Calidad de la carta</p>
+              <ul className={simStyles.publicarListaItems}>
+                {avisosCalidad.map(a => (
+                  <li key={a.codigo} className={simStyles.publicarItem}>
+                    <span className={simStyles.publicarItemSigil} aria-hidden="true">·</span>
+                    <span>{a.texto}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {resumen.nuevos > 0 && (
             <div className={simStyles.publicarLista}>
               <p className={simStyles.publicarListaLabel}>Se añaden ({resumen.nuevos})</p>

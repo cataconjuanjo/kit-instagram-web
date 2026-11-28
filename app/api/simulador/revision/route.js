@@ -1,6 +1,6 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { puedeUsarEditorCarta } from '../../../lib/plans'
 import { Resend } from 'resend'
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
@@ -58,8 +58,8 @@ export async function POST(req) {
       .eq('id', restauranteId)
       .single()
     if (!restaurante) return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
+    if (!puedeUsarEditorCarta(restaurante)) {
+      return Response.json({ error: 'Plan no incluye el editor de carta' }, { status: 403 })
     }
 
     // Guard: no duplicate pending revision
@@ -73,6 +73,21 @@ export async function POST(req) {
       return Response.json(
         { error: 'Ya hay una revisión pendiente. Espera la respuesta del consultor.' },
         { status: 409 }
+      )
+    }
+
+    // Cuota F1: máximo 2 revisiones al mes por restaurante. Se cuentan
+    // todas las creadas en los últimos 30 días (pendientes + revisadas).
+    const hace30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const { count: creadas30d } = await supabaseAdmin
+      .from('simulador_revisiones')
+      .select('id', { count: 'exact', head: true })
+      .eq('restaurante_id', restauranteId)
+      .gte('created_at', hace30d)
+    if ((creadas30d || 0) >= 2) {
+      return Response.json(
+        { error: 'Has alcanzado el límite de 2 revisiones al mes. Vuelve a probar cuando caduque la más antigua.' },
+        { status: 429 }
       )
     }
 

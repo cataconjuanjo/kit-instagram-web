@@ -1,5 +1,5 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
 import { costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
@@ -21,8 +21,8 @@ export async function POST(req) {
       return Response.json({ error: 'restaurante_id obligatorio' }, { status: 400 })
     }
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     // Config económica del restaurante (copas_por_botella, merma, iva…)
     const { data: econSettings } = await supabaseAdmin

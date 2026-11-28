@@ -19,6 +19,7 @@ import {
   notaIvaParaPie, colorTextoSegunFondo, ratioContraste,
 } from '../../lib/cartaPdfUtils'
 import { stackFuente, factorAnchoFuente } from './fonts.js'
+import { t } from './i18n/index.js'
 
 const UMBRAL_COMPACTO = 60
 // Umbral para "compacto-extra" (cuerpo 8pt, hero aún menor): se activa
@@ -167,7 +168,7 @@ export function CartaImprimible({ restaurante, secciones, config }) {
       data-total-vinos={totalVinos}
       data-densidad={xtraCompact ? 'xtra-compact' : compacto ? 'compact' : 'normal'}
       style={styleSheet}
-      aria-label="Carta de vinos imprimible"
+      aria-label={t('pdf.aria.carta')}
     >
       {/* Marca de agua: se replica dentro del flujo del body; en print
           aparece como primera capa detrás del contenido del multicol. */}

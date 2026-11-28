@@ -1,6 +1,6 @@
-import { requireRestaurantAccess } from '../_lib/auth'
 import { isConsultorFromAuth } from '../_lib/isConsultor'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { requireCatalogoConsultor } from '../_lib/requireCatalogoConsultor'
 
 function texto(value, limite = 120) {
   return String(value || '').trim().slice(0, limite)
@@ -29,17 +29,13 @@ export async function GET(req) {
     const page = Math.max(1, Number(searchParams.get('page')) || 1)
     const offset = (page - 1) * limit
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    const esConsultor = isConsultorFromAuth(auth)
+    // Gate único: el restaurante debe tener catalogo_consultor en su plan.
+    // El admin NO salta este control (ver requireCatalogoConsultor).
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const esConsultor = isConsultorFromAuth(gate.auth)
+    const restaurante = gate.restaurante
 
-    const { data: restaurante, error: restauranteError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('id, plan')
-      .eq('id', restauranteId)
-      .single()
-
-    if (restauranteError) throw restauranteError
     const perfilBodega = restaurante?.plan === 'bodega'
 
     // Proyección de proveedores: el restaurante ve nombre/zona (necesarios para
@@ -179,13 +175,15 @@ export async function GET(req) {
       total = matchedSeen
     }
 
+    // Proyección final de proveedores: contacto (email/teléfono) SOLO para
+    // el consultor. El propietario premium ve nombre/zona (necesarios para
+    // filtrar), coherente con el comentario del header del fichero.
+    const proveedoresOut = (providers || []).map(item => esConsultor
+      ? { nombre: item.nombre, telefono: item.telefono || '', email: item.email || '', zona: item.zona || '' }
+      : { nombre: item.nombre, zona: item.zona || '' })
+
     return Response.json({
-      proveedores: (providers || []).map(item => ({
-        nombre: item.nombre,
-        telefono: item.telefono || '',
-        email: item.email || '',
-        zona: item.zona || '',
-      })),
+      proveedores: proveedoresOut,
       items,
       total,
       page,

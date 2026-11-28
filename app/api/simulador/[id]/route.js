@@ -1,5 +1,21 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
+import { puedeUsarEditorCarta } from '../../../lib/plans'
+
+// Cierra con editor_carta además de ownership: evita que un propietario
+// cuyo plan cayó a basic siga mutando el borrador existente.
+async function verificarPlan(restauranteId) {
+  const { data: restaurante } = await supabaseAdmin
+    .from('restaurantes')
+    .select('plan, subscription_status')
+    .eq('id', restauranteId)
+    .single()
+  if (!restaurante) return { error: 'Restaurante no encontrado', status: 404 }
+  if (!puedeUsarEditorCarta(restaurante)) {
+    return { error: 'Plan no incluye el editor de carta', status: 403 }
+  }
+  return { ok: true }
+}
 
 const CAMPOS_PRECIO = new Set(['precio_botella', 'precio_copa', 'coste_compra'])
 const CAMPOS_BOOL   = new Set(['ofrecido_por_copa'])
@@ -17,6 +33,8 @@ export async function PATCH(req, { params }) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const plan = await verificarPlan(restauranteId)
+    if (plan.error) return Response.json({ error: plan.error }, { status: plan.status })
 
     // Verify ownership before applying changes
     const { data: linea, error: fetchError } = await supabaseAdmin
@@ -89,6 +107,8 @@ export async function DELETE(req, { params }) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const plan = await verificarPlan(restauranteId)
+    if (plan.error) return Response.json({ error: plan.error }, { status: plan.status })
 
     const { data: linea, error: fetchError } = await supabaseAdmin
       .from('carta_simulacion')

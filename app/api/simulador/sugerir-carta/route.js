@@ -1,7 +1,6 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { isConsultorFromAuth } from '../../_lib/isConsultor'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
 import { generarSugerencias } from '../../../lib/sugerirCarta'
 
@@ -13,23 +12,9 @@ export async function POST(req) {
     const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
     const lineas = Array.isArray(body.lineas) ? body.lineas : []
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    const esConsultor = isConsultorFromAuth(auth)
-
-    const { data: restaurante, error: restError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-
-    if (restError || !restaurante) {
-      return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    }
-
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el catálogo de consultor' }, { status: 403 })
-    }
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const esConsultor = isConsultorFromAuth(gate.auth)
 
     // Parallelise provider + plato queries; vinos depends on providerIds so runs after.
     const [{ data: providers }, { data: platos, error: platosError }] = await Promise.all([

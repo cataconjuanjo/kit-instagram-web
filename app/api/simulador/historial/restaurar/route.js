@@ -1,6 +1,6 @@
 import { requireRestaurantAccess } from '../../../_lib/auth'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../../lib/plans'
+import { puedeUsarEditorCarta } from '../../../../lib/plans'
 
 // POST /api/simulador/historial/restaurar
 // Body: { restaurante_id, snapshot_id }
@@ -29,8 +29,8 @@ export async function POST(req) {
       return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
     }
 
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
+    if (!puedeUsarEditorCarta(restaurante)) {
+      return Response.json({ error: 'Plan no incluye el editor de carta' }, { status: 403 })
     }
 
     const { data, error } = await supabaseAdmin.rpc('restaurar_snapshot', {

@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-import { puedeUsar } from '../../lib/plans'
+import { puedeUsar, puedeUsarEditorCarta } from '../../lib/plans'
+import { CLAVES_CATALOGO_CONSULTOR } from '../../lib/simuladorPayload'
 
 // GET /api/simulador?restaurante_id=...
 // Devuelve el borrador del simulador con auto-sync silencioso:
@@ -25,9 +26,15 @@ export async function GET(req) {
       return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
     }
 
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
+    // El acceso al simulador se abre a planes pro/bodega/sumiller/premium
+    // vía editor_carta. El catálogo privado de proveedores sigue reservado
+    // a catalogo_consultor (solo premium); más abajo filtramos la salida
+    // para que los planes sin catalogo_consultor no reciban nombre/id del
+    // proveedor ni la id de la oferta.
+    if (!puedeUsarEditorCarta(restaurante)) {
       return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
     }
+    const puedeVerCatalogo = puedeUsar(restaurante, 'catalogo_consultor')
 
     // Carga paralela: todos los vinos del restaurante + borrador actual
     const [vinosResult, borradorResult] = await Promise.all([
@@ -100,7 +107,11 @@ export async function GET(req) {
 
     // La oferta seleccionada se conserva en catalogo_vino_id. Enriquecemos la
     // vista con el distribuidor real sin alterar el snapshot de la línea.
-    const catalogoIds = [...new Set(lineasFinalesBase.map(linea => linea.catalogo_vino_id).filter(Boolean))]
+    // Solo para planes con catalogo_consultor (premium): el resto no debe
+    // ver proveedor_id/nombre/disponibilidad del catálogo privado.
+    const catalogoIds = puedeVerCatalogo
+      ? [...new Set(lineasFinalesBase.map(linea => linea.catalogo_vino_id).filter(Boolean))]
+      : []
     let proveedorPorOferta = {}
     if (catalogoIds.length) {
       const { data: ofertas } = await supabaseAdmin
@@ -122,6 +133,22 @@ export async function GET(req) {
 
     const lineasFinales = lineasFinalesBase.map(linea => {
       const vino = linea.vino_id ? vinoMap[linea.vino_id] : null
+      // Para planes sin catalogo_consultor: strip de TODAS las claves que
+      // vengan del catálogo privado. La lista canónica vive en
+      // simuladorPayload.js (CLAVES_CATALOGO_CONSULTOR) para test unitario
+      // de la matriz plan → claves. El coste_compra propio del
+      // restaurante se conserva.
+      if (!puedeVerCatalogo) {
+        const lineaPublica = { ...linea }
+        for (const clave of CLAVES_CATALOGO_CONSULTOR) delete lineaPublica[clave]
+        return {
+          ...lineaPublica,
+          ...(vino ? {
+            region: vino.region ?? linea.region,
+            anada: vino.anada ?? linea.anada,
+          } : {}),
+        }
+      }
       return {
         ...linea,
         ...(vino ? {

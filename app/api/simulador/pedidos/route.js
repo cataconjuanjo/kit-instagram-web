@@ -1,6 +1,5 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 
 // GET /api/simulador/pedidos?restaurante_id=...
 // Devuelve todos los pedidos guardados para este restaurante.
@@ -9,8 +8,8 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url)
     const restauranteId = String(searchParams.get('restaurante_id') || '').trim().slice(0, 80)
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     const { data, error } = await supabaseAdmin
       .from('simulador_pedidos')
@@ -34,18 +33,8 @@ export async function POST(req) {
     const body = await req.json()
     const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-
-    const { data: restaurante } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-
-    if (!restaurante || !puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
-    }
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     const proveedorNombre = String(body.proveedor_nombre || '').trim().slice(0, 200)
     if (!proveedorNombre) return Response.json({ error: 'proveedor_nombre obligatorio' }, { status: 400 })
@@ -129,8 +118,9 @@ export async function PATCH(req) {
     const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
     const pedidoId = String(body.id || '').trim()
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const auth = gate.auth
 
     const cambios = { updated_at: new Date().toISOString() }
     if (body.estado === 'enviado') {

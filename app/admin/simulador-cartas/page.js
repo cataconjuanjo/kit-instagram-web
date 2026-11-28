@@ -920,8 +920,8 @@ export default function SimuladorCartas() {
           <button type="button" className="sim-btn sim-btn-ghost" onClick={copiarPropuesta} disabled={!simulacionEditada}>
             Copiar propuesta
           </button>
-          <button type="button" className="sim-btn sim-btn-ghost" onClick={() => window.print()} disabled={!simulacionEditada}>
-            PDF
+          <button type="button" className="sim-btn sim-btn-ghost" onClick={() => window.print()} disabled={!simulacionEditada} title="Documento interno con decisiones por línea">
+            Imprimir briefing
           </button>
           {restaurante?.slug ? (
             <a

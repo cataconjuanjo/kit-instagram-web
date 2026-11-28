@@ -1,6 +1,6 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { puedeUsarEditorCarta } from '../../../lib/plans'
 
 // GET /api/simulador/historial?restaurante_id=...
 // Devuelve las últimas 20 instantáneas de cartas publicadas, sin el vinos_snapshot
@@ -23,8 +23,8 @@ export async function GET(req) {
       return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
     }
 
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
+    if (!puedeUsarEditorCarta(restaurante)) {
+      return Response.json({ error: 'Plan no incluye el editor de carta' }, { status: 403 })
     }
 
     const { data: snapshots, error } = await supabaseAdmin
