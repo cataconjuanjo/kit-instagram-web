@@ -99,17 +99,25 @@
   display: inline-flex;
   align-items: center;
   gap: 4mm;
+  /* Evita que un flex ancestro colapse el contenedor a 0×0. */
+  flex: 0 0 auto;
+  min-width: 0;
 }
 .cpdf-logos-fila--end { justify-content: flex-end; }
 .cpdf-logos-fila img {
   object-fit: contain;
   display: block;
+  /* height + width se inyectan inline desde el componente (height mm,
+   * width auto). Sin esto los SVG sin dimensiones intrínsecas salían
+   * a 0×0 porque max-height/max-width no fuerzan ninguna dimensión
+   * si el contenido reporta 0 de intrínseco. */
 }
-.cpdf-sheet__pageheader img {
-  max-height: 7mm;
-  max-width: 20mm;
-  object-fit: contain;
-}
+/* Nota: la antigua regla `.cpdf-sheet__pageheader img { max-height:7mm;
+ * max-width:20mm }` se eliminó porque capaba el height inline que
+ * inyecta el componente (ver LogoFila) y provocaba logos "a 0×0" o
+ * recortados cuando el restaurante configuraba tamaño_mm > 7. Ahora
+ * todos los <img> del pageheader viven dentro de .cpdf-logos-fila y
+ * su tamaño lo dicta el inline-style del componente. */
 
 /* ── Hero COMPACTO (una fila: logo | nombre + descripción) ─────────── */
 
@@ -286,6 +294,14 @@
   margin-top: 0.4mm;
   text-transform: lowercase;
   letter-spacing: 0.02em;
+  /*
+   * Reserva espacio por la(s) columna(s) de precio a la derecha.
+   * `--cpdf-precios-w` lo inyecta el componente según copa_modo:
+   *   'no' | 'seccion'  → 0 (línea 2 llega hasta el borde)
+   *   'junto' | 'ambos' → 36mm (14mm copa + 8mm gap + 14mm botella)
+   * Evita que "uva · región · añada" solape los precios.
+   */
+  padding-right: var(--cpdf-precios-w, 0);
 }
 .cpdf-vino__linea2::first-letter { text-transform: uppercase; }
 
@@ -377,6 +393,62 @@
   margin-top: 4mm;
   padding-top: 2mm;
   font-size: 7.5pt;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * MODO COMPACTO EXTRA
+ *
+ * Se aplica automáticamente cuando totalVinos ≥ 90 o totalVinos ≥ 70
+ * con copa_modo "junto"/"ambos" (ver UMBRAL_XTRA_COMPACTO en el JSX).
+ * Escala el cuerpo a 8pt (límite inferior cómodo que respeta el brief
+ * de "nunca por debajo de 7pt") y reduce aún más el hero para que una
+ * carta de 100 vinos tipo Lo de Carmen con copa junto quepa en ≤ 2
+ * páginas. El margen inferior se mantiene ≥ 8 mm.
+ * ───────────────────────────────────────────────────────────────────── */
+.cpdf-sheet--xtra-compact .cpdf-sheet__hero {
+  max-height: 22mm;
+  gap: 5mm;
+  padding-bottom: 3mm;
+  margin-bottom: 3mm;
+}
+.cpdf-sheet--xtra-compact .cpdf-sheet__logo {
+  max-height: 22mm;
+  max-width: 32mm;
+}
+.cpdf-sheet--xtra-compact .cpdf-sheet__nombre {
+  font-size: 13pt;
+  letter-spacing: 0.18em;
+  margin: 0 0 1mm;
+}
+.cpdf-sheet--xtra-compact .cpdf-sheet__descripcion {
+  font-size: 7.5pt;
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+}
+.cpdf-sheet--xtra-compact .cpdf-sheet__body {
+  font-size: 8pt;          /* límite inferior del brief es 7pt */
+  line-height: 1.2;
+  padding-bottom: 8mm;     /* respeta margen inferior ≥ 8 mm */
+}
+.cpdf-sheet--xtra-compact .cpdf-section {
+  margin: 0 0 2.5mm;
+}
+.cpdf-sheet--xtra-compact .cpdf-section__header {
+  padding-bottom: 0.8mm;
+  margin-bottom: 1.2mm;
+  font-size: 7.5pt;
+}
+.cpdf-sheet--xtra-compact .cpdf-vino {
+  margin: 0 0 1.4mm;
+}
+.cpdf-sheet--xtra-compact .cpdf-vino__linea2 {
+  font-size: 6.8pt;
+  margin-top: 0.2mm;
+}
+.cpdf-sheet--xtra-compact .cpdf-sheet__pie {
+  margin-top: 3mm;
+  padding-top: 1.5mm;
+  font-size: 7pt;
 }
 
 /* ─────────────────────────────────────────────────────────────────────

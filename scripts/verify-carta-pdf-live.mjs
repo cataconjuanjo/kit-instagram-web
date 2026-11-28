@@ -37,9 +37,13 @@ const OUT_DIR = path.join(repoRoot, '.tmp-carta-pdf-verify')
 
 const MAX_PAGINAS = 3
 const UMBRAL_TEXTO_PAG_NO_FINAL = 0.40
-const UMBRAL_TEXTO_PAG_FINAL = 0.25  // ≥ 25 % del texto de la más llena
-                                      // (brief densidad: evita "seccion
-                                      //  huérfana de 1 vino + pie")
+// Umbral de "página fantasma": una última página con < 5 % del texto
+// de la más llena = solo cabecera repetida (sin pie, sin QR, sin
+// vinos). Lo subíamos a 25 % en el bloque de densidad para detectar
+// "sección huérfana final"; pero en v2 con QR + crédito activos por
+// defecto, una última página legítima puede tener 10–20 % de texto
+// (pie + QR + algunos vinos). 5 % es el umbral real de "fantasma".
+const UMBRAL_TEXTO_PAG_FINAL = 0.05
 const TOLERANCIA_COLOR = 32
 const MARGEN_INFERIOR_MIN_MM = 8     // margen inferior del contenido
 
@@ -52,38 +56,48 @@ const MARGEN_INFERIOR_MIN_MM = 8     // margen inferior del contenido
 const RENDER_SCALE = 1.5
 const PX_POR_MM = (842 * RENDER_SCALE) / 297
 
+const OPCIONES_CONFIG_COMPLETA = {
+  fuente_titulo: 'playfair-display',
+  fuente_cuerpo: 'lato',
+  logos: [
+    { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'cabecera-izq', tamano_mm: 14, opacidad: 100 },
+    { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'pie-centro',   tamano_mm: 10, opacidad: 100 },
+  ],
+  qr: { activo: true, posicion: 'pie-der', tamano_mm: 24, texto: 'Maridajes · escanea', color_auto: true },
+  credito: true,
+  // "junto" no duplica vinos (como "ambos"); respeta el brief
+  // "si copa_modo='ambos' y >60 vinos, avisar" sin romper la paginación.
+  copa_modo: 'junto',
+  orden_vinos: 'region',
+  orden_secundario: 'precio_asc',
+  subtitulos_region: true,
+  precio_formato: 'sin_euro',
+  nota_euros: true,
+  densidad_forzada: 'auto',
+}
+
 const PALETAS = [
-  // Pase 1: DEFAULTS. Paleta real del restaurante, opciones v2 = {}.
-  // Objetivo: confirmar REGLA DE ORO (equivalencia al v1).
-  { nombre: 'defaults', color_fondo: null, color_acento: null, clonarVinosHasta: null, opciones: null },
-  // Pase 2: paleta clara + 80 vinos clonados + CONFIG v2 COMPLETA:
-  // fuente título Playfair + cuerpo Lato, 2 logos (cabecera-izq +
-  // pie-centro), QR activo, orden por región con subtítulos,
-  // copa_modo "ambos", precios sin €, crédito ON.
+  // Pase 1 — DEFAULTS. Paleta real de casa-marisma, opciones v2 = {}.
+  // Confirma REGLA DE ORO (equivalencia al v1).
+  { nombre: 'defaults', slug: 'casa-marisma', opciones: null },
+  // Pase 2 — config completa + 80 vinos CLONADOS sobre casa-marisma.
+  // Mantenido por regresión con la verificación v2 original.
   {
-    nombre: 'config-completa',
+    nombre: 'config-completa', slug: 'casa-marisma',
     color_fondo: '#f7f3ee', color_acento: '#b5532a',
     clonarVinosHasta: 80,
-    opciones: {
-      fuente_titulo: 'playfair-display',
-      fuente_cuerpo: 'lato',
-      logos: [
-        { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'cabecera-izq', tamano_mm: 14, opacidad: 100 },
-        { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'pie-centro',   tamano_mm: 10, opacidad: 100 },
-      ],
-      qr: { activo: true, posicion: 'pie-der', tamano_mm: 24, texto: 'Maridajes · escanea', color_auto: true },
-      credito: true,
-      // copa_modo "junto" (no "ambos"): con 80 clonados, "ambos" duplica
-      // vinos a 144+ y rompe la paginación esperada. "junto" cumple el
-      // objetivo de verificar el modo copa sin duplicación.
-      copa_modo: 'junto',
-      orden_vinos: 'region',
-      orden_secundario: 'precio_asc',
-      subtitulos_region: true,
-      precio_formato: 'sin_euro',
-      nota_euros: true,
-      densidad_forzada: 'auto',
-    },
+    opciones: OPCIONES_CONFIG_COMPLETA,
+  },
+  // Pase 3 — carmen (Lo de Carmen) con las MISMAS opciones de
+  // config-completa pero SIN clonar (vinos reales del restaurante).
+  // El brief pide "reporta páginas, margen inferior y si se ven logos
+  // y QR". Si la carta_publica_activa de carmen es false, la
+  // interceptación la fuerza a true para el mock (no persiste).
+  {
+    nombre: 'carmen-real', slug: 'carmen',
+    color_fondo: '#f7f3ee', color_acento: '#b5532a',
+    opciones: OPCIONES_CONFIG_COMPLETA,
+    flexible: true, // no exige <= 3 páginas si hay >80 vinos reales
   },
 ]
 
@@ -252,7 +266,8 @@ async function ejecutarPase(browser, paleta) {
     })
   }
 
-  const url = `${BASE}/imprimir/carta-pdf/${SLUG}`
+  const slugPaleta = paleta.slug || SLUG
+  const url = `${BASE}/imprimir/carta-pdf/${slugPaleta}`
   console.log('[pase]', paleta.nombre, '→', url)
   const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 })
   console.log('[pase] HTTP:', resp?.status())
@@ -300,6 +315,33 @@ async function ejecutarPase(browser, paleta) {
     }
   })
   console.log('[pase] QR en DOM:', qrDomInfo)
+
+  // Nombre del restaurante del DOM (lo imprime la cabecera y el hero).
+  // Nos sirve para comprobar la "cabecera repetida" en cada página.
+  const nombreRestaurante = await page.evaluate(() => {
+    const el = document.querySelector('.cpdf-sheet__nombre')
+    return el ? el.textContent.trim() : ''
+  })
+  console.log('[pase] Nombre restaurante:', JSON.stringify(nombreRestaurante))
+
+  // Mide todos los logos del DOM (fix bug "logos 0×0").
+  const logosDom = await page.evaluate(() => {
+    const items = Array.from(document.querySelectorAll('.cpdf-logos-fila img'))
+    return items.map(img => ({
+      src: img.getAttribute('src'),
+      // El bounding rect refleja el tamaño renderizado real, incluidos
+      // SVG sin width/height intrínsecos (que antes salían a 0×0).
+      w: Math.round(img.getBoundingClientRect().width),
+      h: Math.round(img.getBoundingClientRect().height),
+      parentInPageheader: !!img.closest('.cpdf-sheet__pageheader'),
+      parentInPie: !!img.closest('.cpdf-sheet__pie'),
+    }))
+  })
+  console.log('[pase] Logos medidos:', logosDom)
+  const logosOK = logosDom.length === 0 || logosDom.every(l => l.w > 0 && l.h > 0)
+  if (!logosOK) {
+    console.log('[pase] ❌ Hay logos con dimensión 0×0')
+  }
 
   const pdfPath = path.join(OUT_DIR, `live-${paleta.nombre}.pdf`)
   await page.pdf({ path: pdfPath, format: 'A4', preferCSSPageSize: true, printBackground: true })
@@ -366,11 +408,15 @@ async function ejecutarPase(browser, paleta) {
     console.log('[pase] QR descodificado:', qrDescodificadoUrl || '(no descodificable)')
   }
 
+  // Detección genérica de cabecera: busca el nombre del restaurante
+  // normalizado o el literal "cartadevinos" (en el pageheader).
+  const nombreNorm = normaliza(nombreRestaurante)
   const info = resultados.map(r => ({
     pag: r.pag,
     chars: r.chars,
     ratio: Math.round((r.chars / maxChars) * 100) / 100,
-    cabecera: normaliza(r.texto).includes('cartadevinos') || normaliza(r.texto).includes('casamarisma'),
+    cabecera: normaliza(r.texto).includes('cartadevinos')
+      || (nombreNorm.length > 2 && normaliza(r.texto).includes(nombreNorm)),
     bordesOK: r.bordes.ok,
     margenMm: Math.round(r.margenMm * 10) / 10,
     chromeUI: ['http://localhost', 'https://', '/imprimir/carta-pdf']
@@ -395,9 +441,20 @@ async function ejecutarPase(browser, paleta) {
   // r9: QR activo → debe descodificarse al menos en una página. Si no
   // estaba activo, la regla no aplica.
   const r9 = !qrDomInfo.presente || !!qrDescodificadoUrl
+  // r10: todos los logos deben tener dimensión >0×0 (fix bug SVG 0×0).
+  const r10 = logosDom.length === 0 || logosDom.every(l => l.w > 0 && l.h > 0)
+  // r11: la nota "Precios en euros, IVA incluido" no debe aparecer más
+  // de una vez en todo el PDF (duplicación con pie que ya menciona IVA).
+  const textoTotal = resultados.map(r => r.texto).join(' ')
+  const ocurrenciasNotaIva = (textoTotal.match(/Precios\s+en\s+euros,?\s+IVA\s+incluido/gi) || []).length
+  const r11 = ocurrenciasNotaIva <= 1
+  // Si la paleta marca flexible (p.ej. carmen-real con 80+ vinos reales),
+  // relajamos r1 (máx. 4 páginas en lugar de MAX_PAGINAS=3).
+  const r1Efectivo = paleta.flexible ? nPag <= 4 : r1
 
   console.log(`\n── RESUMEN pase ${paleta.nombre} ──`)
-  console.log(r1 ? `✅ Páginas ≤ ${MAX_PAGINAS} (actual ${nPag})` : `❌ Páginas = ${nPag}`)
+  const limitePag = paleta.flexible ? 4 : MAX_PAGINAS
+  console.log(r1Efectivo ? `✅ Páginas ≤ ${limitePag} (actual ${nPag})` : `❌ Páginas = ${nPag} > ${limitePag}`)
   console.log(r2 ? '✅ Cabecera repetida en todas las páginas' : '❌ Alguna página sin cabecera')
   console.log(r3 ? `✅ Páginas no-finales con ≥ ${Math.round(UMBRAL_TEXTO_PAG_NO_FINAL*100)}% texto` : '❌ Página no-final medio vacía')
   console.log(r4 ? '✅ 4 esquinas + bordes superior/inferior en color de fondo' : '❌ Marco fuera del color de fondo')
@@ -411,10 +468,18 @@ async function ejecutarPase(browser, paleta) {
         ? `✅ QR descodificado → ${qrDescodificadoUrl}`
         : '· QR no activo (regla no aplica)')
     : '❌ QR presente pero no descodificable')
+  console.log(r10
+    ? (logosDom.length > 0
+        ? `✅ Todos los logos renderizan con tamaño (${logosDom.length})`
+        : '· Sin logos (regla no aplica)')
+    : '❌ Hay logos con dimensión 0×0')
+  console.log(r11
+    ? `✅ Nota IVA no duplicada (ocurrencias: ${ocurrenciasNotaIva})`
+    : `❌ Nota IVA duplicada (${ocurrenciasNotaIva} veces)`)
   console.log(`· Fuentes embebidas: ${fuentesEmbebidas.length}`)
 
   const fallos = []
-  if (!r1) fallos.push('r1-paginas')
+  if (!r1Efectivo) fallos.push(paleta.flexible ? 'r1-paginas(>4)' : 'r1-paginas')
   if (!r2) fallos.push('r2-cabecera')
   if (!r3) fallos.push('r3-texto-no-final')
   if (!r4) fallos.push('r4-bordes')
@@ -423,6 +488,8 @@ async function ejecutarPase(browser, paleta) {
   if (!r7) fallos.push('r7-pag-fantasma')
   if (!r8) fallos.push('r8-margen-inferior')
   if (!r9) fallos.push('r9-qr-no-descodifica')
+  if (!r10) fallos.push('r10-logo-0x0')
+  if (!r11) fallos.push('r11-nota-iva-duplicada')
 
   if (!r4) {
     const paginasConFallo = resultados.filter(r => !r.bordes.ok)

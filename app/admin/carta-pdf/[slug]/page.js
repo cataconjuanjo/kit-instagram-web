@@ -362,7 +362,16 @@ export default function CartaPdfPage() {
           <div className="cpdf-field">
             <label htmlFor="cpdf-orden">Orden dentro de cada sección</label>
             <select id="cpdf-orden" value={opciones.orden_vinos}
-              onChange={e => setOp('orden_vinos', e.target.value)}>
+              onChange={e => {
+                const v = e.target.value
+                setOpciones(prev => ({
+                  ...prev,
+                  orden_vinos: v,
+                  // Al elegir "region" por primera vez, activamos los
+                  // subtítulos (el usuario puede desactivarlos abajo).
+                  subtitulos_region: v === 'region' ? true : prev.subtitulos_region,
+                }))
+              }}>
               <option value="alfabetico">Alfabético (por nombre)</option>
               <option value="region">Por región / DO</option>
               <option value="precio_asc">Por precio ascendente</option>
@@ -421,6 +430,13 @@ export default function CartaPdfPage() {
               <option value="ambos">Ambos (sección + junto)</option>
             </select>
           </div>
+          {opciones.copa_modo === 'ambos' && total > 60 && (
+            <div className="cpdf-contrast-warn">
+              El modo “Ambos” duplica los vinos (sección + junto): con {total} vinos
+              la carta puede necesitar 3+ páginas. Considera “Junto” o activar
+              densidad “Compacto extra” en Avanzado.
+            </div>
+          )}
         </details>
 
         <details className="cpdf-panel">
@@ -465,9 +481,10 @@ export default function CartaPdfPage() {
             <label>Densidad</label>
             <select value={opciones.densidad_forzada}
               onChange={e => setOp('densidad_forzada', e.target.value)}>
-              <option value="auto">Auto (compacto &gt; 60 vinos)</option>
+              <option value="auto">Auto (compacto &gt; 60 vinos; extra &gt; 90)</option>
               <option value="normal">Normal</option>
               <option value="compacto">Compacto</option>
+              <option value="compacto-extra">Compacto extra (8pt, hero mínimo)</option>
             </select>
           </div>
         </details>

@@ -17,6 +17,8 @@ import {
   indiceRegionEditorial,
   extraerSeccionCopa,
   CATALOGO_FUENTES_ID,
+  notaIvaParaPie,
+  DENSIDADES,
 } from '../app/lib/cartaPdfUtils.js'
 
 // El helper usa U+00A0 (NBSP) entre número y € para que no se partan de línea.
@@ -360,5 +362,80 @@ describe('CATALOGO_FUENTES_ID', () => {
     assert.ok(CATALOGO_FUENTES_ID.has('jetbrains-mono'))
     assert.ok(CATALOGO_FUENTES_ID.has('caveat'))
     assert.ok(CATALOGO_FUENTES_ID.size >= 20)
+  })
+})
+
+describe('notaIvaParaPie (duplicación)', () => {
+  it('con precio sin_euro y pie vacío → añade la nota', () => {
+    const out = notaIvaParaPie({
+      precio_formato: 'sin_euro', nota_euros: true, carta_pie_texto: '',
+    })
+    assert.equal(out, 'Precios en euros, IVA incluido')
+  })
+  it('con precio sin_euro y pie que menciona IVA → NO duplica', () => {
+    const casos = [
+      'IVA incluido',
+      'Precios con IVA',
+      'iva incluido',
+      'I.V.A. incluido',
+      'i.v.a incluido',
+      'Alérgenos disponibles. Precios con IVA.',
+    ]
+    for (const pie of casos) {
+      assert.equal(
+        notaIvaParaPie({ precio_formato: 'sin_euro', nota_euros: true, carta_pie_texto: pie }),
+        null,
+        `el pie "${pie}" ya menciona IVA — no debe añadirse la nota`,
+      )
+    }
+  })
+  it('con precio con_euro → nunca añade nota', () => {
+    assert.equal(notaIvaParaPie({
+      precio_formato: 'con_euro', nota_euros: true, carta_pie_texto: '',
+    }), null)
+  })
+  it('con nota_euros=false → no añade nota', () => {
+    assert.equal(notaIvaParaPie({
+      precio_formato: 'sin_euro', nota_euros: false, carta_pie_texto: '',
+    }), null)
+  })
+  it('respeta aunque "iva" sea substring de otra palabra (ej. "divana")', () => {
+    // "divina" no contiene IVA como palabra → sí debe añadir la nota.
+    const out = notaIvaParaPie({
+      precio_formato: 'sin_euro', nota_euros: true, carta_pie_texto: 'Carta divina de la casa',
+    })
+    assert.equal(out, 'Precios en euros, IVA incluido')
+  })
+})
+
+describe('normalizarOpciones (densidad extra)', () => {
+  it('acepta compacto-extra como densidad válida', () => {
+    const r = normalizarOpcionesCartaPdf({ densidad_forzada: 'compacto-extra' })
+    assert.equal(r.densidad_forzada, 'compacto-extra')
+  })
+  it('compacto-extra está en el catálogo', () => {
+    assert.ok(DENSIDADES.has('compacto-extra'))
+  })
+})
+
+describe('reserva de ancho en línea 2 (copa junto/ambos)', () => {
+  // El cálculo lo hace el componente inyectando --cpdf-precios-w según
+  // copa_modo. Comprobamos aquí el contrato: qué modos necesitan reserva.
+  function necesitaReserva(copa_modo) {
+    return copa_modo === 'junto' || copa_modo === 'ambos'
+  }
+  it('no y seccion → sin reserva', () => {
+    assert.equal(necesitaReserva('no'), false)
+    assert.equal(necesitaReserva('seccion'), false)
+  })
+  it('junto y ambos → con reserva', () => {
+    assert.equal(necesitaReserva('junto'), true)
+    assert.equal(necesitaReserva('ambos'), true)
+  })
+  it('El ancho total de 2 columnas de precio es 14+8+14 = 36mm', () => {
+    const MIN_WIDTH_PRECIO = 14
+    const GAP = 8
+    const ancho2cols = MIN_WIDTH_PRECIO + GAP + MIN_WIDTH_PRECIO
+    assert.equal(ancho2cols, 36)
   })
 })

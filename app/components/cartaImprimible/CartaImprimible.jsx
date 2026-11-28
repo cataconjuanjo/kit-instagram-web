@@ -16,24 +16,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   formatearPrecioPdf, lineaOrigenVino, ordenarVinosSeccion, extraerSeccionCopa,
+  notaIvaParaPie,
 } from '../../lib/cartaPdfUtils'
 import { stackFuente, factorAnchoFuente } from './fonts.js'
 
 const UMBRAL_COMPACTO = 60
+// Umbral para "compacto-extra" (cuerpo 8pt, hero aún menor): se activa
+// en modo auto cuando ni siquiera el modo compacto normal (60) cabe en
+// 2 páginas. 90+ vinos o 70+ vinos con copa_modo "junto"/"ambos" (línea
+// 2 con padding-right reduce ancho útil y encoge menos filas por página).
+const UMBRAL_XTRA_COMPACTO = 90
 
 const CREDITO_TEXTO = 'Carta Viva × @cataconjuanjo'
-const NOTA_EUROS_TEXTO = 'Precios en euros, IVA incluido'
 
 export function CartaImprimible({ restaurante, secciones, config }) {
   const opciones = config?.opciones || {}
 
   // Compat v1: si no hay logos[], usar logo_url como logo 1 cabecera-izq.
+  // tamano_mm=7 reproduce el max-height:7mm que capaba el antiguo CSS
+  // de `.cpdf-sheet__pageheader img` — así la equivalencia por defecto
+  // v1↔v2 se mantiene (mismo nº de páginas). Si el restaurante quiere
+  // un logo mayor, lo configura explícitamente en `logos[]`.
   const logos = useMemo(() => {
     const explicit = Array.isArray(opciones.logos) ? opciones.logos : []
     if (explicit.length > 0) return explicit
     const url = restaurante?.logo_url
     return url
-      ? [{ url, posicion: 'cabecera-izq', tamano_mm: 14, opacidad: 100 }]
+      ? [{ url, posicion: 'cabecera-izq', tamano_mm: 7, opacidad: 100 }]
       : []
   }, [opciones.logos, restaurante?.logo_url])
 
@@ -78,9 +87,20 @@ export function CartaImprimible({ restaurante, secciones, config }) {
 
   const totalVinos = seccionesRenderizables.reduce((n, s) => n + s.vinos.length, 0)
   const densidadForzada = opciones.densidad_forzada || 'auto'
+  const copaModoLocal = opciones.copa_modo || 'no'
+  const copaOcupaColumna = copaModoLocal === 'junto' || copaModoLocal === 'ambos'
+
   const compactoAuto = totalVinos > UMBRAL_COMPACTO
+  // Auto-selección de "compacto-extra" cuando aún con compacto normal
+  // es probable que se abra una 3ª página. Heurística: >=UMBRAL_XTRA
+  // vinos, o >=70 vinos cuando copa ocupa una columna extra.
+  const xtraAuto = totalVinos >= UMBRAL_XTRA_COMPACTO
+    || (copaOcupaColumna && totalVinos >= 70)
   const compacto = densidadForzada === 'compacto'
+    || densidadForzada === 'compacto-extra'
     || (densidadForzada === 'auto' && compactoAuto)
+  const xtraCompact = densidadForzada === 'compacto-extra'
+    || (densidadForzada === 'auto' && xtraAuto)
 
   // Factor de ancho del cuerpo (fuentes anchas comprimen un pelín el pt)
   const factorCuerpo = factorAnchoFuente(opciones.fuente_cuerpo)
@@ -95,6 +115,9 @@ export function CartaImprimible({ restaurante, secciones, config }) {
     '--cpdf-font-titulo': stackTitulo,
     '--cpdf-font-cuerpo': stackCuerpo,
     '--cpdf-factor-cuerpo': String(factorCuerpo),
+    // Reserva de ancho a la derecha de la línea 2 para no solapar los
+    // precios. 14mm copa + 8mm gap + 14mm botella = 36mm.
+    '--cpdf-precios-w': copaOcupaColumna ? '36mm' : '0',
   }
 
   const nombre = restaurante?.nombre || ''
@@ -104,14 +127,20 @@ export function CartaImprimible({ restaurante, secciones, config }) {
   // Pie: combina carta_pie_texto (si el precio es sin € y nota_euros ON,
   // concatena la nota), y si corresponde añade el crédito discreto.
   const pieBase = config.carta_pie_texto || opciones.carta_pie_texto || ''
-  const notaEuros = sinEuro && opciones.nota_euros !== false ? NOTA_EUROS_TEXTO : ''
+  // Nota IVA solo si: formato sin_euro + toggle nota_euros + el pie
+  // del restaurante NO menciona ya "IVA" (evita duplicación).
+  const notaEuros = notaIvaParaPie({
+    precio_formato: opciones.precio_formato,
+    nota_euros: opciones.nota_euros,
+    carta_pie_texto: pieBase,
+  }) || ''
   const piePartes = [pieBase, notaEuros].filter(Boolean)
 
   return (
     <article
-      className={`cpdf-sheet${compacto ? ' cpdf-sheet--compact' : ''}`}
+      className={`cpdf-sheet${compacto ? ' cpdf-sheet--compact' : ''}${xtraCompact ? ' cpdf-sheet--xtra-compact' : ''}`}
       data-total-vinos={totalVinos}
-      data-densidad={compacto ? 'compact' : 'normal'}
+      data-densidad={xtraCompact ? 'xtra-compact' : compacto ? 'compact' : 'normal'}
       style={styleSheet}
       aria-label="Carta de vinos imprimible"
     >
@@ -268,8 +297,21 @@ function LogoFila({ logos, alignEnd = false }) {
   return (
     <span className={`cpdf-logos-fila${alignEnd ? ' cpdf-logos-fila--end' : ''}`}>
       {logos.map((l, i) => (
-        <img key={i} src={l.url} alt=""
-          style={{ maxHeight: `${l.tamano_mm}mm`, maxWidth: `${l.tamano_mm * 2}mm` }} />
+        <img
+          key={i}
+          src={l.url}
+          alt=""
+          /*
+           * Fix bug "logo 0×0":
+           *   - Antes usábamos max-height + max-width sin height/width
+           *     intrínseco. En SVGs con solo viewBox (sin width/height)
+           *     el navegador hace fallback a 0×0 → el logo desaparecía.
+           *   - Ahora: height en mm explícito + width:auto para que el
+           *     navegador aplique la ratio (incluso en SVG). max-width
+           *     limita el ancho máximo si el logo es muy apaisado.
+           */
+          style={{ height: `${l.tamano_mm}mm`, width: 'auto', maxWidth: '60mm' }}
+        />
       ))}
     </span>
   )

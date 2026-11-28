@@ -235,11 +235,30 @@ export const CATALOGO_POSICIONES_QR = new Set([
   'pie-izq', 'pie-centro', 'pie-der', 'cabecera-der',
 ])
 
+/**
+ * Decide si añadir la nota "Precios en euros, IVA incluido" al pie:
+ * SOLO cuando el formato es sin_euro, nota_euros está activada y el
+ * texto de pie del restaurante no menciona ya "IVA" (case-insensitive,
+ * detecta también "I.V.A.").
+ *
+ * @returns {string|null} la nota a añadir o null si no procede.
+ */
+export function notaIvaParaPie({ precio_formato, nota_euros, carta_pie_texto }) {
+  if (precio_formato !== 'sin_euro') return null
+  if (nota_euros === false) return null
+  const pie = String(carta_pie_texto || '')
+  // Detecta "iva" (palabra) o "i.v.a." con los puntos opcionales.
+  // Normalizamos puntos → letra para que `\b` reconozca la palabra.
+  const normalizado = pie.replace(/i\.?v\.?a\.?/gi, 'iva')
+  if (/\biva\b/i.test(normalizado)) return null
+  return 'Precios en euros, IVA incluido'
+}
+
 export const COPA_MODOS = new Set(['no', 'junto', 'seccion', 'ambos'])
 export const ORDEN_VINOS = new Set(['alfabetico', 'region', 'precio_asc', 'uva', 'anada'])
 export const ORDEN_SECUNDARIO = new Set(['precio_asc', 'alfabetico'])
 export const PRECIO_FORMATOS = new Set(['con_euro', 'sin_euro'])
-export const DENSIDADES = new Set(['auto', 'normal', 'compacto'])
+export const DENSIDADES = new Set(['auto', 'normal', 'compacto', 'compacto-extra'])
 
 /**
  * Devuelve el objeto de opciones v2 con TODOS los campos rellenados con
