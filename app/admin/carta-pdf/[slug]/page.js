@@ -172,6 +172,24 @@ export default function CartaPdfPage() {
     carta_incluir_bodega_anada: form.carta_incluir_bodega_anada,
   }), [form, colorTexto, fontStack])
 
+  /*
+   * Inyectar las variables de color en <html>. En la preview admin el
+   * efecto visible es el mismo que en /imprimir: evita que el fondo
+   * del shell admin (gris #e9eaec) "parpadee" al cambiar colores desde
+   * el panel. El cleanup restaura el shell admin neutro al salir.
+   */
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--cpdf-bg', form.color_fondo)
+    root.style.setProperty('--cpdf-fg', colorTexto)
+    root.style.setProperty('--cpdf-accent', form.color_acento)
+    return () => {
+      root.style.removeProperty('--cpdf-bg')
+      root.style.removeProperty('--cpdf-fg')
+      root.style.removeProperty('--cpdf-accent')
+    }
+  }, [form.color_fondo, form.color_acento, colorTexto])
+
   // ── Mutaciones ───────────────────────────────────────────────────────
   function set(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }))

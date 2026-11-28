@@ -59,12 +59,13 @@
   vertical-align: top;
   background: var(--cpdf-bg);
 }
-/* Margen inferior físico en la última página (donde cabe el contenido);
- * en páginas intermedias Chromium pagina sin reservar franja inferior,
- * así evitamos la "página fantasma" que generaba el antiguo tfoot. */
-.cpdf-page-table > tbody > tr > td {
-  padding-bottom: var(--cpdf-bottom-spacer);
-}
+/*
+ * Antes aquí había `padding-bottom: var(--cpdf-bottom-spacer)` para
+ * dar margen inferior en la última página (reemplazaba al tfoot).
+ * Ahora el margen lo da `.cpdf-sheet__body { padding-bottom: 10mm;
+ * box-decoration-break: clone }` que se replica en CADA página
+ * (antes solo en la última).
+ */
 
 /* Spacer superior (va en el thead, se repite en cada página). */
 .cpdf-page-spacer { width: 100%; }
@@ -152,6 +153,16 @@
   font-family: var(--cpdf-font-mono, 'Courier New', 'DejaVu Sans Mono', monospace);
   font-size: 9.5pt;
   line-height: 1.35;
+  /*
+   * Margen inferior de 10mm REPETIDO en cada página gracias a
+   * box-decoration-break: clone. Chromium aplica padding-bottom al
+   * fragmento de cada página del multicol, no solo a la última. Antes
+   * los vinos de pág 1 llegaban a ~2.5mm del borde porque el
+   * padding-bottom estaba en el <td> del tbody (solo última página).
+   */
+  padding-bottom: 10mm;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 /*
@@ -285,7 +296,7 @@
 
 @media print {
   html, body {
-    background: var(--cpdf-bg, #1a1a2e) !important;
+    background: var(--cpdf-bg) !important;
     margin: 0 !important;
     padding: 0 !important;
     height: auto !important;
@@ -309,7 +320,7 @@
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
-    background: var(--cpdf-bg, #1a1a2e) !important;
+    background: var(--cpdf-bg) !important;
   }
   [data-cpdf-hide-on-print],
   .no-print {

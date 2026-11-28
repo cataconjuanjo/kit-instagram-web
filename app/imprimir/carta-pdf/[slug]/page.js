@@ -138,6 +138,27 @@ export default function ImprimirCartaPdfPage() {
     }
   }, [datos])
 
+  /*
+   * Inyectar las variables de color en <html> (document.documentElement).
+   * Antes vivían solo en .cpdf-sheet con style inline y el <html>/<body>
+   * caían a su fallback hardcoded #1a1a2e → banda oscura al final de la
+   * última página cuando el fondo real es claro. Al ponerlas en <html>,
+   * body y cualquier contenedor intermedio heredan el color correcto.
+   * El cleanup borra las propiedades al desmontar para no contaminar
+   * otras rutas de la SPA.
+   */
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--cpdf-bg', config.color_fondo)
+    root.style.setProperty('--cpdf-fg', config.color_texto)
+    root.style.setProperty('--cpdf-accent', config.color_acento)
+    return () => {
+      root.style.removeProperty('--cpdf-bg')
+      root.style.removeProperty('--cpdf-fg')
+      root.style.removeProperty('--cpdf-accent')
+    }
+  }, [config.color_fondo, config.color_texto, config.color_acento])
+
   const { secciones } = useMemo(
     () => agruparVinosPorSeccion(datos?.vinos || []),
     [datos]
