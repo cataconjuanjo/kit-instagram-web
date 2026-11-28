@@ -1,7 +1,6 @@
-import { requireRestaurantAccess } from '../_lib/auth'
 import { isConsultorFromAuth } from '../_lib/isConsultor'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-import { puedeUsar } from '../../lib/plans'
+import { requireCatalogoConsultor } from '../_lib/requireCatalogoConsultor'
 
 function texto(value, limite = 80) {
   return String(value || '').trim().slice(0, limite)
@@ -11,24 +10,12 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url)
     const restauranteId = texto(searchParams.get('restaurante_id'))
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    const esConsultor = isConsultorFromAuth(auth)
 
-    // Gate: la lista con contacto es parte del catálogo privado; solo
-    // premium/admin la reciben. Para planes inferiores devolvemos 403:
-    // así el cliente puede ocultar la UI y no se exponen email/teléfono.
-    const { data: restaurante, error: restError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-    if (restError || !restaurante) {
-      return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    }
-    if (!esConsultor && !puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el catálogo del consultor' }, { status: 403 })
-    }
+    // Gate único: catalogo_consultor en el plan del restaurante. Admin
+    // sin plan en el restaurante también cae en 403 (regla unificada).
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const esConsultor = isConsultorFromAuth(gate.auth)
 
     const { data, error } = await supabaseAdmin
       .from('proveedores_vino')

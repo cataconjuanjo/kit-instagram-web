@@ -1,6 +1,5 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
 import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
@@ -18,18 +17,8 @@ export async function PATCH(req) {
       return Response.json({ error: 'linea_id y catalogo_vino_id son obligatorios' }, { status: 400 })
     }
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-
-    const { data: restaurante, error: restError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-    if (restError || !restaurante) return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
-    }
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     const [{ data: linea, error: lineaError }, { data: oferta, error: ofertaError }] = await Promise.all([
       supabaseAdmin

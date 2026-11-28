@@ -1,7 +1,6 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { isConsultorFromAuth } from '../../_lib/isConsultor'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
 // GET /api/simulador/proveedores-breakdown?restaurante_id=...
@@ -12,19 +11,17 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url)
     const restauranteId = String(searchParams.get('restaurante_id') || '').trim().slice(0, 80)
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    const esConsultor = isConsultorFromAuth(auth)
-
-    const { data: restaurante } = await supabaseAdmin
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const esConsultor = isConsultorFromAuth(gate.auth)
+    // Breakdown muestra el nombre del restaurante en los logs/informes; se
+    // recupera aparte porque el helper solo carga plan+subscription_status.
+    const { data: restRow } = await supabaseAdmin
       .from('restaurantes')
-      .select('nombre, plan, subscription_status')
+      .select('nombre')
       .eq('id', restauranteId)
       .single()
-
-    if (!restaurante || !puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
-    }
+    const restaurante = { ...gate.restaurante, nombre: restRow?.nombre }
 
     // 1. Cargar el borrador
     const { data: simLineas, error: simErr } = await supabaseAdmin

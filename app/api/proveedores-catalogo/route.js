@@ -1,7 +1,6 @@
-import { requireRestaurantAccess } from '../_lib/auth'
 import { isConsultorFromAuth } from '../_lib/isConsultor'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-import { puedeUsar } from '../../lib/plans'
+import { requireCatalogoConsultor } from '../_lib/requireCatalogoConsultor'
 
 function texto(value, limite = 120) {
   return String(value || '').trim().slice(0, limite)
@@ -30,24 +29,12 @@ export async function GET(req) {
     const page = Math.max(1, Number(searchParams.get('page')) || 1)
     const offset = (page - 1) * limit
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    const esConsultor = isConsultorFromAuth(auth)
-
-    const { data: restaurante, error: restauranteError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('id, plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-
-    if (restauranteError) throw restauranteError
-
-    // Gate: solo premium (y admin) ven el catálogo privado del consultor.
-    // El resto de planes recibe 403 explícito; el cliente debe degradar sin
-    // exponer la pestaña de proveedores.
-    if (!esConsultor && !puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el catálogo del consultor' }, { status: 403 })
-    }
+    // Gate único: el restaurante debe tener catalogo_consultor en su plan.
+    // El admin NO salta este control (ver requireCatalogoConsultor).
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const esConsultor = isConsultorFromAuth(gate.auth)
+    const restaurante = gate.restaurante
 
     const perfilBodega = restaurante?.plan === 'bodega'
 

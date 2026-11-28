@@ -1,10 +1,10 @@
 // Smoke test estático de la matriz endpoint → guard de catálogo privado.
 //
-// Verifica, leyendo el fichero, que cada endpoint que lee de las tablas
-// proveedor_catalogo_vinos / proveedores_vino exige o bien
-// `catalogo_consultor` (plan premium) o bien el email del admin. Esto
-// evita regresiones si alguien quita el gate: el test lee el texto del
-// handler y comprueba que el string canónico está presente.
+// Verifica que CADA método exportado (GET/POST/PATCH/DELETE) de los
+// endpoints que leen proveedor_catalogo_vinos / proveedores_vino llama al
+// helper único `requireCatalogoConsultor`. Evita regresiones como la de
+// /api/simulador/pedidos (solo POST tenía el gate; GET y PATCH quedaban
+// abiertos y el admin pasaba por `requireRestaurantAccess`).
 //
 // Ejecutar: node --test scripts/catalogoGateMatrix.test.mjs
 import { test } from 'node:test'
@@ -14,13 +14,10 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const leer = (ruta) => readFileSync(resolve(root, ruta), 'utf8')
 
-function leer(ruta) {
-  return readFileSync(resolve(root, ruta), 'utf8')
-}
-
-// Rutas públicas (pide bearer de propietario O admin) que leen catálogo
-// privado: deben tener gate explícito de catalogo_consultor.
+// Endpoints que leen el catálogo privado. Deben usar
+// `requireCatalogoConsultor` en TODOS sus métodos exportados.
 const ENDPOINTS_CATALOGO = [
   'app/api/catalogo-consultor/route.js',
   'app/api/proveedores-catalogo/route.js',
@@ -35,37 +32,70 @@ const ENDPOINTS_CATALOGO = [
   'app/api/simulador/recalcular-copa-catalogo/route.js',
 ]
 
+// Localiza los cuerpos de los métodos exportados `GET`, `POST`, `PATCH`,
+// `DELETE`. Devuelve `{ metodo, cuerpo }[]`. Usa un escaneo de llaves
+// simple (sin AST) que es suficiente para los handlers típicos de Next.
+function extraerMetodosExportados(src) {
+  const metodos = ['GET', 'POST', 'PATCH', 'DELETE']
+  const resultado = []
+  for (const metodo of metodos) {
+    const re = new RegExp(`export\\s+async\\s+function\\s+${metodo}\\s*\\(`, 'g')
+    const match = re.exec(src)
+    if (!match) continue
+    // Encontrar la llave que abre la función y recorrer hasta cerrarla.
+    let i = src.indexOf('{', match.index)
+    if (i < 0) continue
+    let depth = 0
+    let inicio = i
+    for (; i < src.length; i++) {
+      const c = src[i]
+      if (c === '{') depth++
+      else if (c === '}') {
+        depth--
+        if (depth === 0) { resultado.push({ metodo, cuerpo: src.slice(inicio, i + 1) }); break }
+      }
+    }
+  }
+  return resultado
+}
+
 for (const ruta of ENDPOINTS_CATALOGO) {
-  test(`${ruta}: exige catalogo_consultor (o admin)`, () => {
+  test(`${ruta}: cada método exportado usa requireCatalogoConsultor`, () => {
     const src = leer(ruta)
-    const gate = src.includes("'catalogo_consultor'")
-    assert.ok(
-      gate,
-      `${ruta} debe comprobar puedeUsar(..., 'catalogo_consultor')`
-    )
-    // Debe responder 403 si no cumple
-    assert.ok(
-      /status:\s*403/.test(src),
-      `${ruta} debe responder 403 cuando falta el plan`
-    )
+    const metodos = extraerMetodosExportados(src)
+    assert.ok(metodos.length > 0, `${ruta}: no se detectaron métodos exportados`)
+    for (const { metodo, cuerpo } of metodos) {
+      assert.ok(
+        cuerpo.includes('requireCatalogoConsultor('),
+        `${ruta} ${metodo}: debe invocar requireCatalogoConsultor() (regresión F1 bloque fuga)`
+      )
+      // Defensa en profundidad: el fichero importa el helper.
+      assert.ok(
+        src.includes("requireCatalogoConsultor"),
+        `${ruta}: falta import del helper`
+      )
+    }
   })
 }
 
-// Rutas admin-only del catálogo privado: deben validar email admin.
+// Rutas admin-only del catálogo: no usan `requireCatalogoConsultor` porque
+// son herramientas internas del consultor (bypass admin deliberado).
 const ENDPOINTS_ADMIN = [
   'app/api/admin/proveedores/route.js',
   'app/api/admin/normalizar-catalogo/route.js',
 ]
 for (const ruta of ENDPOINTS_ADMIN) {
-  test(`${ruta}: admin-only`, () => {
+  test(`${ruta}: admin-only (bypass deliberado)`, () => {
     const src = leer(ruta)
-    const adminGate = /adminEmail|ADMIN_EMAIL|getAdminEmail/.test(src)
-    assert.ok(adminGate, `${ruta} debe validar el email admin`)
+    assert.ok(
+      /adminEmail|ADMIN_EMAIL|getAdminEmail/.test(src),
+      `${ruta} debe validar el email admin`
+    )
   })
 }
 
-// GET /api/simulador (operación general): editor_carta + strip de claves
-// del catálogo cuando falta catalogo_consultor.
+// GET /api/simulador: strip canónico de claves del catálogo cuando el
+// plan no tiene catalogo_consultor (ver simuladorPayload.js).
 test('GET /api/simulador usa CLAVES_CATALOGO_CONSULTOR para strip', () => {
   const src = leer('app/api/simulador/route.js')
   assert.ok(src.includes('puedeUsarEditorCarta'), 'editor_carta gate')

@@ -1,6 +1,5 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
 import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
@@ -30,22 +29,8 @@ export async function POST(req) {
       return Response.json({ error: 'catalogo_vino_id obligatorio' }, { status: 400 })
     }
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-
-    const { data: restaurante, error: restError } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-
-    if (restError || !restaurante) {
-      return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    }
-
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
-    }
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     // Carga en paralelo: vino del catálogo + borrador existente
     const [catalogoResult, borradorResult] = await Promise.all([

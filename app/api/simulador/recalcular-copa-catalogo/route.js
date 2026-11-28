@@ -1,6 +1,5 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireCatalogoConsultor } from '../../_lib/requireCatalogoConsultor'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
 import { costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
@@ -22,19 +21,8 @@ export async function POST(req) {
       return Response.json({ error: 'restaurante_id obligatorio' }, { status: 400 })
     }
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-
-    // El endpoint lee coste_estimado de proveedor_catalogo_vinos → catálogo
-    // privado → solo premium (y admin, cubierto por requireRestaurantAccess).
-    const { data: restaurante } = await supabaseAdmin
-      .from('restaurantes')
-      .select('plan, subscription_status')
-      .eq('id', restauranteId)
-      .single()
-    if (!restaurante || !puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el catálogo del consultor' }, { status: 403 })
-    }
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
 
     // Config económica del restaurante (copas_por_botella, merma, iva…)
     const { data: econSettings } = await supabaseAdmin

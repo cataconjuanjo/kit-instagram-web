@@ -1,7 +1,6 @@
-import { requireRestaurantAccess } from '../_lib/auth'
 import { isConsultorFromAuth } from '../_lib/isConsultor'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-import { puedeUsar } from '../../lib/plans'
+import { requireCatalogoConsultor } from '../_lib/requireCatalogoConsultor'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import { agruparOfertasCatalogo, costePorBotella, resumenAgrupacionCatalogo } from '../../lib/catalogoGrouping.mjs'
 import { construirHermanosMap, esPrecioDesactualizado } from '../../lib/precioDesactualizado'
@@ -13,23 +12,17 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url)
     const restauranteId = String(searchParams.get('restaurante_id') || '').trim().slice(0, 80)
 
-    const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    const esConsultor = isConsultorFromAuth(auth)
-
-    const { data: restaurante, error: restError } = await supabaseAdmin
+    const gate = await requireCatalogoConsultor(req, restauranteId)
+    if (gate.error) return Response.json({ error: gate.error }, { status: gate.status })
+    const esConsultor = isConsultorFromAuth(gate.auth)
+    // Segunda lectura del restaurante para obtener provincia_codigo (no
+    // relevante para el gate; el helper solo carga plan+status).
+    const { data: provinciaRow } = await supabaseAdmin
       .from('restaurantes')
-      .select('plan, subscription_status, provincia_codigo')
+      .select('provincia_codigo')
       .eq('id', restauranteId)
       .single()
-
-    if (restError || !restaurante) {
-      return Response.json({ error: 'Restaurante no encontrado' }, { status: 404 })
-    }
-
-    if (!puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el catálogo de consultor' }, { status: 403 })
-    }
+    const restaurante = { ...gate.restaurante, provincia_codigo: provinciaRow?.provincia_codigo }
 
     const { data: allProviders, error: provError } = await supabaseAdmin
       .from('proveedores_vino')
