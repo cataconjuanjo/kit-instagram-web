@@ -292,10 +292,25 @@ function MarcaAgua({ logos }) {
 function PieYQrYCredito({ piePartes, qr, credito, logosPie, cartaPublicaActiva, slug, bgHex, fgHex }) {
   const qrActivo = qr && qr.activo !== false && cartaPublicaActiva && slug
   const qrEnPie = qrActivo && String(qr.posicion || 'pie-der').startsWith('pie-')
-  const hayContenidoPie = piePartes.length > 0 || credito || qrEnPie
-    || logosPie.izq.length > 0 || logosPie.centro.length > 0 || logosPie.der.length > 0
-
+  const hayLogosPie = logosPie.izq.length > 0 || logosPie.centro.length > 0 || logosPie.der.length > 0
+  const hayContenidoPie = piePartes.length > 0 || credito || qrEnPie || hayLogosPie
   if (!hayContenidoPie) return null
+
+  // Pie "simple" sin grid: cuando sólo tenemos texto + crédito + QR
+  // (sin logos en pie). Evita el column-span: all que empujaba una
+  // página extra solo-pie.
+  const necesitaGrid = hayLogosPie
+  if (!necesitaGrid) {
+    return (
+      <footer className="cpdf-sheet__pie cpdf-sheet__pie--simple">
+        {piePartes.length > 0 && (
+          <div className="cpdf-pie-texto">{piePartes.map((p, i) => <div key={i}>{p}</div>)}</div>
+        )}
+        {qrEnPie && <QrBlock qr={qr} slug={slug} bgHex={bgHex} fgHex={fgHex} alineacion={qr.posicion} />}
+        {credito && <div className="cpdf-credito" aria-label="Marca comercial">{CREDITO_TEXTO}</div>}
+      </footer>
+    )
+  }
 
   return (
     <footer className="cpdf-sheet__pie">

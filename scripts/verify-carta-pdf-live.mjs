@@ -53,12 +53,38 @@ const RENDER_SCALE = 1.5
 const PX_POR_MM = (842 * RENDER_SCALE) / 297
 
 const PALETAS = [
-  // Pase 1: paleta real del restaurante (oscura en casa-marisma),
-  // vinos reales (50 aprox).
-  { nombre: 'oscura', color_fondo: null, color_acento: null, clonarVinosHasta: null },
-  // Pase 2: paleta clara + 80 vinos sintéticos (clona los reales).
-  // Simula "Lo de Carmen" sin tocar DB.
-  { nombre: 'clara',  color_fondo: '#f7f3ee', color_acento: '#b5532a', clonarVinosHasta: 80 },
+  // Pase 1: DEFAULTS. Paleta real del restaurante, opciones v2 = {}.
+  // Objetivo: confirmar REGLA DE ORO (equivalencia al v1).
+  { nombre: 'defaults', color_fondo: null, color_acento: null, clonarVinosHasta: null, opciones: null },
+  // Pase 2: paleta clara + 80 vinos clonados + CONFIG v2 COMPLETA:
+  // fuente título Playfair + cuerpo Lato, 2 logos (cabecera-izq +
+  // pie-centro), QR activo, orden por región con subtítulos,
+  // copa_modo "ambos", precios sin €, crédito ON.
+  {
+    nombre: 'config-completa',
+    color_fondo: '#f7f3ee', color_acento: '#b5532a',
+    clonarVinosHasta: 80,
+    opciones: {
+      fuente_titulo: 'playfair-display',
+      fuente_cuerpo: 'lato',
+      logos: [
+        { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'cabecera-izq', tamano_mm: 14, opacidad: 100 },
+        { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'pie-centro',   tamano_mm: 10, opacidad: 100 },
+      ],
+      qr: { activo: true, posicion: 'pie-der', tamano_mm: 24, texto: 'Maridajes · escanea', color_auto: true },
+      credito: true,
+      // copa_modo "junto" (no "ambos"): con 80 clonados, "ambos" duplica
+      // vinos a 144+ y rompe la paginación esperada. "junto" cumple el
+      // objetivo de verificar el modo copa sin duplicación.
+      copa_modo: 'junto',
+      orden_vinos: 'region',
+      orden_secundario: 'precio_asc',
+      subtitulos_region: true,
+      precio_formato: 'sin_euro',
+      nota_euros: true,
+      densidad_forzada: 'auto',
+    },
+  },
 ]
 
 async function esperarUrl(url, timeoutMs = 180_000) {
@@ -190,7 +216,7 @@ async function ejecutarPase(browser, paleta) {
   //   (b) clonar los vinos hasta `clonarVinosHasta` (simula una carta
   //       grande tipo Lo de Carmen sin cargar 80 vinos reales).
   // El componente recibe la respuesta modificada y renderiza normal.
-  if (paleta.color_fondo || paleta.clonarVinosHasta) {
+  if (paleta.color_fondo || paleta.clonarVinosHasta || paleta.opciones) {
     await page.route('**/api/public/restaurante/**', async route => {
       const response = await route.fetch()
       let body
@@ -198,6 +224,11 @@ async function ejecutarPase(browser, paleta) {
       if (body?.restaurante) {
         if (paleta.color_fondo)  body.restaurante.color_fondo  = paleta.color_fondo
         if (paleta.color_acento) body.restaurante.color_acento = paleta.color_acento
+        if (paleta.opciones) {
+          body.restaurante.carta_pdf_opciones = paleta.opciones
+          // Para que el QR tenga carta pública activa en el mock
+          body.restaurante.carta_publica_activa = true
+        }
       }
       if (paleta.clonarVinosHasta && Array.isArray(body?.vinos) && body.vinos.length > 0) {
         const originales = [...body.vinos]
@@ -258,6 +289,18 @@ async function ejecutarPase(browser, paleta) {
   })
   console.log('[pase] Densidad:', metaDensidad)
 
+  // ¿Hay QR SVG en el DOM antes de imprimir?
+  const qrDomInfo = await page.evaluate(() => {
+    const el = document.querySelector('.cpdf-qr .cpdf-qr__svg svg')
+    if (!el) return { presente: false }
+    return {
+      presente: true,
+      viewBox: el.getAttribute('viewBox'),
+      modulosAprox: el.querySelectorAll('rect, path').length,
+    }
+  })
+  console.log('[pase] QR en DOM:', qrDomInfo)
+
   const pdfPath = path.join(OUT_DIR, `live-${paleta.nombre}.pdf`)
   await page.pdf({ path: pdfPath, format: 'A4', preferCSSPageSize: true, printBackground: true })
   await context.close()
@@ -287,6 +330,42 @@ async function ejecutarPase(browser, paleta) {
     if (txt.length > maxChars) maxChars = txt.length
   }
 
+  // Fuentes embebidas: pdfjs expone commonObjs con los dict de fuente
+  // por página tras getOperatorList. Alternativa: parsear bytes del
+  // PDF buscando /BaseFont /... — más rápido y determinista.
+  const pdfRaw = buf.toString('latin1')
+  const fuentesEmbebidas = Array.from(
+    new Set((pdfRaw.match(/\/BaseFont\s*\/([A-Za-z0-9+\-_]+)/g) || [])
+      .map(m => m.replace(/.*\//, '')))
+  )
+  console.log('[pase] Fuentes embebidas en PDF:', fuentesEmbebidas.slice(0, 12).join(', ') + (fuentesEmbebidas.length > 12 ? '…' : ''))
+
+  // Descodifica QR del raster si el DOM tenía QR. Buscamos en todas las
+  // páginas; basta con que una lo descodifique.
+  let qrDescodificadoUrl = null
+  if (qrDomInfo.presente) {
+    try {
+      const jsQR = (await import('jsqr')).default
+      // Re-rasterizamos las páginas a MAYOR resolución (3x la base)
+      // sólo para la detección de QR: 18-24mm a 1.5x ≈ 75-100px, poco
+      // para jsqr con nivel M y margen 2. A 4x son 200-270px, cómodo.
+      const { createCanvas } = await import('@napi-rs/canvas')
+      for (let i = 1; i <= nPag; i++) {
+        const page = await pdfDoc.getPage(i)
+        const vp = page.getViewport({ scale: 4 })
+        const canvasHR = createCanvas(Math.floor(vp.width), Math.floor(vp.height))
+        const ctxHR = canvasHR.getContext('2d')
+        await page.render({ canvasContext: ctxHR, viewport: vp }).promise
+        const imageData = ctxHR.getImageData(0, 0, canvasHR.width, canvasHR.height)
+        const code = jsQR(imageData.data, canvasHR.width, canvasHR.height)
+        if (code && code.data) { qrDescodificadoUrl = code.data; break }
+      }
+    } catch (err) {
+      console.log('[pase] QR decode fallo:', err?.message)
+    }
+    console.log('[pase] QR descodificado:', qrDescodificadoUrl || '(no descodificable)')
+  }
+
   const info = resultados.map(r => ({
     pag: r.pag,
     chars: r.chars,
@@ -313,6 +392,9 @@ async function ejecutarPase(browser, paleta) {
   // ser menor porque el pie puede caer cerca del borde: lo exigimos solo
   // para páginas no finales).
   const r8 = info.slice(0, -1).every(x => x.margenMm >= MARGEN_INFERIOR_MIN_MM)
+  // r9: QR activo → debe descodificarse al menos en una página. Si no
+  // estaba activo, la regla no aplica.
+  const r9 = !qrDomInfo.presente || !!qrDescodificadoUrl
 
   console.log(`\n── RESUMEN pase ${paleta.nombre} ──`)
   console.log(r1 ? `✅ Páginas ≤ ${MAX_PAGINAS} (actual ${nPag})` : `❌ Páginas = ${nPag}`)
@@ -324,6 +406,12 @@ async function ejecutarPase(browser, paleta) {
   console.log(r7 ? '✅ Página final con contenido' : '❌ Página final fantasma')
   console.log(r8 ? `✅ Margen inferior ≥ ${MARGEN_INFERIOR_MIN_MM} mm en páginas no finales`
                 : `❌ Margen inferior insuficiente: ${info.slice(0, -1).map(x => x.pag + '=' + x.margenMm + 'mm').join(', ')}`)
+  console.log(r9
+    ? (qrDomInfo.presente
+        ? `✅ QR descodificado → ${qrDescodificadoUrl}`
+        : '· QR no activo (regla no aplica)')
+    : '❌ QR presente pero no descodificable')
+  console.log(`· Fuentes embebidas: ${fuentesEmbebidas.length}`)
 
   const fallos = []
   if (!r1) fallos.push('r1-paginas')
@@ -334,6 +422,7 @@ async function ejecutarPase(browser, paleta) {
   if (!r6) fallos.push('r6-pag1-vinos')
   if (!r7) fallos.push('r7-pag-fantasma')
   if (!r8) fallos.push('r8-margen-inferior')
+  if (!r9) fallos.push('r9-qr-no-descodifica')
 
   if (!r4) {
     const paginasConFallo = resultados.filter(r => !r.bordes.ok)

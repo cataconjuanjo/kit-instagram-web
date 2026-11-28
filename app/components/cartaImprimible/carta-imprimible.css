@@ -406,7 +406,18 @@
   gap: 4mm;
   align-items: center;
   margin-top: 2mm;
-  column-span: all;
+  /* Sin column-span: queremos que el pie quepa dentro de la última
+     columna. Un column-span: all fuerza al motor a salir del multicol
+     y crear un bloque de ancho completo que, en PDFs al límite,
+     provoca una página final solo-pie. */
+}
+/* Pie "simple" sin grid: cuando solo hay texto + crédito + QR, queda
+ * dentro del flow del multicol al final de la última columna. */
+.cpdf-sheet__pie--simple {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2mm;
 }
 .cpdf-pie-slot {
   display: flex;
@@ -456,7 +467,7 @@
   letter-spacing: 0.08em;
   color: var(--cpdf-fg);
   opacity: 0.4;
-  column-span: all;
+  /* Sin column-span: cabe al final de la última columna */
 }
 
 /* ─────────────────────────────────────────────────────────────────────
