@@ -42,6 +42,10 @@ async function esOwnerDelRestaurante(req, restauranteId) {
 const CAMPOS_RESTAURANTE_CARTA_PDF = [
   'carta_descripcion', 'carta_mostrar_copa', 'carta_incluir_bodega_anada',
 ]
+// Columna v2 (jsonb) con todas las opciones nuevas. Si la migración
+// add_carta_pdf_opciones aún no se ha aplicado, el SELECT se reintenta
+// sin ella con el mismo patrón que con las columnas v1.
+const CAMPOS_RESTAURANTE_CARTA_PDF_V2 = ['carta_pdf_opciones']
 
 const CAMPOS_RESTAURANTE = [
   'id', 'slug', 'nombre', 'ciudad',
@@ -49,6 +53,7 @@ const CAMPOS_RESTAURANTE = [
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
   'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',
   ...CAMPOS_RESTAURANTE_CARTA_PDF,
+  ...CAMPOS_RESTAURANTE_CARTA_PDF_V2,
   'hub_activo', 'hub_titulo', 'hub_subtitulo', 'hub_fondo_url',
   'hub_fondo_zoom', 'hub_fondo_x', 'hub_fondo_y', 'hub_overlay',
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',
@@ -185,10 +190,19 @@ export async function GET(req, { params }) {
     }
     let { data: restaurante, error } = await leerRestaurante(SELECT_RESTAURANTE_PUBLICO)
     if (error && error.code === '42703') {
-      const camposSinCartaPdf = [...CAMPOS_RESTAURANTE, ...CAMPOS_RESTAURANTE_CONTROL]
-        .filter(c => !CAMPOS_RESTAURANTE_CARTA_PDF.includes(c))
+      // Fallback escalonado: primero reintenta sin la columna v2
+      // (carta_pdf_opciones); si sigue fallando, también sin v1.
+      const camposSinV2 = [...CAMPOS_RESTAURANTE, ...CAMPOS_RESTAURANTE_CONTROL]
+        .filter(c => !CAMPOS_RESTAURANTE_CARTA_PDF_V2.includes(c))
         .join(', ')
-      const retry = await leerRestaurante(camposSinCartaPdf)
+      let retry = await leerRestaurante(camposSinV2)
+      if (retry.error && retry.error.code === '42703') {
+        const camposSinV1V2 = [...CAMPOS_RESTAURANTE, ...CAMPOS_RESTAURANTE_CONTROL]
+          .filter(c => !CAMPOS_RESTAURANTE_CARTA_PDF.includes(c)
+                    && !CAMPOS_RESTAURANTE_CARTA_PDF_V2.includes(c))
+          .join(', ')
+        retry = await leerRestaurante(camposSinV1V2)
+      }
       restaurante = retry.data
       error = retry.error
     }

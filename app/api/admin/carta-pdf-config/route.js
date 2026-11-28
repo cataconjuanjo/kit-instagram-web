@@ -25,11 +25,15 @@
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { getAdminEmail } from '../../_lib/isConsultor'
+import { normalizarOpcionesCartaPdf } from '../../../lib/cartaPdfUtils'
 
 const TIPOGRAFIAS_VALIDAS = new Set(['serif', 'sans', 'condensed', 'display', 'garamond', 'mono'])
 const COLUMNAS_NUEVAS = new Set([
   'carta_descripcion', 'carta_mostrar_copa', 'carta_incluir_bodega_anada',
 ])
+// Columnas v2 — pueden no existir en DB si la migración
+// add_carta_pdf_opciones aún no se ha aplicado.
+const COLUMNAS_V2 = new Set(['carta_pdf_opciones'])
 
 function sanitizarHex(valor) {
   if (typeof valor !== 'string') return null
@@ -136,6 +140,17 @@ export async function PATCH(req) {
   if ('carta_pie_texto' in body) {
     update.carta_pie_texto = sanitizarTexto(body.carta_pie_texto, 400) || null
   }
+  // v2: todas las opciones nuevas entran dentro de `carta_pdf_opciones`
+  // (jsonb). El normalizador aplica defaults, valida tipos/rangos y
+  // descarta claves fuera de la whitelist.
+  if ('carta_pdf_opciones' in body) {
+    const raw = body.carta_pdf_opciones
+    if (raw === null) {
+      update.carta_pdf_opciones = {}
+    } else if (typeof raw === 'object') {
+      update.carta_pdf_opciones = normalizarOpcionesCartaPdf(raw)
+    }
+  }
 
   if (Object.keys(update).length === 0) {
     return Response.json({ error: 'Sin cambios aplicables.' }, { status: 400 })
@@ -152,25 +167,33 @@ export async function PATCH(req) {
 
   let { data, error } = await intentarUpdate(update)
 
-  // Si las columnas nuevas no existen todavía (migración sin aplicar), degrada.
-  if (error && error.code === '42703' && Object.keys(update).some(k => COLUMNAS_NUEVAS.has(k))) {
-    const degradado = Object.fromEntries(
-      Object.entries(update).filter(([k]) => !COLUMNAS_NUEVAS.has(k))
+  // Si las columnas nuevas (v1 o v2) no existen todavía, degrada.
+  // Primero intenta sin la columna v2 (migración add_carta_pdf_opciones).
+  // Si sigue fallando, también sin las columnas v1.
+  if (error && error.code === '42703') {
+    const columnasAfectadas = Object.keys(update).filter(
+      k => COLUMNAS_NUEVAS.has(k) || COLUMNAS_V2.has(k)
     )
-    if (Object.keys(degradado).length === 0) {
-      return Response.json({
-        error: 'Migración pendiente: aplica supabase/migrations_pendientes/add_carta_pdf.up.sql',
-        code: 'MIGRATION_PENDING',
-      }, { status: 409 })
-    }
-    const retry = await intentarUpdate(degradado)
-    data = retry.data
-    error = retry.error
-    if (!error) {
-      return Response.json({
-        ok: true,
-        aviso: 'Guardado parcial: carta_descripcion y carta_mostrar_copa requieren aplicar la migración add_carta_pdf.',
-      })
+    if (columnasAfectadas.length > 0) {
+      const degradado = Object.fromEntries(
+        Object.entries(update).filter(([k]) => !COLUMNAS_NUEVAS.has(k) && !COLUMNAS_V2.has(k))
+      )
+      if (Object.keys(degradado).length === 0) {
+        return Response.json({
+          error: 'Migración pendiente: aplica supabase/migrations_pendientes/add_carta_pdf_opciones.up.sql (o add_carta_pdf.up.sql)',
+          code: 'MIGRATION_PENDING',
+        }, { status: 409 })
+      }
+      const retry = await intentarUpdate(degradado)
+      data = retry.data
+      error = retry.error
+      if (!error) {
+        return Response.json({
+          ok: true,
+          aviso: `Guardado parcial: ${columnasAfectadas.join(', ')} requiere aplicar la migración correspondiente.`,
+          code: 'MIGRATION_PENDING_PARTIAL',
+        })
+      }
     }
   }
 
