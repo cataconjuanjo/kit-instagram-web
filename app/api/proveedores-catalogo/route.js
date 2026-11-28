@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { isConsultorFromAuth } from '../_lib/isConsultor'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { puedeUsar } from '../../lib/plans'
 
 function texto(value, limite = 120) {
   return String(value || '').trim().slice(0, limite)
@@ -35,11 +36,19 @@ export async function GET(req) {
 
     const { data: restaurante, error: restauranteError } = await supabaseAdmin
       .from('restaurantes')
-      .select('id, plan')
+      .select('id, plan, subscription_status')
       .eq('id', restauranteId)
       .single()
 
     if (restauranteError) throw restauranteError
+
+    // Gate: solo premium (y admin) ven el catálogo privado del consultor.
+    // El resto de planes recibe 403 explícito; el cliente debe degradar sin
+    // exponer la pestaña de proveedores.
+    if (!esConsultor && !puedeUsar(restaurante, 'catalogo_consultor')) {
+      return Response.json({ error: 'Plan no incluye el catálogo del consultor' }, { status: 403 })
+    }
+
     const perfilBodega = restaurante?.plan === 'bodega'
 
     // Proyección de proveedores: el restaurante ve nombre/zona (necesarios para
@@ -179,13 +188,15 @@ export async function GET(req) {
       total = matchedSeen
     }
 
+    // Proyección final de proveedores: contacto (email/teléfono) SOLO para
+    // el consultor. El propietario premium ve nombre/zona (necesarios para
+    // filtrar), coherente con el comentario del header del fichero.
+    const proveedoresOut = (providers || []).map(item => esConsultor
+      ? { nombre: item.nombre, telefono: item.telefono || '', email: item.email || '', zona: item.zona || '' }
+      : { nombre: item.nombre, zona: item.zona || '' })
+
     return Response.json({
-      proveedores: (providers || []).map(item => ({
-        nombre: item.nombre,
-        telefono: item.telefono || '',
-        email: item.email || '',
-        zona: item.zona || '',
-      })),
+      proveedores: proveedoresOut,
       items,
       total,
       page,

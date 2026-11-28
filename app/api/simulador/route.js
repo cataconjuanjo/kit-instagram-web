@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { puedeUsar, puedeUsarEditorCarta } from '../../lib/plans'
+import { CLAVES_CATALOGO_CONSULTOR } from '../../lib/simuladorPayload'
 
 // GET /api/simulador?restaurante_id=...
 // Devuelve el borrador del simulador con auto-sync silencioso:
@@ -132,19 +133,20 @@ export async function GET(req) {
 
     const lineasFinales = lineasFinalesBase.map(linea => {
       const vino = linea.vino_id ? vinoMap[linea.vino_id] : null
-      // Para planes sin catalogo_consultor: strip de todos los campos que
-      // identifiquen al proveedor del consultor. El restaurante conserva
-      // su propio snapshot (coste_compra, precios, nombre, bodega).
+      // Para planes sin catalogo_consultor: strip de TODAS las claves que
+      // vengan del catálogo privado. La lista canónica vive en
+      // simuladorPayload.js (CLAVES_CATALOGO_CONSULTOR) para test unitario
+      // de la matriz plan → claves. El coste_compra propio del
+      // restaurante se conserva.
       if (!puedeVerCatalogo) {
-        const { catalogo_vino_id: _omitCatId, ...lineaPublica } = linea
+        const lineaPublica = { ...linea }
+        for (const clave of CLAVES_CATALOGO_CONSULTOR) delete lineaPublica[clave]
         return {
           ...lineaPublica,
           ...(vino ? {
             region: vino.region ?? linea.region,
             anada: vino.anada ?? linea.anada,
-            proveedor_nombre: null,
-          } : { proveedor_nombre: null }),
-          oferta_seleccionada_id: null,
+          } : {}),
         }
       }
       return {
