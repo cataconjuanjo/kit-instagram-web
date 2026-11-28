@@ -148,7 +148,13 @@ export async function PATCH(req) {
     if (raw === null) {
       update.carta_pdf_opciones = {}
     } else if (typeof raw === 'object') {
-      update.carta_pdf_opciones = normalizarOpcionesCartaPdf(raw)
+      // Antes de normalizar borramos cualquier intento de desactivar
+      // el crédito: no es un flag del usuario (contraprestación).
+      // normalizarOpcionesCartaPdf fuerza credito=true igualmente, pero
+      // conviene no persistir ningún valor distinto en DB.
+      const sinCredito = { ...raw }
+      delete sinCredito.credito
+      update.carta_pdf_opciones = normalizarOpcionesCartaPdf(sinCredito)
     }
   }
 

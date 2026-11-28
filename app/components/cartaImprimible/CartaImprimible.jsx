@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   formatearPrecioPdf, lineaOrigenVino, ordenarVinosSeccion, extraerSeccionCopa,
-  notaIvaParaPie,
+  notaIvaParaPie, colorTextoSegunFondo, ratioContraste,
 } from '../../lib/cartaPdfUtils'
 import { stackFuente, factorAnchoFuente } from './fonts.js'
 
@@ -133,6 +133,22 @@ export function CartaImprimible({ restaurante, secciones, config }) {
     && String(qrOpc.posicion || 'cabecera-der').startsWith('cabecera-')
   const qrActivoHero = qrCabeceraActivo
 
+  // Color del crédito: el fg del tema. Si su contraste con el fondo es
+  // muy bajo (< 2), fuerza el OPUESTO al colorTextoSegunFondo para que
+  // nunca quede del mismo color que el fondo. Opacidad 0.4 se aplica
+  // en CSS; aquí sólo elegimos el tono base.
+  const creditoColor = useMemo(() => {
+    const fg = config.color_texto
+    const bg = config.color_fondo
+    const r = ratioContraste(fg, bg)
+    if (r !== null && r < 2) {
+      // fg demasiado cercano al bg → usar el opuesto al calculado.
+      const alt = colorTextoSegunFondo(bg)
+      return alt === fg ? (alt === '#111111' ? '#f6f4f0' : '#111111') : alt
+    }
+    return fg
+  }, [config.color_texto, config.color_fondo])
+
   // Pie: combina carta_pie_texto (si el precio es sin € y nota_euros ON,
   // concatena la nota), y si corresponde añade el crédito discreto.
   const pieBase = config.carta_pie_texto || opciones.carta_pie_texto || ''
@@ -172,19 +188,20 @@ export function CartaImprimible({ restaurante, secciones, config }) {
                     : nombre}
                 </span>
                 <LogoFila logos={logosPorPos['cabecera-der']} alignEnd />
-              </div>
-              {/*
-                Crédito en el thead → se repite en cada página junto
-                a la cabecera, SIN consumir altura del multicol. Antes
-                vivía al final del flujo y empujaba una pág 3 con
-                defaults. Se mantiene el requisito del brief: "sácalo
-                del flujo del multicol".
-              */}
-              {opciones.credito !== false && (
-                <div className="cpdf-credito cpdf-credito--thead" aria-label="Marca comercial">
+                {/*
+                  Crédito a la derecha del pageheader en la MISMA línea
+                  (misma baseline que el nombre). Antes era
+                  `position: absolute` → Chrome lo situaba fuera del
+                  margen lateral del contenido (xMax ≈ 594pt en A4 de
+                  594.96pt, pegado al borde) y además no se repetía
+                  bien en el thead. Como flex item normal, respeta el
+                  padding lateral del <td> y no altera la altura.
+                */}
+                <span className="cpdf-credito cpdf-credito--thead"
+                  style={{ color: creditoColor }}>
                   {CREDITO_TEXTO}
-                </div>
-              )}
+                </span>
+              </div>
             </td>
           </tr>
         </thead>
@@ -427,21 +444,33 @@ function QrBlock({ qr, slug, bgHex, fgHex, ubicacion = 'pie' }) {
     tamanoMm,
   })
 
-  // En el hero el texto va DEBAJO del QR (6pt, envuelve). En el pie
-  // mantiene el estilo original (6.5pt debajo). La variante hero fija
-  // max-width al doble del QR para que el texto envuelva sin forzar
-  // altura por encima del hero compacto.
+  // En el HERO el bloque es columna centrada, ancho = ancho del texto
+  // (nowrap). El QR se fija en tamanoMm×tamanoMm. Si el texto
+  // personalizado es muy largo (> ~70mm) se permiten 2 líneas con
+  // data-wrap=1 (controlado heurísticamente por nº de caracteres).
+  // En el pie mantiene el estilo original (6.5pt debajo).
   const esHero = ubicacion === 'hero'
   const clase = `cpdf-qr${esHero ? ' cpdf-qr--hero' : ''}`
+  // Estilo: en pie usamos width = tamanoMm (QR cuadrado). En hero
+  // dejamos que el bloque se dimensione al texto (width auto); el QR
+  // interior recibe width inline para asegurar el tamaño vectorial.
+  const styleRoot = esHero ? undefined : { width: `${tamanoMm}mm` }
+  const styleQrSvg = esHero
+    ? { width: `${tamanoMm}mm`, height: `${tamanoMm}mm` }
+    : undefined
+  // Heurística: a 6pt y letter-spacing normal, ~14 chars ≈ 30mm. 70mm
+  // ≈ 32 chars. Por encima permitimos 2 líneas.
+  const wrap = esHero && qr.texto && qr.texto.length > 32 ? '1' : '0'
+
   return (
-    <div className={clase} style={{ width: `${tamanoMm}mm` }}>
+    <div className={clase} style={styleRoot}>
       {svg
-        ? <span className="cpdf-qr__svg" dangerouslySetInnerHTML={{ __html: svg }} />
+        ? <span className="cpdf-qr__svg"
+            style={styleQrSvg}
+            dangerouslySetInnerHTML={{ __html: svg }} />
         : <span className="cpdf-qr__placeholder" />}
       {qr.texto
-        ? <div className="cpdf-qr__texto" style={esHero ? { maxWidth: `${tamanoMm * 2}mm` } : undefined}>
-            {qr.texto}
-          </div>
+        ? <div className="cpdf-qr__texto" data-wrap={wrap}>{qr.texto}</div>
         : null}
     </div>
   )

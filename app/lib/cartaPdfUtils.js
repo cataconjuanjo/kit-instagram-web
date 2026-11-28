@@ -353,9 +353,13 @@ export function normalizarOpcionesCartaPdf(raw) {
     // en el pie pueden añadir una página en cartas largas.
     posicion: enumConDefault(qrRaw.posicion, CATALOGO_POSICIONES_QR, 'cabecera-der'),
     tamano_mm: numEntre(qrRaw.tamano_mm, 10, 40, 16),
+    // Texto por defecto corto para entrar en 1 línea bajo el QR en el
+    // hero (~70 mm). El brief permite 2 líneas solo si el texto
+    // personalizado excede ese ancho; esa decisión se toma en CSS con
+    // max-width y line-clamp.
     texto: typeof qrRaw.texto === 'string'
       ? qrRaw.texto.trim().slice(0, 140)
-      : 'Maridajes y fichas de cada vino · escanea',
+      : 'Maridajes y fichas · escanea',
     color_auto: boolDefault(qrRaw.color_auto, true),
   }
 
@@ -364,7 +368,11 @@ export function normalizarOpcionesCartaPdf(raw) {
     fuente_cuerpo: fuenteValida(r.fuente_cuerpo, 'actual'),
     logos,
     qr,
-    credito: boolDefault(r.credito, true),
+    // Crédito "Carta Viva × @cataconjuanjo" NO es desactivable: es la
+    // contraprestación comercial por el uso de la herramienta. Se fuerza
+    // true aquí, se ignora el valor guardado. El panel admin no muestra
+    // el toggle y el PATCH /api/admin/carta-pdf-config descarta la clave.
+    credito: true,
     copa_modo: enumConDefault(r.copa_modo, COPA_MODOS, 'no'),
     orden_vinos: enumConDefault(r.orden_vinos, ORDEN_VINOS, 'alfabetico'),
     orden_secundario: enumConDefault(r.orden_secundario, ORDEN_SECUNDARIO, 'precio_asc'),

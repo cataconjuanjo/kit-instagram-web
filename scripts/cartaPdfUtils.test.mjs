@@ -167,6 +167,21 @@ describe('ratioContraste', () => {
 
 // ─── v2: normalización de opciones ─────────────────────────────────────
 
+describe('normalizarOpciones — crédito NO desactivable', () => {
+  it('credito=false guardado en DB → se fuerza true', () => {
+    const r = normalizarOpcionesCartaPdf({ credito: false })
+    assert.equal(r.credito, true, 'el crédito es contraprestación, no se puede desactivar')
+  })
+  it('credito=null, "false", 0 → también true', () => {
+    assert.equal(normalizarOpcionesCartaPdf({ credito: null }).credito, true)
+    assert.equal(normalizarOpcionesCartaPdf({ credito: 'false' }).credito, true)
+    assert.equal(normalizarOpcionesCartaPdf({ credito: 0 }).credito, true)
+  })
+  it('credito=true explícito también → true (no se "desactiva" por accidente)', () => {
+    assert.equal(normalizarOpcionesCartaPdf({ credito: true }).credito, true)
+  })
+})
+
 describe('normalizarOpcionesCartaPdf (defaults)', () => {
   const defaults = normalizarOpcionesCartaPdf({})
   it('devuelve todos los campos con defaults', () => {

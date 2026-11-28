@@ -144,6 +144,13 @@ export default function CartaPdfPage() {
   const { secciones, total, omitidos } = useMemo(
     () => agruparVinosPorSeccion(vinos), [vinos]
   )
+  // Nº de vinos activos con precio_copa > 0 (el mismo campo que la
+  // carta digital pública: Number(v.precio_copa) > 0). Se usa para
+  // mostrar contadores y avisos en el panel "Precios y copa".
+  const vinosConCopa = useMemo(
+    () => (vinos || []).filter(v => Number(v.precio_copa) > 0).length,
+    [vinos]
+  )
   const colorTexto = useMemo(() => colorTextoSegunFondo(form.color_fondo), [form.color_fondo])
   const contrasteOk = useMemo(() => {
     const r = ratioContraste(form.color_fondo, colorTexto)
@@ -422,14 +429,31 @@ export default function CartaPdfPage() {
           )}
           <div className="cpdf-field">
             <label htmlFor="cpdf-copa">Precio por copa</label>
-            <select id="cpdf-copa" value={opciones.copa_modo}
-              onChange={e => setOp('copa_modo', e.target.value)}>
+            <select
+              id="cpdf-copa"
+              value={opciones.copa_modo}
+              disabled={vinosConCopa === 0}
+              onChange={e => setOp('copa_modo', e.target.value)}
+            >
               <option value="no">No mostrar</option>
               <option value="junto">Junto al precio de botella</option>
               <option value="seccion">Sección “Por copa” aparte</option>
               <option value="ambos">Ambos (sección + junto)</option>
             </select>
+            <p className="cpdf-sub" style={{ fontSize: 11, marginTop: 4 }}>
+              {vinosConCopa > 0
+                ? <><strong>{vinosConCopa}</strong> vinos con precio por copa.</>
+                : <>Ningún vino tiene precio por copa. Añade `precio_copa` a los
+                   vinos desde el panel del restaurante para habilitar las
+                   opciones de copa.</>}
+            </p>
           </div>
+          {vinosConCopa > 0 && opciones.copa_modo === 'no' && (
+            <div className="cpdf-contrast-warn">
+              Esta carta tiene <strong>{vinosConCopa}</strong> vinos por copa;
+              actívalos seleccionando una opción distinta de “No mostrar”.
+            </div>
+          )}
           {opciones.copa_modo === 'ambos' && total > 60 && (
             <div className="cpdf-contrast-warn">
               El modo “Ambos” duplica los vinos (sección + junto): con {total} vinos
@@ -479,11 +503,11 @@ export default function CartaPdfPage() {
 
         <details className="cpdf-panel">
           <summary>Avanzado</summary>
-          <label className="cpdf-field--check">
-            <input type="checkbox" checked={opciones.credito}
-              onChange={e => setOp('credito', e.target.checked)} />
-            Mostrar crédito “Carta Viva × @cataconjuanjo”
-          </label>
+          <p className="cpdf-sub" style={{ fontSize: 11, marginTop: 4 }}>
+            El crédito discreto “Carta Viva × @cataconjuanjo” forma parte de
+            la contraprestación por el uso de la herramienta y no se puede
+            desactivar.
+          </p>
           <div className="cpdf-field">
             <label>Densidad</label>
             <select value={opciones.densidad_forzada}

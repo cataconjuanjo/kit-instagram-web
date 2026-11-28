@@ -530,13 +530,42 @@
   max-width: 30mm;
 }
 
-/* Variante hero del QR: texto a 6pt, el max-width lo fija el JSX
- * para que envuelva sin forzar altura > hero. */
-.cpdf-qr--hero { align-items: flex-end; }
+/* Variante hero del QR: bloque columna centrada, ancho = ancho del
+ * texto (una sola línea, nowrap). El QR se centra sobre el texto y
+ * así el bloque entero queda anclado al margen derecho del hero sin
+ * que el QR toque el borde: cuanto más largo el texto, más se
+ * desplaza el QR hacia la izquierda. Si el texto personalizado es
+ * MUY largo (>70mm) se permiten máx. 2 líneas con line-clamp. */
+.cpdf-qr--hero {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6mm;
+  width: auto;         /* el inline-style del componente puede añadir min-width */
+}
+.cpdf-qr--hero .cpdf-qr__svg,
+.cpdf-qr--hero .cpdf-qr__svg svg {
+  /* QR siempre con el tamano_mm del componente (inline width en px
+   * del padre). Dentro del bloque columna, se centra respecto al
+   * texto. */
+  display: block;
+}
 .cpdf-qr--hero .cpdf-qr__texto {
   font-size: 6pt;
-  text-align: right;
-  line-height: 1.15;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;      /* 1 línea mientras quepa */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70mm;
+}
+/* Si el texto es más largo que 70mm, lo mostramos en 2 líneas (el
+ * admin ya lo recorta a 140 chars). Clamp a 2 cuando pierde nowrap. */
+.cpdf-qr--hero .cpdf-qr__texto[data-wrap="1"] {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* Hero flex: logo (si hay) | texto (flex 1) | QR (si hay). El QR no
@@ -559,22 +588,29 @@
 }
 .cpdf-credito--thead {
   /*
-   * Pintura en el borde inferior del pageheader SIN añadir altura
-   * al bloque. `position: absolute` lo saca del flujo (el pageheader
-   * es `position: relative`); se alinea a la base del borde inferior
-   * y queda "flotando" sobre esa línea. Como no participa del box
-   * model, no gana milímetros × página.
+   * Crédito como flex item del pageheader (misma línea que el nombre).
+   * Antes era `position: absolute` → Chrome lo situaba FUERA del
+   * padding lateral del <td> (xMax ≈ 594pt en A4 de 594.96pt, pegado
+   * al borde físico del papel, recortable al imprimir). Como flex
+   * item normal:
+   *   - respeta el padding lateral del <td> (14mm) → xMax ≤ ancho útil;
+   *   - se repite con el thead en cada página física;
+   *   - NO suma altura porque `line-height:1` cabe dentro del alto que
+   *     ya tienen los otros flex items (texto 8pt, border-bottom).
    */
-  position: absolute;
-  right: 0;
-  bottom: 0.4mm; /* un pelín por encima del borde para no tocarlo */
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
-  display: block;
+  display: inline-block;
   line-height: 1;
-  pointer-events: none;
+  font-size: 5.8pt;
+  letter-spacing: 0.06em;
+  /* opacity mínima permitida por el brief ≥ 0.35; usamos 0.4. */
+  opacity: 0.4;
+  white-space: nowrap;
+  /* El color lo setea el componente inline (fg del tema; si contraste
+     con el fondo < 2, usa el opuesto automático). */
 }
-.cpdf-sheet__pageheader { position: relative; }
 
 /* ─────────────────────────────────────────────────────────────────────
  * REGLAS DE IMPRESIÓN
