@@ -7,6 +7,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { puedeUsar } from '../../lib/plans'
+import { avisosCalidadCarta } from '../../lib/publicationReadiness'
 import { normWine } from '../../lib/textNormalize'
 import { margenCopaPct } from '../../lib/pricingUtils'
 import { margenBrutoPct } from '../../lib/wineEconomics'
@@ -165,6 +166,7 @@ export default function SimuladorCarta() {
   const [inlineEdit, setInlineEdit] = useState(null) // { id, campo, valor }
   const [confirmPublicar, setConfirmPublicar] = useState(false)
   const [publicando, setPublicando] = useState(false)
+  const [generandoBorradorPdf, setGenerandoBorradorPdf] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
   const [celebracion, setCelebracion] = useState(null)   // { nuevos, retirados, deltaMargen }
   const [sustituyendoId, setSustituyendoId] = useState(null)
@@ -313,6 +315,15 @@ export default function SimuladorCarta() {
       margenMedio,
     }
   }, [lineas])
+
+  // ── Avisos de calidad (uva/DO/añada/margen/QR) ───────────────────
+  // No bloquean la publicación; se muestran en el diálogo de confirmación.
+  const avisosCalidad = useMemo(() => {
+    const activas = lineas.filter(l => l.estado !== 'fuera')
+    const opciones = restaurante?.carta_pdf_opciones || null
+    // Margen objetivo: 65% sobre PVP (línea de referencia; es un aviso suave).
+    return avisosCalidadCarta(activas, opciones, 0.65)
+  }, [lineas, restaurante])
 
   // ── Comparación borrador vs carta oficial ─────────────────────────
   const comparacion = useMemo(() => {
@@ -530,6 +541,33 @@ export default function SimuladorCarta() {
     if (res?.ok) {
       const json = await res.json()
       setLineas(json.lineas || [])
+    }
+  }
+
+  // "Carta imprimible" en modo borrador: pide a la API un token firmado
+  // ligado al restaurante y abre /imprimir/carta-pdf en una pestaña nueva.
+  // El endpoint /borrador valida el token y devuelve la propuesta del
+  // simulador (estado actual+nuevo) sin exigir carta_publica_activa.
+  async function abrirCartaImprimibleBorrador() {
+    if (!restaurante?.id || generandoBorradorPdf) return
+    setGenerandoBorradorPdf(true)
+    try {
+      const t = await getToken()
+      const res = await fetch('/api/simulador/imprimir-borrador', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErrorMsg(json?.error || 'No se pudo generar la carta imprimible.')
+        return
+      }
+      window.open(json.url, '_blank', 'noopener,noreferrer')
+    } catch {
+      setErrorMsg('No se pudo generar la carta imprimible.')
+    } finally {
+      setGenerandoBorradorPdf(false)
     }
   }
 
@@ -1104,6 +1142,16 @@ export default function SimuladorCarta() {
               onClick={() => window.open(`/carta/${restaurante.slug}?preview=1`, '_blank')}
             >
               Vista previa
+            </button>
+
+            <button
+              type="button"
+              className={simStyles.accionBtn}
+              disabled={!restaurante?.id || generandoBorradorPdf}
+              title="Genera el PDF A4 del borrador — el QR/costes nunca viajan sin plan premium"
+              onClick={abrirCartaImprimibleBorrador}
+            >
+              {generandoBorradorPdf ? 'Preparando…' : 'Carta imprimible'}
             </button>
 
             <button
@@ -2240,8 +2288,9 @@ export default function SimuladorCarta() {
             type="button"
             className={simStyles.briefingPrintBtn}
             onClick={() => window.print()}
+            title="Documento interno con decisiones por línea"
           >
-            Imprimir / guardar PDF
+            Imprimir briefing
           </button>
         </ResponsiveOverlay>
 
@@ -2376,6 +2425,20 @@ export default function SimuladorCarta() {
           confirmLabel="Publicar carta"
           busy={publicando}
         >
+          {avisosCalidad.length > 0 && (
+            <div className={simStyles.publicarLista}>
+              <p className={simStyles.publicarListaLabel}>Calidad de la carta</p>
+              <ul className={simStyles.publicarListaItems}>
+                {avisosCalidad.map(a => (
+                  <li key={a.codigo} className={simStyles.publicarItem}>
+                    <span className={simStyles.publicarItemSigil} aria-hidden="true">·</span>
+                    <span>{a.texto}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {resumen.nuevos > 0 && (
             <div className={simStyles.publicarLista}>
               <p className={simStyles.publicarListaLabel}>Se añaden ({resumen.nuevos})</p>

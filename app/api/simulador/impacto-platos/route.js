@@ -1,6 +1,6 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { puedeUsarEditorCarta } from '../../../lib/plans'
 import { computarCobertura } from '../../../lib/cartaCoverageUtils'
 
 export const maxDuration = 30
@@ -23,8 +23,8 @@ export async function POST(req) {
       .eq('id', restauranteId)
       .single()
 
-    if (!restaurante || !puedeUsar(restaurante, 'catalogo_consultor')) {
-      return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
+    if (!restaurante || !puedeUsarEditorCarta(restaurante)) {
+      return Response.json({ error: 'Plan no incluye el editor de carta' }, { status: 403 })
     }
 
     // Fetch without strict activo=true filter — computarCobertura already filters

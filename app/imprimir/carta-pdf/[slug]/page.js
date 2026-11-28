@@ -47,6 +47,11 @@ export default function ImprimirCartaPdfPage() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
   const autoPrint = searchParams.get('print') === '1'
+  // Modo borrador: `?simulacion=1&token=…` consulta la ruta /borrador que
+  // valida token firmado HMAC y devuelve la carta propuesta (estado
+  // actual+nuevo del simulador), sin exigir carta_publica_activa.
+  const modoBorrador = searchParams.get('simulacion') === '1'
+  const tokenBorrador = searchParams.get('token') || ''
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -64,11 +69,14 @@ export default function ImprimirCartaPdfPage() {
         // `cache: 'no-store'` y `Cache-Control: no-store` en la API, garantiza
         // que el PDF siempre refleje la última configuración guardada.
         const bust = `_=${Date.now()}`
-        const resp = await fetch(
-          `/api/public/restaurante/${encodeURIComponent(slug)}?carta=1&${bust}`,
-          { cache: 'no-store' }
-        )
+        const url = modoBorrador
+          ? `/api/public/restaurante/${encodeURIComponent(slug)}/borrador?token=${encodeURIComponent(tokenBorrador)}&${bust}`
+          : `/api/public/restaurante/${encodeURIComponent(slug)}?carta=1&${bust}`
+        const resp = await fetch(url, { cache: 'no-store' })
         if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) {
+            throw new Error('El enlace del borrador no es válido o ha caducado.')
+          }
           if (resp.status === 404) throw new Error('Carta no publicada o restaurante no encontrado.')
           throw new Error('No se pudo cargar la carta.')
         }
@@ -84,7 +92,7 @@ export default function ImprimirCartaPdfPage() {
     }
     cargar()
     return () => { cancelado = true }
-  }, [slug])
+  }, [slug, modoBorrador, tokenBorrador])
 
   // Esperar a que las fuentes estén cargadas + un pequeño delay para imágenes.
   useEffect(() => {
