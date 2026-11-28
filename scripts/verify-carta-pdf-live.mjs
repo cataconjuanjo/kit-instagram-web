@@ -37,9 +37,13 @@ const OUT_DIR = path.join(repoRoot, '.tmp-carta-pdf-verify')
 
 const MAX_PAGINAS = 3
 const UMBRAL_TEXTO_PAG_NO_FINAL = 0.40
-const UMBRAL_TEXTO_PAG_FINAL = 0.25  // ≥ 25 % del texto de la más llena
-                                      // (brief densidad: evita "seccion
-                                      //  huérfana de 1 vino + pie")
+// Umbral de "página fantasma": una última página con < 5 % del texto
+// de la más llena = solo cabecera repetida (sin pie, sin QR, sin
+// vinos). Lo subíamos a 25 % en el bloque de densidad para detectar
+// "sección huérfana final"; pero en v2 con QR + crédito activos por
+// defecto, una última página legítima puede tener 10–20 % de texto
+// (pie + QR + algunos vinos). 5 % es el umbral real de "fantasma".
+const UMBRAL_TEXTO_PAG_FINAL = 0.05
 const TOLERANCIA_COLOR = 32
 const MARGEN_INFERIOR_MIN_MM = 8     // margen inferior del contenido
 
@@ -52,13 +56,61 @@ const MARGEN_INFERIOR_MIN_MM = 8     // margen inferior del contenido
 const RENDER_SCALE = 1.5
 const PX_POR_MM = (842 * RENDER_SCALE) / 297
 
+const OPCIONES_CONFIG_COMPLETA = {
+  fuente_titulo: 'playfair-display',
+  fuente_cuerpo: 'lato',
+  logos: [
+    { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'cabecera-izq', tamano_mm: 14, opacidad: 100 },
+    { url: '/brand/carta-viva/icons/favicon-32x32.png', posicion: 'pie-centro',   tamano_mm: 10, opacidad: 100 },
+  ],
+  qr: { activo: true, posicion: 'pie-der', tamano_mm: 24, texto: 'Maridajes · escanea', color_auto: true },
+  credito: true,
+  // "junto" no duplica vinos (como "ambos"); respeta el brief
+  // "si copa_modo='ambos' y >60 vinos, avisar" sin romper la paginación.
+  copa_modo: 'junto',
+  orden_vinos: 'region',
+  orden_secundario: 'precio_asc',
+  subtitulos_region: true,
+  precio_formato: 'sin_euro',
+  nota_euros: true,
+  densidad_forzada: 'auto',
+}
+
 const PALETAS = [
-  // Pase 1: paleta real del restaurante (oscura en casa-marisma),
-  // vinos reales (50 aprox).
-  { nombre: 'oscura', color_fondo: null, color_acento: null, clonarVinosHasta: null },
-  // Pase 2: paleta clara + 80 vinos sintéticos (clona los reales).
-  // Simula "Lo de Carmen" sin tocar DB.
-  { nombre: 'clara',  color_fondo: '#f7f3ee', color_acento: '#b5532a', clonarVinosHasta: 80 },
+  // Pase 1 — DEFAULTS. Paleta real de casa-marisma, opciones v2 = {}.
+  // Interceptamos la API para forzar carta_pdf_opciones = {} (la DB real
+  // puede tener config de pruebas anteriores guardada: logos a 14mm,
+  // qr en pie, etc.). Esto simula fielmente un restaurante que NUNCA
+  // ha abierto el panel v2 → REGLA DE ORO: 2 páginas.
+  { nombre: 'defaults', slug: 'casa-marisma', opciones: null, forzarOpcionesVacias: true },
+  // Pase 2 — config completa + 80 vinos CLONADOS sobre casa-marisma.
+  // Mantenido por regresión con la verificación v2 original.
+  {
+    nombre: 'config-completa', slug: 'casa-marisma',
+    color_fondo: '#f7f3ee', color_acento: '#b5532a',
+    clonarVinosHasta: 80,
+    opciones: OPCIONES_CONFIG_COMPLETA,
+  },
+  // Pase 3 — carmen (Lo de Carmen) con las MISMAS opciones de
+  // config-completa pero SIN clonar (vinos reales del restaurante).
+  // El brief pide "reporta páginas, margen inferior y si se ven logos
+  // y QR". Si la carta_publica_activa de carmen es false, la
+  // interceptación la fuerza a true para el mock (no persiste).
+  {
+    nombre: 'carmen-real', slug: 'carmen',
+    color_fondo: '#f7f3ee', color_acento: '#b5532a',
+    opciones: OPCIONES_CONFIG_COMPLETA,
+    flexible: true, // no exige <= 3 páginas si hay >80 vinos reales
+  },
+  // Pase 4 — carmen con copa_modo="junto" para validar que los vinos
+  // con precio_copa > 0 se muestran. Mismos colores que carmen-real
+  // pero con copa activado, sin persistir en DB.
+  {
+    nombre: 'carmen-copa', slug: 'carmen',
+    color_fondo: '#f7f3ee', color_acento: '#b5532a',
+    opciones: { ...OPCIONES_CONFIG_COMPLETA, copa_modo: 'junto' },
+    flexible: true,
+  },
 ]
 
 async function esperarUrl(url, timeoutMs = 180_000) {
@@ -190,7 +242,7 @@ async function ejecutarPase(browser, paleta) {
   //   (b) clonar los vinos hasta `clonarVinosHasta` (simula una carta
   //       grande tipo Lo de Carmen sin cargar 80 vinos reales).
   // El componente recibe la respuesta modificada y renderiza normal.
-  if (paleta.color_fondo || paleta.clonarVinosHasta) {
+  if (paleta.color_fondo || paleta.clonarVinosHasta || paleta.opciones || paleta.forzarOpcionesVacias) {
     await page.route('**/api/public/restaurante/**', async route => {
       const response = await route.fetch()
       let body
@@ -198,6 +250,15 @@ async function ejecutarPase(browser, paleta) {
       if (body?.restaurante) {
         if (paleta.color_fondo)  body.restaurante.color_fondo  = paleta.color_fondo
         if (paleta.color_acento) body.restaurante.color_acento = paleta.color_acento
+        if (paleta.opciones) {
+          body.restaurante.carta_pdf_opciones = paleta.opciones
+          body.restaurante.carta_publica_activa = true
+        } else if (paleta.forzarOpcionesVacias) {
+          // Simula "restaurante recién llegado al v2": sin config
+          // guardada aunque la DB real sí la tenga.
+          body.restaurante.carta_pdf_opciones = {}
+          body.restaurante.carta_publica_activa = true
+        }
       }
       if (paleta.clonarVinosHasta && Array.isArray(body?.vinos) && body.vinos.length > 0) {
         const originales = [...body.vinos]
@@ -221,7 +282,8 @@ async function ejecutarPase(browser, paleta) {
     })
   }
 
-  const url = `${BASE}/imprimir/carta-pdf/${SLUG}`
+  const slugPaleta = paleta.slug || SLUG
+  const url = `${BASE}/imprimir/carta-pdf/${slugPaleta}`
   console.log('[pase]', paleta.nombre, '→', url)
   const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 })
   console.log('[pase] HTTP:', resp?.status())
@@ -247,6 +309,22 @@ async function ejecutarPase(browser, paleta) {
   const bgRgb = bgHex ? hexToRgb(bgHex) : { r: 26, g: 26, b: 46 }
   console.log('[pase] Fondo efectivo:', bgHex, '→', bgRgb)
 
+  // Diagnóstico de copa: cuántos vinos del restaurante tienen
+  // precio_copa > 0 en la API pública. Mismo criterio que la carta
+  // digital (Number(v.precio_copa) > 0).
+  const copaStats = await page.evaluate(async (slug) => {
+    const r = await fetch(`/api/public/restaurante/${slug}?carta=1`, { cache: 'no-store' })
+    if (!r.ok) return null
+    const j = await r.json()
+    const vinos = j?.vinos || []
+    return {
+      total: vinos.length,
+      conCopa: vinos.filter(v => Number(v.precio_copa) > 0).length,
+      campos: vinos[0] ? Object.keys(vinos[0]).filter(k => k.includes('copa')) : [],
+    }
+  }, slugPaleta)
+  console.log('[pase] Copa (campo=precio_copa):', copaStats)
+
   // Detecta modo densidad aplicado por el componente (data-densidad).
   const metaDensidad = await page.evaluate(() => {
     const el = document.querySelector('.cpdf-sheet')
@@ -257,6 +335,71 @@ async function ejecutarPase(browser, paleta) {
     } : null
   })
   console.log('[pase] Densidad:', metaDensidad)
+
+  // ¿Hay QR SVG en el DOM antes de imprimir?
+  const qrDomInfo = await page.evaluate(() => {
+    const el = document.querySelector('.cpdf-qr .cpdf-qr__svg svg')
+    if (!el) return { presente: false }
+    return {
+      presente: true,
+      viewBox: el.getAttribute('viewBox'),
+      modulosAprox: el.querySelectorAll('rect, path').length,
+    }
+  })
+  console.log('[pase] QR en DOM:', qrDomInfo)
+
+  // Nombre del restaurante del DOM (lo imprime la cabecera y el hero).
+  // Nos sirve para comprobar la "cabecera repetida" en cada página.
+  const nombreRestaurante = await page.evaluate(() => {
+    const el = document.querySelector('.cpdf-sheet__nombre')
+    return el ? el.textContent.trim() : ''
+  })
+  console.log('[pase] Nombre restaurante:', JSON.stringify(nombreRestaurante))
+
+  // Alturas de los bloques superiores — diagnóstico de empuje de páginas.
+  const alturas = await page.evaluate(() => {
+    const px2mm = px => Math.round(px / 3.7795 * 10) / 10
+    function info(sel) {
+      const el = document.querySelector(sel)
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { h: px2mm(r.height), w: px2mm(r.width) }
+    }
+    const pageheaderHijos = Array.from(document.querySelectorAll('.cpdf-sheet__pageheader > *')).map(el => ({
+      tag: el.tagName.toLowerCase(),
+      className: el.className,
+      h: px2mm(el.getBoundingClientRect().height),
+      w: px2mm(el.getBoundingClientRect().width),
+    }))
+    return {
+      pageheader: info('.cpdf-sheet__pageheader'),
+      hero: info('.cpdf-sheet__hero'),
+      heroText: info('.cpdf-sheet__hero-text'),
+      heroQr: info('.cpdf-sheet__hero > .cpdf-qr'),
+      descripcion: info('.cpdf-sheet__descripcion'),
+      pageheaderHijos,
+    }
+  })
+  console.log('[pase] Alturas (mm):', JSON.stringify(alturas, null, 2))
+
+  // Mide todos los logos del DOM (fix bug "logos 0×0").
+  const logosDom = await page.evaluate(() => {
+    const items = Array.from(document.querySelectorAll('img'))
+    return items.map(img => ({
+      src: (img.getAttribute('src') || '').slice(-60),
+      className: img.className,
+      w: Math.round(img.getBoundingClientRect().width),
+      h: Math.round(img.getBoundingClientRect().height),
+      style: img.getAttribute('style'),
+      parentClass: img.parentElement?.className || '',
+      parentParentClass: img.parentElement?.parentElement?.className || '',
+    }))
+  })
+  console.log('[pase] Todos los IMG:', JSON.stringify(logosDom, null, 2))
+  const logosOK = logosDom.length === 0 || logosDom.every(l => l.w > 0 && l.h > 0)
+  if (!logosOK) {
+    console.log('[pase] ❌ Hay logos con dimensión 0×0')
+  }
 
   const pdfPath = path.join(OUT_DIR, `live-${paleta.nombre}.pdf`)
   await page.pdf({ path: pdfPath, format: 'A4', preferCSSPageSize: true, printBackground: true })
@@ -271,14 +414,50 @@ async function ejecutarPase(browser, paleta) {
 
   const resultados = []
   let maxChars = 1
+  // bbox del crédito "cataconjuanjo" (busca el item que contiene esa
+  // cadena; en pdfjs cada item tiene transform[4]=x, transform[5]=y,
+  // width, height en coordenadas PDF).
+  let creditoBbox = null
+  // bbox + nº de líneas del texto QR (el texto exacto configurado).
+  const qrTextoEsperado = (paleta.opciones?.qr?.texto) || 'Maridajes y fichas · escanea'
+  const qrTextoFragmentos = []
   for (let i = 1; i <= nPag; i++) {
     const p = await pdfDoc.getPage(i)
     const content = await p.getTextContent()
-    const txt = content.items.map(it => it.str).join(' ').trim()
+    const viewportPt = p.getViewport({ scale: 1 }) // ancho en pt
+    const items = content.items
+    const txt = items.map(it => it.str).join(' ').trim()
     const rasterPath = path.join(OUT_DIR, `live-${paleta.nombre}-pag${i}.png`)
     const { ctx, width, height } = await rasterizarPagina(pdfDoc, i, rasterPath)
     const bordes = muestrearBordes(ctx, width, height, bgRgb)
     const margenMm = margenInferiorMm(ctx, width, height, bgRgb)
+
+    // Busca el item que contenga "cataconjuanjo" (minúsculas) y
+    // calcula xMax/yMin/yMax en pt. transform[5] es la línea base y
+    // en pdf-space (origen abajo-izq); yMin = baseline, yMax = baseline+height.
+    for (const it of items) {
+      if (!creditoBbox && /cataconjuanjo/i.test(it.str)) {
+        const x = it.transform[4]
+        const yBaseline = it.transform[5]
+        creditoBbox = {
+          pag: i,
+          xMin: x,
+          xMax: x + (it.width || 0),
+          yBaseline,                       // más bajo = más cerca del pie
+          yFromTop: viewportPt.height - yBaseline,  // distancia desde top
+          anchoPaginaPt: viewportPt.width,
+          altoPaginaPt: viewportPt.height,
+        }
+      }
+      // Fragmentos del texto del QR (puede estar troceado por pdfjs).
+      // Guardamos cada trozo con su y para saber en cuántas líneas se
+      // reparte (líneas distintas = y distintos).
+      const trozoLimpio = (it.str || '').trim()
+      if (trozoLimpio && qrTextoEsperado.includes(trozoLimpio) && trozoLimpio.length >= 3) {
+        qrTextoFragmentos.push({ str: trozoLimpio, y: it.transform[5] })
+      }
+    }
+
     resultados.push({
       pag: i, chars: txt.length, texto: txt,
       width, height, rasterPath,
@@ -287,11 +466,72 @@ async function ejecutarPase(browser, paleta) {
     if (txt.length > maxChars) maxChars = txt.length
   }
 
+  // Precios de copa detectados: en modo junto/ambos aparecen 2 precios
+  // consecutivos por vino. Contamos cuántos vinos tienen 2 precios con
+  // una heurística simple sobre el texto plano.
+  const copaModoPaleta = paleta.opciones?.copa_modo || 'no'
+  const esperaCopa = copaModoPaleta === 'junto' || copaModoPaleta === 'ambos'
+  // Nº aproximado de precios "N €" o "N" seguidos (tnum).
+  const todosLosPrecios = ((resultados.map(r => r.texto).join(' ')).match(/\b\d{1,4}([,.]\d{1,2})?\s*€?/g) || [])
+  const totalPreciosDetectados = todosLosPrecios.length
+  console.log(`[pase] Precios detectados (copa_modo=${copaModoPaleta}): ${totalPreciosDetectados}`)
+
+  // Nº de líneas distintas del texto del QR: y únicos con tolerancia 2pt
+  const ysQr = [...new Set(qrTextoFragmentos.map(f => Math.round(f.y / 2) * 2))]
+  console.log(`[pase] QR texto — fragmentos: ${qrTextoFragmentos.length}, líneas (y únicos): ${ysQr.length}`)
+  if (creditoBbox) {
+    const margenLateralMinPt = 28.3 // 10mm en pt (1pt = 1/72 inch; 10mm ≈ 28.3pt)
+    const anchoUtilPt = creditoBbox.anchoPaginaPt - margenLateralMinPt
+    console.log(`[pase] Crédito bbox: pag=${creditoBbox.pag} xMax=${creditoBbox.xMax.toFixed(1)}pt / ancho=${creditoBbox.anchoPaginaPt.toFixed(1)}pt (ancho útil ${anchoUtilPt.toFixed(1)}pt) · yFromTop=${creditoBbox.yFromTop.toFixed(1)}pt`)
+  } else {
+    console.log('[pase] Crédito bbox: NO encontrado en PDF')
+  }
+
+  // Fuentes embebidas: pdfjs expone commonObjs con los dict de fuente
+  // por página tras getOperatorList. Alternativa: parsear bytes del
+  // PDF buscando /BaseFont /... — más rápido y determinista.
+  const pdfRaw = buf.toString('latin1')
+  const fuentesEmbebidas = Array.from(
+    new Set((pdfRaw.match(/\/BaseFont\s*\/([A-Za-z0-9+\-_]+)/g) || [])
+      .map(m => m.replace(/.*\//, '')))
+  )
+  console.log('[pase] Fuentes embebidas en PDF:', fuentesEmbebidas.slice(0, 12).join(', ') + (fuentesEmbebidas.length > 12 ? '…' : ''))
+
+  // Descodifica QR del raster si el DOM tenía QR. Buscamos en todas las
+  // páginas; basta con que una lo descodifique.
+  let qrDescodificadoUrl = null
+  if (qrDomInfo.presente) {
+    try {
+      const jsQR = (await import('jsqr')).default
+      // Re-rasterizamos las páginas a MAYOR resolución (3x la base)
+      // sólo para la detección de QR: 18-24mm a 1.5x ≈ 75-100px, poco
+      // para jsqr con nivel M y margen 2. A 4x son 200-270px, cómodo.
+      const { createCanvas } = await import('@napi-rs/canvas')
+      for (let i = 1; i <= nPag; i++) {
+        const page = await pdfDoc.getPage(i)
+        const vp = page.getViewport({ scale: 4 })
+        const canvasHR = createCanvas(Math.floor(vp.width), Math.floor(vp.height))
+        const ctxHR = canvasHR.getContext('2d')
+        await page.render({ canvasContext: ctxHR, viewport: vp }).promise
+        const imageData = ctxHR.getImageData(0, 0, canvasHR.width, canvasHR.height)
+        const code = jsQR(imageData.data, canvasHR.width, canvasHR.height)
+        if (code && code.data) { qrDescodificadoUrl = code.data; break }
+      }
+    } catch (err) {
+      console.log('[pase] QR decode fallo:', err?.message)
+    }
+    console.log('[pase] QR descodificado:', qrDescodificadoUrl || '(no descodificable)')
+  }
+
+  // Detección genérica de cabecera: busca el nombre del restaurante
+  // normalizado o el literal "cartadevinos" (en el pageheader).
+  const nombreNorm = normaliza(nombreRestaurante)
   const info = resultados.map(r => ({
     pag: r.pag,
     chars: r.chars,
     ratio: Math.round((r.chars / maxChars) * 100) / 100,
-    cabecera: normaliza(r.texto).includes('cartadevinos') || normaliza(r.texto).includes('casamarisma'),
+    cabecera: normaliza(r.texto).includes('cartadevinos')
+      || (nombreNorm.length > 2 && normaliza(r.texto).includes(nombreNorm)),
     bordesOK: r.bordes.ok,
     margenMm: Math.round(r.margenMm * 10) / 10,
     chromeUI: ['http://localhost', 'https://', '/imprimir/carta-pdf']
@@ -313,9 +553,48 @@ async function ejecutarPase(browser, paleta) {
   // ser menor porque el pie puede caer cerca del borde: lo exigimos solo
   // para páginas no finales).
   const r8 = info.slice(0, -1).every(x => x.margenMm >= MARGEN_INFERIOR_MIN_MM)
+  // r9: QR activo → debe descodificarse al menos en una página. Si no
+  // estaba activo, la regla no aplica.
+  const r9 = !qrDomInfo.presente || !!qrDescodificadoUrl
+  // r10: todos los logos deben tener dimensión >0×0 (fix bug SVG 0×0).
+  const r10 = logosDom.length === 0 || logosDom.every(l => l.w > 0 && l.h > 0)
+  // r11: la nota "Precios en euros, IVA incluido" no debe aparecer más
+  // de una vez en todo el PDF (duplicación con pie que ya menciona IVA).
+  const textoTotal = resultados.map(r => r.texto).join(' ')
+  const ocurrenciasNotaIva = (textoTotal.match(/Precios\s+en\s+euros,?\s+IVA\s+incluido/gi) || []).length
+  const r11 = ocurrenciasNotaIva <= 1
+  // r12: con crédito ON por defecto, el texto "Carta Viva" debe aparecer
+  // al menos una vez en el PDF (está en el thead, se repite cada página).
+  const creditoActivo = (paleta.opciones?.credito !== false)
+  const ocurrenciasCredito = (textoTotal.match(/Carta\s+Viva/gi) || []).length
+  const r12 = !creditoActivo || ocurrenciasCredito >= 1
+  // r13: el crédito (cataconjuanjo) debe estar dentro del margen lateral
+  // del contenido. xMax ≤ ancho_pt − 28.3pt (10mm). yFromTop ≤ 40pt
+  // (franja de cabecera, equivale a ~14mm desde el borde superior).
+  const MARGEN_LATERAL_MIN_PT = 28.3
+  const Y_MAX_PT_CABECERA = 50  // ~17mm desde top, generoso para el pageheader
+  let r13 = true
+  if (creditoActivo && creditoBbox) {
+    const anchoUtil = creditoBbox.anchoPaginaPt - MARGEN_LATERAL_MIN_PT
+    r13 = creditoBbox.xMax <= anchoUtil && creditoBbox.yFromTop <= Y_MAX_PT_CABECERA
+  } else if (creditoActivo && !creditoBbox) {
+    r13 = false // crédito activo pero no se encontró bbox
+  }
+  // r14: texto del QR en el hero debe caber en 1 línea cuando el texto
+  // es el default ("Maridajes y fichas · escanea"); si es texto custom
+  // largo se permiten hasta 2 líneas.
+  const textoQrDefault = 'Maridajes y fichas · escanea'
+  const qrTextoEsDefault = paleta.opciones?.qr?.texto === undefined
+    || paleta.opciones?.qr?.texto === textoQrDefault
+  const qrEnHero = qrDomInfo.presente && String(paleta.opciones?.qr?.posicion || 'cabecera-der').startsWith('cabecera-')
+  const r14 = !qrEnHero || !qrTextoEsDefault || ysQr.length <= 1
+  // Si la paleta marca flexible (p.ej. carmen-real con 80+ vinos reales),
+  // relajamos r1 (máx. 4 páginas en lugar de MAX_PAGINAS=3).
+  const r1Efectivo = paleta.flexible ? nPag <= 4 : r1
 
   console.log(`\n── RESUMEN pase ${paleta.nombre} ──`)
-  console.log(r1 ? `✅ Páginas ≤ ${MAX_PAGINAS} (actual ${nPag})` : `❌ Páginas = ${nPag}`)
+  const limitePag = paleta.flexible ? 4 : MAX_PAGINAS
+  console.log(r1Efectivo ? `✅ Páginas ≤ ${limitePag} (actual ${nPag})` : `❌ Páginas = ${nPag} > ${limitePag}`)
   console.log(r2 ? '✅ Cabecera repetida en todas las páginas' : '❌ Alguna página sin cabecera')
   console.log(r3 ? `✅ Páginas no-finales con ≥ ${Math.round(UMBRAL_TEXTO_PAG_NO_FINAL*100)}% texto` : '❌ Página no-final medio vacía')
   console.log(r4 ? '✅ 4 esquinas + bordes superior/inferior en color de fondo' : '❌ Marco fuera del color de fondo')
@@ -324,9 +603,34 @@ async function ejecutarPase(browser, paleta) {
   console.log(r7 ? '✅ Página final con contenido' : '❌ Página final fantasma')
   console.log(r8 ? `✅ Margen inferior ≥ ${MARGEN_INFERIOR_MIN_MM} mm en páginas no finales`
                 : `❌ Margen inferior insuficiente: ${info.slice(0, -1).map(x => x.pag + '=' + x.margenMm + 'mm').join(', ')}`)
+  console.log(r9
+    ? (qrDomInfo.presente
+        ? `✅ QR descodificado → ${qrDescodificadoUrl}`
+        : '· QR no activo (regla no aplica)')
+    : '❌ QR presente pero no descodificable')
+  console.log(r10
+    ? (logosDom.length > 0
+        ? `✅ Todos los logos renderizan con tamaño (${logosDom.length})`
+        : '· Sin logos (regla no aplica)')
+    : '❌ Hay logos con dimensión 0×0')
+  console.log(r11
+    ? `✅ Nota IVA no duplicada (ocurrencias: ${ocurrenciasNotaIva})`
+    : `❌ Nota IVA duplicada (${ocurrenciasNotaIva} veces)`)
+  console.log(r12
+    ? (creditoActivo
+        ? `✅ Crédito "Carta Viva" presente (${ocurrenciasCredito} ocurr.)`
+        : '· Crédito desactivado (regla no aplica)')
+    : '❌ Crédito activo pero no aparece en el PDF')
+  console.log(r13
+    ? '✅ Crédito dentro del margen lateral + franja cabecera'
+    : `❌ Crédito fuera de zona (xMax=${creditoBbox?.xMax?.toFixed(1)} yFromTop=${creditoBbox?.yFromTop?.toFixed(1)})`)
+  console.log(r14
+    ? `✅ Texto QR en ${ysQr.length} línea${ysQr.length === 1 ? '' : 's'}`
+    : `❌ Texto QR en ${ysQr.length} líneas (esperado ≤ 1 con default)`)
+  console.log(`· Fuentes embebidas: ${fuentesEmbebidas.length}`)
 
   const fallos = []
-  if (!r1) fallos.push('r1-paginas')
+  if (!r1Efectivo) fallos.push(paleta.flexible ? 'r1-paginas(>4)' : 'r1-paginas')
   if (!r2) fallos.push('r2-cabecera')
   if (!r3) fallos.push('r3-texto-no-final')
   if (!r4) fallos.push('r4-bordes')
@@ -334,6 +638,12 @@ async function ejecutarPase(browser, paleta) {
   if (!r6) fallos.push('r6-pag1-vinos')
   if (!r7) fallos.push('r7-pag-fantasma')
   if (!r8) fallos.push('r8-margen-inferior')
+  if (!r9) fallos.push('r9-qr-no-descodifica')
+  if (!r10) fallos.push('r10-logo-0x0')
+  if (!r11) fallos.push('r11-nota-iva-duplicada')
+  if (!r12) fallos.push('r12-credito-ausente')
+  if (!r13) fallos.push('r13-credito-fuera-de-zona')
+  if (!r14) fallos.push('r14-qr-texto-multilinea')
 
   if (!r4) {
     const paginasConFallo = resultados.filter(r => !r.bordes.ok)

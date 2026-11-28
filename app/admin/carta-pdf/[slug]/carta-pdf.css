@@ -145,3 +145,51 @@
 }
 .cpdf-status--ok    { background: #0f5132; }
 .cpdf-status--error { background: #842029; }
+
+/* v2 — paneles plegables + logos ──────────────────────────────────── */
+
+.cpdf-panel {
+  border-top: 1px solid #e3e5e8;
+  padding: 10px 0;
+}
+.cpdf-panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 2px 0 6px;
+  list-style: none;
+  user-select: none;
+}
+.cpdf-panel > summary::-webkit-details-marker { display: none; }
+.cpdf-panel > summary::before {
+  content: '▸'; display: inline-block;
+  margin-right: 6px; transition: transform 0.15s;
+  color: #888;
+}
+.cpdf-panel[open] > summary::before { transform: rotate(90deg); }
+
+.cpdf-logo-fs {
+  border: 1px solid #e3e5e8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 0 0 8px;
+}
+.cpdf-logo-fs legend {
+  font-size: 11px;
+  color: #666;
+  padding: 0 4px;
+}
+.cpdf-logo-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.cpdf-logo-actions button {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid #cfd1d5;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cpdf-logo-actions button:disabled { opacity: 0.4; cursor: not-allowed; }

@@ -17,46 +17,22 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { EB_Garamond, Inter, JetBrains_Mono } from 'next/font/google'
 import { CartaImprimible } from '../../../components/cartaImprimible/CartaImprimible'
+import { classNameTodasLasVariables } from '../../../components/cartaImprimible/fonts.js'
 import {
   agruparVinosPorSeccion,
   colorTextoSegunFondo,
+  normalizarOpcionesCartaPdf,
 } from '../../../lib/cartaPdfUtils'
 import '../../../components/cartaImprimible/carta-imprimible.css'
 import './imprimir-shell.css'
 
-const serifFont = EB_Garamond({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--cpdf-font-serif',
-  weight: ['400', '600', '700'],
-})
-const sansFont = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--cpdf-font-sans',
-  weight: ['400', '600', '700'],
-})
-const monoFont = JetBrains_Mono({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--cpdf-font-mono',
-  weight: ['400', '700'],
-})
-
-const STACKS = {
-  serif: "var(--cpdf-font-serif), 'Georgia', serif",
-  sans:  "var(--cpdf-font-sans), system-ui, -apple-system, sans-serif",
-  mono:  "var(--cpdf-font-mono), 'Courier New', monospace",
-}
-
-function mapearTipografia(valor) {
-  const v = String(valor || '').toLowerCase()
-  if (v === 'sans' || v === 'condensed') return 'sans'
-  if (v === 'mono') return 'mono'
-  return 'serif'
-}
+// Todas las clases .variable de las 24 fuentes de next/font/google se
+// aplican al <main>. Así cualquier --cpdf-f-<id> que el componente use
+// (seleccionada por opciones.fuente_titulo / fuente_cuerpo) está
+// disponible. Sólo las 2 familias elegidas por el restaurante se embeben
+// en el PDF resultante (Chromium subsetea).
+const CLASS_FUENTES = classNameTodasLasVariables()
 
 const DEFAULTS = {
   color_fondo: '#1a1a2e',
@@ -126,15 +102,22 @@ export default function ImprimirCartaPdfPage() {
     const rest = datos?.restaurante
     const color_fondo = rest?.color_fondo || DEFAULTS.color_fondo
     const color_acento = rest?.color_acento || DEFAULTS.color_acento
+    // v2: `opciones` normalizado desde carta_pdf_opciones. Compat v1:
+    // si carta_mostrar_copa=true y no hay copa_modo en opciones, se
+    // infiere copa_modo='junto'.
+    const opciones = normalizarOpcionesCartaPdf(rest?.carta_pdf_opciones)
+    if (rest?.carta_mostrar_copa === true && opciones.copa_modo === 'no') {
+      opciones.copa_modo = 'junto'
+    }
     return {
       color_fondo,
       color_acento,
       color_texto: colorTextoSegunFondo(color_fondo),
-      font_stack: STACKS[mapearTipografia(rest?.tipografia)],
       carta_descripcion: rest?.carta_descripcion ?? DEFAULTS.carta_descripcion,
       carta_pie_texto: rest?.carta_pie_texto ?? DEFAULTS.carta_pie_texto,
-      carta_mostrar_copa: rest?.carta_mostrar_copa === true,
       carta_incluir_bodega_anada: rest?.carta_incluir_bodega_anada === true,
+      carta_publica_activa: rest?.carta_publica_activa !== false,
+      opciones,
     }
   }, [datos])
 
@@ -164,7 +147,7 @@ export default function ImprimirCartaPdfPage() {
     [datos]
   )
 
-  const bodyClass = `cpdf-print-body ${serifFont.variable} ${sansFont.variable} ${monoFont.variable}`
+  const bodyClass = `cpdf-print-body ${CLASS_FUENTES}`
   const styleRoot = { '--cpdf-bg': config.color_fondo }
 
   if (cargando) {
