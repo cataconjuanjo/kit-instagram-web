@@ -31,11 +31,12 @@ const PLURALES = etiquetasTipoVino().plural
  * @param {number|string|null|undefined} valor
  * @returns {string|null}
  */
-export function formatearPrecioPdf(valor) {
+export function formatearPrecioPdf(valor, opts = {}) {
   if (valor === null || valor === undefined || valor === '') return null
   const n = typeof valor === 'number' ? valor : Number(String(valor).replace(',', '.'))
   if (!Number.isFinite(n) || n <= 0) return null
 
+  const { conEuro = true } = opts
   const entero = Math.trunc(Math.abs(n))
   const useGrouping = entero >= 10000
   const esEntero = Number.isInteger(n)
@@ -46,6 +47,7 @@ export function formatearPrecioPdf(valor) {
     maximumFractionDigits: decimales,
     useGrouping,
   })
+  if (!conEuro) return fmt.format(n)
   return fmt.format(n) + ' €'
 }
 
@@ -197,3 +199,283 @@ function parseHex(hex) {
   if (!/^[0-9a-fA-F]{6}$/.test(h)) return null
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// CARTA PDF v2 — normalización de opciones + ordenaciones
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Catálogo de fuentes disponibles (id → metadata). El componente
+ * CartaImprimible usa el `varName` como fallback cuando no se pasa un
+ * fuente específico. El `factorAncho` es un multiplicador suave del
+ * font-size para fuentes anchas que podrían romper la paginación
+ * (<1 encoge, >1 agranda; 1 = neutro).
+ */
+export const CATALOGO_FUENTES_ID = new Set([
+  // Serif clásicas
+  'eb-garamond', 'cormorant-garamond', 'playfair-display', 'libre-baskerville',
+  'lora', 'spectral', 'crimson-pro', 'libre-caslon-text', 'bodoni-moda',
+  'dm-serif-display', 'cinzel',
+  // Sans
+  'inter', 'montserrat', 'raleway', 'josefin-sans', 'lato', 'work-sans',
+  'poppins', 'oswald',
+  // Mono
+  'jetbrains-mono', 'ibm-plex-mono', 'space-mono', 'courier-prime',
+  // Manuscrita (idónea solo para título)
+  'caveat',
+])
+
+export const CATALOGO_POSICIONES_LOGO = new Set([
+  'cabecera-izq', 'cabecera-centro', 'cabecera-der',
+  'pie-izq', 'pie-centro', 'pie-der',
+  'marca-agua',
+])
+
+export const CATALOGO_POSICIONES_QR = new Set([
+  'pie-izq', 'pie-centro', 'pie-der', 'cabecera-der',
+])
+
+export const COPA_MODOS = new Set(['no', 'junto', 'seccion', 'ambos'])
+export const ORDEN_VINOS = new Set(['alfabetico', 'region', 'precio_asc', 'uva', 'anada'])
+export const ORDEN_SECUNDARIO = new Set(['precio_asc', 'alfabetico'])
+export const PRECIO_FORMATOS = new Set(['con_euro', 'sin_euro'])
+export const DENSIDADES = new Set(['auto', 'normal', 'compacto'])
+
+/**
+ * Devuelve el objeto de opciones v2 con TODOS los campos rellenados con
+ * defaults equivalentes al comportamiento v1.
+ *
+ * Reglas de compatibilidad (regla de oro: {} debe producir el mismo PDF
+ * que antes de la migración):
+ *   - fuente_titulo  = 'actual' (serif actual, que mapea a eb-garamond)
+ *   - fuente_cuerpo  = 'actual' (mono actual, jetbrains-mono)
+ *   - logos          = []       (se infiere logo_url en cabecera-izq
+ *                                desde el componente si está vacío)
+ *   - qr             = { activo: true,  posicion: 'pie-der',
+ *                        tamano_mm: 18, texto: 'Maridajes…', color_auto: true }
+ *                      (brief marca "default ON" para el QR)
+ *   - credito        = true     (brief marca "default ON")
+ *   - copa_modo      = 'no'     (equivalente al toggle actual "mostrar copa" = false)
+ *   - orden_vinos    = 'alfabetico'
+ *   - orden_secundario = 'precio_asc'
+ *   - subtitulos_region = false
+ *   - precio_formato = 'con_euro'
+ *   - nota_euros     = true     (solo aplica si precio_formato='sin_euro')
+ *   - densidad_forzada = 'auto' (activa compacto > 60 vinos)
+ *
+ * @param {unknown} raw  Valor de la columna `carta_pdf_opciones` (jsonb)
+ *                       o fragmento recibido por la API admin.
+ */
+export function normalizarOpcionesCartaPdf(raw) {
+  const r = (raw && typeof raw === 'object') ? raw : {}
+
+  function enumConDefault(valor, setValido, def) {
+    const s = typeof valor === 'string' ? valor.trim().toLowerCase() : ''
+    return setValido.has(s) ? s : def
+  }
+
+  function fuenteValida(valor, def) {
+    if (valor === 'actual') return 'actual'
+    const s = typeof valor === 'string' ? valor.trim().toLowerCase() : ''
+    return CATALOGO_FUENTES_ID.has(s) ? s : def
+  }
+
+  function boolDefault(valor, def) {
+    if (typeof valor === 'boolean') return valor
+    if (valor === 'true') return true
+    if (valor === 'false') return false
+    return def
+  }
+
+  function numEntre(valor, min, max, def) {
+    const n = Number(valor)
+    if (!Number.isFinite(n)) return def
+    return Math.min(max, Math.max(min, Math.round(n)))
+  }
+
+  function urlSegura(valor) {
+    if (typeof valor !== 'string') return null
+    const s = valor.trim().slice(0, 2048)
+    if (!s) return null
+    if (s.startsWith('/') && !s.startsWith('//')) return s
+    try {
+      const u = new URL(s)
+      return ['http:', 'https:'].includes(u.protocol) ? u.toString() : null
+    } catch { return null }
+  }
+
+  // ── logos ───────────────────────────────────────────────────────────
+  // Filtramos primero, luego truncamos a 4 — si hiciéramos slice antes,
+  // una entrada inválida en las primeras 4 posiciones nos quitaría un
+  // logo válido que viene en la posición 5.
+  const logosRaw = Array.isArray(r.logos) ? r.logos : []
+  const logos = logosRaw.map(l => {
+    if (!l || typeof l !== 'object') return null
+    const url = urlSegura(l.url)
+    if (!url) return null
+    return {
+      url,
+      posicion: enumConDefault(l.posicion, CATALOGO_POSICIONES_LOGO, 'cabecera-izq'),
+      tamano_mm: numEntre(l.tamano_mm, 8, 60, 14),
+      opacidad: l.posicion === 'marca-agua'
+        ? numEntre(l.opacidad, 5, 20, 8)
+        : 100,
+    }
+  }).filter(Boolean).slice(0, 4)
+
+  // ── qr ──────────────────────────────────────────────────────────────
+  const qrRaw = (r.qr && typeof r.qr === 'object') ? r.qr : {}
+  const qr = {
+    activo: boolDefault(qrRaw.activo, true),
+    posicion: enumConDefault(qrRaw.posicion, CATALOGO_POSICIONES_QR, 'pie-der'),
+    tamano_mm: numEntre(qrRaw.tamano_mm, 10, 40, 18),
+    texto: typeof qrRaw.texto === 'string'
+      ? qrRaw.texto.trim().slice(0, 140)
+      : 'Maridajes y fichas de cada vino · escanea',
+    color_auto: boolDefault(qrRaw.color_auto, true),
+  }
+
+  return {
+    fuente_titulo: fuenteValida(r.fuente_titulo, 'actual'),
+    fuente_cuerpo: fuenteValida(r.fuente_cuerpo, 'actual'),
+    logos,
+    qr,
+    credito: boolDefault(r.credito, true),
+    copa_modo: enumConDefault(r.copa_modo, COPA_MODOS, 'no'),
+    orden_vinos: enumConDefault(r.orden_vinos, ORDEN_VINOS, 'alfabetico'),
+    orden_secundario: enumConDefault(r.orden_secundario, ORDEN_SECUNDARIO, 'precio_asc'),
+    subtitulos_region: boolDefault(r.subtitulos_region, false),
+    precio_formato: enumConDefault(r.precio_formato, PRECIO_FORMATOS, 'con_euro'),
+    nota_euros: boolDefault(r.nota_euros, true),
+    densidad_forzada: enumConDefault(r.densidad_forzada, DENSIDADES, 'auto'),
+  }
+}
+
+// ── Orden editorial por regiones ────────────────────────────────────────
+// Lista ordenada: menor índice = antes en la carta. Las claves son
+// patrones (sin acentos, minúsculas) que coinciden como substring de
+// vino.region.
+const REGIONES_EDITORIAL = [
+  // España norte
+  'rioja', 'rias baixas', 'ribeiro', 'ribeira sacra', 'bierzo', 'valdeorras',
+  'navarra', 'somontano', 'txakol',
+  // España centro-norte
+  'ribera del duero', 'toro', 'rueda', 'cigales', 'tierra de leon',
+  // España mediterraneo
+  'priorat', 'montsant', 'penedes', 'cava', 'tarragona', 'terra alta',
+  'valencia', 'alicante', 'jumilla', 'yecla',
+  // España sur
+  'malaga', 'sierras de malaga', 'jerez', 'manzanilla', 'montilla', 'condado',
+  // España otros
+  'canarias', 'mallorca',
+  'la mancha', 'extremadura',
+  // Francia
+  'champagne', 'borgo', 'burde', 'bordeaux', 'bourgogne',
+  'rodano', 'rhône', 'rhone', 'loira', 'loire', 'alsacia', 'languedoc',
+  // Italia / Portugal / otros
+  'piamonte', 'piemonte', 'toscana', 'veneto', 'sicilia',
+  'douro', 'oporto', 'vinho verde',
+  'alemania', 'austria', 'nuevo mundo', 'chile', 'argentina', 'california',
+  'australia', 'sudafrica',
+]
+
+function normalizarTexto(s) {
+  return String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+export function indiceRegionEditorial(regionTexto) {
+  const t = normalizarTexto(regionTexto)
+  if (!t) return 9999
+  for (let i = 0; i < REGIONES_EDITORIAL.length; i++) {
+    if (t.includes(REGIONES_EDITORIAL[i])) return i
+  }
+  return 5000 // después de las conocidas pero antes de "otros"
+}
+
+/**
+ * Agrupa vinos de una sección por región, ordenadas según índice
+ * editorial. Dentro del grupo: `ordenSecundario` (precio_asc|alfabetico).
+ * Vinos sin región → grupo "Otros" al final.
+ *
+ * @returns {Array<{region:string, vinos:Array}>}
+ */
+export function agruparPorRegion(vinos, ordenSecundario = 'precio_asc') {
+  const porRegion = new Map()
+  for (const v of vinos) {
+    const key = (v.region && String(v.region).trim()) || 'Otros'
+    if (!porRegion.has(key)) porRegion.set(key, [])
+    porRegion.get(key).push(v)
+  }
+  const grupos = [...porRegion.entries()]
+    .map(([region, items]) => ({ region, items, idx: indiceRegionEditorial(region) }))
+    .sort((a, b) => a.idx - b.idx || a.region.localeCompare(b.region, 'es-ES'))
+
+  const cmpSecundario = (a, b) => {
+    if (ordenSecundario === 'precio_asc') {
+      const pa = Number(a.precio_botella) || Infinity
+      const pb = Number(b.precio_botella) || Infinity
+      if (pa !== pb) return pa - pb
+    }
+    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es-ES')
+  }
+  for (const g of grupos) g.items.sort(cmpSecundario)
+  return grupos.map(g => ({ region: g.region, vinos: g.items }))
+}
+
+/**
+ * Ordena vinos dentro de una sección según el modo editorial.
+ * Devuelve: lista plana ordenada + (opcional) grupos para el renderer.
+ */
+export function ordenarVinosSeccion(vinos, orden = 'alfabetico', ordenSec = 'precio_asc') {
+  const arr = [...vinos]
+  if (orden === 'region') {
+    // El renderer puede querer los grupos para pintar sub-cabeceras.
+    const grupos = agruparPorRegion(arr, ordenSec)
+    return { lista: grupos.flatMap(g => g.vinos), grupos }
+  }
+  if (orden === 'precio_asc') {
+    arr.sort((a, b) => (Number(a.precio_botella) || Infinity) - (Number(b.precio_botella) || Infinity))
+    return { lista: arr, grupos: null }
+  }
+  if (orden === 'uva') {
+    arr.sort((a, b) => String(a.uva || 'zz').localeCompare(String(b.uva || 'zz'), 'es-ES')
+      || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es-ES'))
+    return { lista: arr, grupos: null }
+  }
+  if (orden === 'anada') {
+    arr.sort((a, b) => {
+      const aa = String(a.anada || '0').replace(/\D/g, '')
+      const bb = String(b.anada || '0').replace(/\D/g, '')
+      return (Number(bb) || 0) - (Number(aa) || 0) // añadas nuevas primero
+    })
+    return { lista: arr, grupos: null }
+  }
+  arr.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es-ES'))
+  return { lista: arr, grupos: null }
+}
+
+/**
+ * Para el modo "seccion" de copa, extrae una sección virtual con los
+ * vinos que tengan precio_copa > 0. En modo "seccion" el vino aparece
+ * SOLO en POR COPA (quita de su sección original). En "ambos" aparece
+ * en POR COPA Y en su sección (con precio botella).
+ *
+ * Devuelve { seccionCopa, idsExcluir } donde idsExcluir se descuenta del
+ * listado normal según el modo.
+ */
+export function extraerSeccionCopa(vinos, copaModo) {
+  if (copaModo !== 'seccion' && copaModo !== 'ambos') {
+    return { seccionCopa: null, idsExcluir: new Set() }
+  }
+  const conCopa = vinos.filter(v => Number(v.precio_copa) > 0)
+  if (conCopa.length === 0) return { seccionCopa: null, idsExcluir: new Set() }
+
+  const ordenados = [...conCopa].sort((a, b) => {
+    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es-ES')
+  })
+  const seccionCopa = { tipo: 'copa', label: 'Por copa', vinos: ordenados }
+  const idsExcluir = copaModo === 'seccion' ? new Set(ordenados.map(v => v.id)) : new Set()
+  return { seccionCopa, idsExcluir }
+}
+

@@ -11,6 +11,12 @@ import {
   lineaOrigenVino,
   colorTextoSegunFondo,
   ratioContraste,
+  normalizarOpcionesCartaPdf,
+  ordenarVinosSeccion,
+  agruparPorRegion,
+  indiceRegionEditorial,
+  extraerSeccionCopa,
+  CATALOGO_FUENTES_ID,
 } from '../app/lib/cartaPdfUtils.js'
 
 // El helper usa U+00A0 (NBSP) entre número y € para que no se partan de línea.
@@ -154,5 +160,205 @@ describe('ratioContraste', () => {
   })
   it('mismo color = 1', () => {
     assert.equal(ratioContraste('#808080', '#808080'), 1)
+  })
+})
+
+// ─── v2: normalización de opciones ─────────────────────────────────────
+
+describe('normalizarOpcionesCartaPdf (defaults)', () => {
+  const defaults = normalizarOpcionesCartaPdf({})
+  it('devuelve todos los campos con defaults', () => {
+    assert.equal(defaults.fuente_titulo, 'actual')
+    assert.equal(defaults.fuente_cuerpo, 'actual')
+    assert.deepEqual(defaults.logos, [])
+    assert.equal(defaults.qr.activo, true)
+    assert.equal(defaults.qr.posicion, 'pie-der')
+    assert.equal(defaults.qr.tamano_mm, 18)
+    assert.equal(defaults.credito, true)
+    assert.equal(defaults.copa_modo, 'no')
+    assert.equal(defaults.orden_vinos, 'alfabetico')
+    assert.equal(defaults.precio_formato, 'con_euro')
+    assert.equal(defaults.densidad_forzada, 'auto')
+  })
+  it('null/undefined → defaults', () => {
+    assert.deepEqual(normalizarOpcionesCartaPdf(null), defaults)
+    assert.deepEqual(normalizarOpcionesCartaPdf(undefined), defaults)
+  })
+  it('valores inválidos de enums → defaults', () => {
+    const r = normalizarOpcionesCartaPdf({
+      copa_modo: 'inventado', orden_vinos: 'xxx', precio_formato: 'yen',
+    })
+    assert.equal(r.copa_modo, 'no')
+    assert.equal(r.orden_vinos, 'alfabetico')
+    assert.equal(r.precio_formato, 'con_euro')
+  })
+  it('acepta fuente del catálogo', () => {
+    const r = normalizarOpcionesCartaPdf({
+      fuente_titulo: 'playfair-display', fuente_cuerpo: 'lato',
+    })
+    assert.equal(r.fuente_titulo, 'playfair-display')
+    assert.equal(r.fuente_cuerpo, 'lato')
+  })
+  it('rechaza fuentes fuera del catálogo', () => {
+    const r = normalizarOpcionesCartaPdf({ fuente_titulo: 'comic-sans' })
+    assert.equal(r.fuente_titulo, 'actual')
+  })
+})
+
+describe('normalizarOpcionesCartaPdf (logos)', () => {
+  it('sanea URLs y posiciones, descarta inválidos', () => {
+    const r = normalizarOpcionesCartaPdf({
+      logos: [
+        { url: 'https://cdn.example.com/a.png', posicion: 'cabecera-izq', tamano_mm: 12 },
+        { url: 'javascript:alert(1)', posicion: 'pie-der', tamano_mm: 14 },
+        { url: '/logos/b.svg', posicion: 'inventada', tamano_mm: 999 },
+        null,
+        { url: 'https://cdn.example.com/c.png', posicion: 'marca-agua', tamano_mm: 50, opacidad: 15 },
+      ],
+    })
+    assert.equal(r.logos.length, 3) // descarta null y el javascript:
+    assert.equal(r.logos[0].posicion, 'cabecera-izq')
+    assert.equal(r.logos[0].tamano_mm, 12)
+    assert.equal(r.logos[1].posicion, 'cabecera-izq') // default: inventada→cabecera-izq
+    assert.equal(r.logos[1].tamano_mm, 60) // clamp
+    assert.equal(r.logos[2].posicion, 'marca-agua')
+    assert.equal(r.logos[2].opacidad, 15)
+    assert.equal(r.logos[2].tamano_mm, 50)
+  })
+  it('máximo 4 logos', () => {
+    const r = normalizarOpcionesCartaPdf({
+      logos: Array.from({ length: 10 }, (_, i) => ({ url: `/l${i}.png` })),
+    })
+    assert.ok(r.logos.length <= 4)
+  })
+})
+
+describe('normalizarOpcionesCartaPdf (QR)', () => {
+  it('posición válida y rangos', () => {
+    const r = normalizarOpcionesCartaPdf({
+      qr: { activo: false, posicion: 'cabecera-der', tamano_mm: 5, texto: 'hola' },
+    })
+    assert.equal(r.qr.activo, false)
+    assert.equal(r.qr.posicion, 'cabecera-der')
+    assert.equal(r.qr.tamano_mm, 10) // clamp min
+    assert.equal(r.qr.texto, 'hola')
+  })
+  it('texto muy largo se trunca', () => {
+    const r = normalizarOpcionesCartaPdf({ qr: { texto: 'x'.repeat(500) } })
+    assert.ok(r.qr.texto.length <= 140)
+  })
+})
+
+describe('indiceRegionEditorial', () => {
+  it('Rioja < Priorat < Jerez', () => {
+    assert.ok(indiceRegionEditorial('D.O.Ca. Rioja') < indiceRegionEditorial('D.O. Priorat'))
+    assert.ok(indiceRegionEditorial('D.O. Priorat') < indiceRegionEditorial('D.O. Jerez'))
+  })
+  it('región desconocida → 5000', () => {
+    assert.equal(indiceRegionEditorial('D.O. Marte'), 5000)
+  })
+  it('string vacío → 9999', () => {
+    assert.equal(indiceRegionEditorial(''), 9999)
+    assert.equal(indiceRegionEditorial(null), 9999)
+  })
+})
+
+describe('agruparPorRegion', () => {
+  const vinos = [
+    { nombre: 'Aalto',      region: 'D.O. Ribera del Duero', precio_botella: 60 },
+    { nombre: 'Belondrade', region: 'D.O. Rueda',            precio_botella: 45 },
+    { nombre: 'Rioja1',     region: 'D.O.Ca. Rioja',         precio_botella: 20 },
+    { nombre: 'Rioja2',     region: 'D.O.Ca. Rioja',         precio_botella: 80 },
+    { nombre: 'SinRegion',  region: '',                       precio_botella: 10 },
+  ]
+  it('ordena por índice editorial', () => {
+    const grupos = agruparPorRegion(vinos)
+    // Rioja antes que Ribera antes que Rueda, Otros al final
+    const nombres = grupos.map(g => g.region)
+    assert.equal(nombres[0], 'D.O.Ca. Rioja')
+    assert.equal(nombres[nombres.length - 1], 'Otros')
+  })
+  it('orden secundario precio_asc', () => {
+    const grupos = agruparPorRegion(vinos, 'precio_asc')
+    const rioja = grupos.find(g => g.region === 'D.O.Ca. Rioja')
+    assert.equal(rioja.vinos[0].nombre, 'Rioja1') // 20 < 80
+  })
+})
+
+describe('ordenarVinosSeccion', () => {
+  const vinos = [
+    { nombre: 'B', uva: 'Tempranillo', anada: '2020', precio_botella: 50 },
+    { nombre: 'A', uva: 'Garnacha',    anada: '2022', precio_botella: 30 },
+    { nombre: 'C', uva: 'Albariño',    anada: '2021', precio_botella: 40 },
+  ]
+  it('alfabetico', () => {
+    const { lista } = ordenarVinosSeccion(vinos, 'alfabetico')
+    assert.deepEqual(lista.map(v => v.nombre), ['A', 'B', 'C'])
+  })
+  it('precio_asc', () => {
+    const { lista } = ordenarVinosSeccion(vinos, 'precio_asc')
+    assert.deepEqual(lista.map(v => v.precio_botella), [30, 40, 50])
+  })
+  it('uva', () => {
+    const { lista } = ordenarVinosSeccion(vinos, 'uva')
+    assert.equal(lista[0].uva, 'Albariño')
+  })
+  it('anada (más nuevas primero)', () => {
+    const { lista } = ordenarVinosSeccion(vinos, 'anada')
+    assert.equal(lista[0].anada, '2022')
+  })
+  it('region devuelve grupos', () => {
+    const vinosReg = [
+      { nombre: 'A', region: 'D.O.Ca. Rioja' },
+      { nombre: 'B', region: 'D.O. Rueda' },
+    ]
+    const { lista, grupos } = ordenarVinosSeccion(vinosReg, 'region')
+    assert.equal(grupos.length, 2)
+    assert.equal(lista.length, 2)
+  })
+})
+
+describe('extraerSeccionCopa', () => {
+  const vinos = [
+    { id: 1, nombre: 'A', precio_botella: 30, precio_copa: 6 },
+    { id: 2, nombre: 'B', precio_botella: 50, precio_copa: null },
+    { id: 3, nombre: 'C', precio_botella: null, precio_copa: 5 },
+  ]
+  it('modo "no" → null', () => {
+    const r = extraerSeccionCopa(vinos, 'no')
+    assert.equal(r.seccionCopa, null)
+  })
+  it('modo "seccion" → extrae con copa y excluye de sección normal', () => {
+    const r = extraerSeccionCopa(vinos, 'seccion')
+    assert.equal(r.seccionCopa.vinos.length, 2) // A y C (B no tiene copa)
+    assert.ok(r.idsExcluir.has(1))
+    assert.ok(r.idsExcluir.has(3))
+  })
+  it('modo "ambos" → extrae sin excluir', () => {
+    const r = extraerSeccionCopa(vinos, 'ambos')
+    assert.equal(r.seccionCopa.vinos.length, 2)
+    assert.equal(r.idsExcluir.size, 0)
+  })
+})
+
+describe('formatearPrecioPdf sin €', () => {
+  it('conEuro:false devuelve solo el número', () => {
+    assert.equal(formatearPrecioPdf(24, { conEuro: false }), '24')
+    assert.equal(formatearPrecioPdf(12.5, { conEuro: false }), '12,50')
+    assert.equal(formatearPrecioPdf(10035, { conEuro: false }), '10.035')
+  })
+  it('null si no hay precio', () => {
+    assert.equal(formatearPrecioPdf(null, { conEuro: false }), null)
+    assert.equal(formatearPrecioPdf(0, { conEuro: false }), null)
+  })
+})
+
+describe('CATALOGO_FUENTES_ID', () => {
+  it('contiene las 24 familias del brief', () => {
+    assert.ok(CATALOGO_FUENTES_ID.has('eb-garamond'))
+    assert.ok(CATALOGO_FUENTES_ID.has('inter'))
+    assert.ok(CATALOGO_FUENTES_ID.has('jetbrains-mono'))
+    assert.ok(CATALOGO_FUENTES_ID.has('caveat'))
+    assert.ok(CATALOGO_FUENTES_ID.size >= 20)
   })
 })

@@ -1,0 +1,76 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Carta Viva PDF v2 — jsonb único con todas las opciones de la carta PDF
+-- ─────────────────────────────────────────────────────────────────────────
+--
+-- MOTIVO
+--   La "Carta PDF imprimible v2" (feat/carta-pdf-v2) añade muchas opciones
+--   nuevas de presentación (fuentes de título y cuerpo, hasta 4 logos con
+--   posición personalizable, QR a la carta digital, crédito "Carta Viva",
+--   modo de precio por copa, orden editorial de vinos, precios sin €).
+--   Añadir una columna por cada una llenaría la tabla `restaurantes` de
+--   campos de UI. En su lugar, UNA sola columna jsonb agrupa todo el
+--   paquete v2 bajo una clave estable.
+--
+-- CARACTERÍSTICAS
+--   - jsonb NOT NULL DEFAULT '{}'::jsonb. El código llama a
+--     `normalizarOpcionesCartaPdf(raw)` que aplica defaults equivalentes
+--     al comportamiento ACTUAL de la carta PDF. Un restaurante con la
+--     columna vacía (`{}`) produce exactamente el mismo PDF que antes
+--     de aplicar la migración → regla de oro del brief.
+--   - Aditiva e idempotente: ADD COLUMN IF NOT EXISTS.
+--   - No se tocan RLS, policies, triggers ni índices. Las policies
+--     existentes de `restaurantes` cubren automáticamente la columna.
+--   - Las columnas v1 (carta_descripcion, carta_mostrar_copa,
+--     carta_incluir_bodega_anada, logo_url, color_fondo…) NO se borran.
+--     v2 las lee para preservar compatibilidad: si `carta_pdf_opciones`
+--     está vacía, el componente infiere los valores desde los campos v1
+--     (p. ej. `logo_url` → logos[0] en "cabecera-izq"; `carta_mostrar_copa=true`
+--     → copa_modo="junto").
+--
+-- COMPATIBILIDAD CON EL CÓDIGO
+--   La app degrada si la columna NO existe:
+--     - `/api/admin/carta-pdf-config` detecta 42703 al guardar y devuelve
+--       `{ code: 'MIGRATION_PENDING' }` como ya hace con las columnas v1.
+--     - `/api/public/restaurante/[slug]` reintenta sin
+--       `carta_pdf_opciones` si Postgres responde 42703 (patrón ya usado
+--       con las columnas v1 — ver CAMPOS_RESTAURANTE_CARTA_PDF).
+--     - El componente CartaImprimible usa defaults equivalentes al
+--       comportamiento v1 cuando `carta_pdf_opciones = {}` o no viene.
+--
+-- BACKUP PREVIO (obligatorio; esquema privado `backup_privado`, nunca `public`):
+--
+--     CREATE SCHEMA IF NOT EXISTS backup_privado;
+--     DROP TABLE IF EXISTS backup_privado.restaurantes_pre_cartaopts;
+--     CREATE TABLE backup_privado.restaurantes_pre_cartaopts AS
+--       SELECT * FROM public.restaurantes;
+--     SELECT count(*) FROM public.restaurantes;
+--     SELECT count(*) FROM backup_privado.restaurantes_pre_cartaopts;
+--     -- Ambos counts deben coincidir.
+--
+-- COMPROBACIÓN PREVIA (debe devolver 0 filas; si devuelve 1 la columna
+-- ya existe y el ADD COLUMN IF NOT EXISTS es no-op):
+--     SELECT column_name, data_type, column_default, is_nullable
+--       FROM information_schema.columns
+--      WHERE table_schema = 'public'
+--        AND table_name   = 'restaurantes'
+--        AND column_name  = 'carta_pdf_opciones';
+--
+-- COMPROBACIÓN POSTERIOR (debe devolver 1 fila: jsonb · '{}' · NO):
+--     SELECT column_name, data_type, column_default, is_nullable
+--       FROM information_schema.columns
+--      WHERE table_schema = 'public'
+--        AND table_name   = 'restaurantes'
+--        AND column_name  = 'carta_pdf_opciones';
+--
+-- COMPROBACIÓN POSTERIOR DE DATOS (todas las filas deben tener '{}'):
+--     SELECT count(*) AS filas,
+--            count(*) FILTER (WHERE carta_pdf_opciones = '{}'::jsonb) AS vacias
+--       FROM public.restaurantes;
+--     -- filas == vacias (hasta que algún restaurante configure v2).
+-- ─────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS carta_pdf_opciones jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+COMMENT ON COLUMN public.restaurantes.carta_pdf_opciones IS
+  'Paquete v2 de opciones de la carta PDF imprimible (fuente_titulo, fuente_cuerpo, logos[], qr, credito, copa_modo, orden_vinos, orden_secundario, subtitulos_region, precio_formato, nota_euros, densidad_forzada). El código llama a normalizarOpcionesCartaPdf(raw) para aplicar defaults equivalentes al comportamiento v1. Un valor {} produce el mismo PDF que antes de la migración.';
