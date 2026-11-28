@@ -286,6 +286,67 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+ * MODO COMPACTO
+ *
+ * Se activa desde React cuando totalVinos > 60 (ver UMBRAL_COMPACTO en
+ * CartaImprimible.jsx). Reduce line-height, margen entre vinos, fuente
+ * de la línea 2, margen entre secciones y altura del hero para que
+ * ~80 vinos quepan en 2 páginas A4 sin perder legibilidad.
+ *
+ * Límites fijos: cuerpo ≥ 9pt (no < 7pt como marca el brief), margen
+ * inferior ≥ 8 mm (padding-bottom del multicol). Si con modo compacto
+ * aún no caben, se añadiría una 3ª página; en ese caso informar al
+ * sommelier por UI (fuera de scope aquí — lo detecta el verify).
+ * ───────────────────────────────────────────────────────────────────── */
+
+.cpdf-sheet--compact .cpdf-sheet__hero {
+  max-height: 26mm;
+  gap: 6mm;
+  padding-bottom: 4mm;
+  margin-bottom: 4mm;
+}
+.cpdf-sheet--compact .cpdf-sheet__logo {
+  max-height: 26mm;
+  max-width: 38mm;
+}
+.cpdf-sheet--compact .cpdf-sheet__nombre {
+  font-size: 15pt;
+  letter-spacing: 0.2em;
+  margin: 0 0 1.5mm;
+}
+.cpdf-sheet--compact .cpdf-sheet__descripcion {
+  font-size: 8pt;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+}
+
+.cpdf-sheet--compact .cpdf-sheet__body {
+  font-size: 9pt;        /* era 9.5pt → cuerpo dentro del límite ≥ 9pt */
+  line-height: 1.25;     /* era 1.35 → −7% */
+  padding-bottom: 8mm;   /* era 10mm → 8mm (límite mínimo del brief) */
+}
+.cpdf-sheet--compact .cpdf-section {
+  margin: 0 0 3mm;       /* era 3.5mm → −14% */
+}
+.cpdf-sheet--compact .cpdf-section__header {
+  padding-bottom: 1mm;
+  margin-bottom: 1.5mm;
+  font-size: 8.5pt;
+}
+.cpdf-sheet--compact .cpdf-vino {
+  margin: 0 0 1.8mm;     /* era 2.2mm → −18% */
+}
+.cpdf-sheet--compact .cpdf-vino__linea2 {
+  font-size: 7.5pt;      /* era 8pt → −6% */
+  margin-top: 0.2mm;
+}
+.cpdf-sheet--compact .cpdf-sheet__pie {
+  margin-top: 4mm;
+  padding-top: 2mm;
+  font-size: 7.5pt;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
  * REGLAS DE IMPRESIÓN
  *
  * @page margin: 0 → el fondo a sangre llega al borde y Chrome NO

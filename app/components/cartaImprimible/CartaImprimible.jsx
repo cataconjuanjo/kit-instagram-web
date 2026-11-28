@@ -25,6 +25,17 @@
 
 import { formatearPrecioPdf, lineaOrigenVino } from '../../lib/cartaPdfUtils'
 
+/**
+ * Umbral automático de densidad. Cuando el total de vinos supera este valor,
+ * se aplica la clase `cpdf-sheet--compact`, que comprime line-height, margin
+ * entre vinos, fuente de la línea 2, margen entre secciones y altura del
+ * hero. Valores calibrados para que 80 vinos quepan en 2 páginas A4
+ * manteniendo cuerpo ≥ 9pt y margen inferior ≥ 8 mm (ver carta-imprimible.css
+ * sección "MODO COMPACTO"). Por debajo del umbral se usa la densidad normal
+ * (más aire, pensada para cartas de 40-60 vinos).
+ */
+const UMBRAL_COMPACTO = 60
+
 export function CartaImprimible({ restaurante, secciones, config }) {
   const styleSheet = {
     '--cpdf-bg': config.color_fondo,
@@ -35,9 +46,17 @@ export function CartaImprimible({ restaurante, secciones, config }) {
 
   const logoUrl = restaurante?.logo_url || ''
   const nombre = restaurante?.nombre || ''
+  const totalVinos = secciones.reduce((n, s) => n + (s.vinos?.length || 0), 0)
+  const compacto = totalVinos > UMBRAL_COMPACTO
 
   return (
-    <article className="cpdf-sheet" style={styleSheet} aria-label="Carta de vinos imprimible">
+    <article
+      className={`cpdf-sheet${compacto ? ' cpdf-sheet--compact' : ''}`}
+      data-total-vinos={totalVinos}
+      data-densidad={compacto ? 'compact' : 'normal'}
+      style={styleSheet}
+      aria-label="Carta de vinos imprimible"
+    >
       <table className="cpdf-page-table">
         <thead>
           <tr>
