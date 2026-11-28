@@ -37,8 +37,10 @@ const OUT_DIR = path.join(repoRoot, '.tmp-carta-pdf-verify')
 
 const MAX_PAGINAS = 3
 const UMBRAL_TEXTO_PAG_NO_FINAL = 0.40
-const UMBRAL_TEXTO_PAG_FINAL = 0.10
-const TOLERANCIA_COLOR = 32          // distancia euclídea RGB (0..441)
+const UMBRAL_TEXTO_PAG_FINAL = 0.25  // ≥ 25 % del texto de la más llena
+                                      // (brief densidad: evita "seccion
+                                      //  huérfana de 1 vino + pie")
+const TOLERANCIA_COLOR = 32
 const MARGEN_INFERIOR_MIN_MM = 8     // margen inferior del contenido
 
 // Escala del rasterizado (pdfjs). Permite convertir px→mm:
@@ -51,8 +53,12 @@ const RENDER_SCALE = 1.5
 const PX_POR_MM = (842 * RENDER_SCALE) / 297
 
 const PALETAS = [
-  { nombre: 'oscura', color_fondo: null, color_acento: null, color_texto: null }, // la del restaurante
-  { nombre: 'clara',  color_fondo: '#f7f3ee', color_acento: '#b5532a', color_texto: '#2a1f14' },
+  // Pase 1: paleta real del restaurante (oscura en casa-marisma),
+  // vinos reales (50 aprox).
+  { nombre: 'oscura', color_fondo: null, color_acento: null, clonarVinosHasta: null },
+  // Pase 2: paleta clara + 80 vinos sintéticos (clona los reales).
+  // Simula "Lo de Carmen" sin tocar DB.
+  { nombre: 'clara',  color_fondo: '#f7f3ee', color_acento: '#b5532a', clonarVinosHasta: 80 },
 ]
 
 async function esperarUrl(url, timeoutMs = 180_000) {
@@ -179,18 +185,33 @@ async function ejecutarPase(browser, paleta) {
   const page = await context.newPage()
   page.on('console', msg => { if (msg.type() === 'error') console.log('[page error]', msg.text()) })
 
-  // Para el pase "clara" interceptamos la respuesta de la API pública y
-  // sobrescribimos los colores. Esto simula un restaurante con paleta
-  // clara SIN tocar la base de datos. El componente recibe los colores
-  // y los aplica vía su useEffect → documentElement.
-  if (paleta.color_fondo) {
+  // Interceptamos la respuesta de la API pública para:
+  //   (a) sobrescribir los colores (simula paleta sin tocar la DB)
+  //   (b) clonar los vinos hasta `clonarVinosHasta` (simula una carta
+  //       grande tipo Lo de Carmen sin cargar 80 vinos reales).
+  // El componente recibe la respuesta modificada y renderiza normal.
+  if (paleta.color_fondo || paleta.clonarVinosHasta) {
     await page.route('**/api/public/restaurante/**', async route => {
       const response = await route.fetch()
       let body
       try { body = await response.json() } catch { body = null }
       if (body?.restaurante) {
-        body.restaurante.color_fondo = paleta.color_fondo
-        body.restaurante.color_acento = paleta.color_acento
+        if (paleta.color_fondo)  body.restaurante.color_fondo  = paleta.color_fondo
+        if (paleta.color_acento) body.restaurante.color_acento = paleta.color_acento
+      }
+      if (paleta.clonarVinosHasta && Array.isArray(body?.vinos) && body.vinos.length > 0) {
+        const originales = [...body.vinos]
+        let k = 0
+        while (body.vinos.length < paleta.clonarVinosHasta) {
+          const base = originales[k % originales.length]
+          const suf = String(k + 1).padStart(2, '0')
+          body.vinos.push({
+            ...base,
+            id: `${base.id}-clon-${suf}`,
+            nombre: `${base.nombre} CLON ${suf}`,
+          })
+          k++
+        }
       }
       await route.fulfill({
         status: 200,
@@ -225,6 +246,17 @@ async function ejecutarPase(browser, paleta) {
   })
   const bgRgb = bgHex ? hexToRgb(bgHex) : { r: 26, g: 26, b: 46 }
   console.log('[pase] Fondo efectivo:', bgHex, '→', bgRgb)
+
+  // Detecta modo densidad aplicado por el componente (data-densidad).
+  const metaDensidad = await page.evaluate(() => {
+    const el = document.querySelector('.cpdf-sheet')
+    return el ? {
+      densidad: el.dataset.densidad || 'desconocida',
+      totalVinos: Number(el.dataset.totalVinos) || 0,
+      compact: el.classList.contains('cpdf-sheet--compact'),
+    } : null
+  })
+  console.log('[pase] Densidad:', metaDensidad)
 
   const pdfPath = path.join(OUT_DIR, `live-${paleta.nombre}.pdf`)
   await page.pdf({ path: pdfPath, format: 'A4', preferCSSPageSize: true, printBackground: true })
